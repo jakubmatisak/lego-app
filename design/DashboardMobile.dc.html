@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .app {
+      --p: #D01012; --p-on: #FFFFFF; --p-c: #FFDAD6; --p-on-c: #410004;
+      --s: #F5C518; --s-on: #3A2E00; --s-c: #FFF3C4;
+      --bg: #FAF8F7; --surf: #FFFFFF; --surf-2: #F4F1F0; --surf-3: #EDE9E8;
+      --on-surf: #1C1B1B; --on-var: #5C5B5B; --outline: #DEDAD9;
+      --pos: #16714A; --pos-c: #D3F0E0; --neg: #B3261E; --neg-c: #FFDAD6;
+      --c4: #16714A; --c5: #9A9695;
+    }
+    .app.dark {
+      --p: #FFB3AC; --p-on: #690006; --p-c: #93000C; --p-on-c: #FFDAD6;
+      --s: #F5C518; --s-on: #3A2E00; --s-c: #4A3B00;
+      --bg: #131212; --surf: #1B1A1A; --surf-2: #232222; --surf-3: #2C2A2A;
+      --on-surf: #E7E2E1; --on-var: #A9A4A3; --outline: #3B3939;
+      --pos: #6BD69A; --pos-c: #113827; --neg: #FFB4AB; --neg-c: #5C1410;
+      --c4: #6BD69A; --c5: #7C7877;
+    }
+    a { color: #D01012; text-decoration: none; }
+    a:hover { color: #96090B; }
+    .app.dark a { color: #FFB3AC; }
+    .app.dark a:hover { color: #FFDAD6; }
+    .ico { flex-shrink: 0; }
+  </style>
+</helmet>
+
+<div class="app {{theme}}" style="display: flex; flex-direction: column; width: 390px; height: 844px; overflow: hidden; background: var(--bg); color: var(--on-surf); font-family: Roboto, system-ui, sans-serif;">
+
+  <header style="height: 64px; flex-shrink: 0; background: var(--surf); border-bottom: 1px solid var(--outline); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 16px;">
+    <svg class="ico" width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="8" width="18" height="11" rx="2" fill="var(--p)"></rect>
+      <rect x="6" y="5" width="4" height="4" rx="1.2" fill="var(--p)"></rect>
+      <rect x="14" y="5" width="4" height="4" rx="1.2" fill="var(--p)"></rect>
+    </svg>
+    <span style="font-size: 18px; font-weight: 500;">Prehľad</span>
+    <div style="margin-left: auto; display: flex; align-items: center;">
+      <div style="width: 46px; height: 46px; border-radius: 23px; display: flex; align-items: center; justify-content: center; color: var(--on-var);">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5L21 21"></path></svg>
+      </div>
+      <div style="width: 46px; height: 46px; border-radius: 23px; display: flex; align-items: center; justify-content: center; color: var(--on-var);">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 100 17 8.5 8.5 0 0010.5-6.5z"></path></svg>
+      </div>
+      <div style="width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;">
+        <span style="width: 38px; height: 38px; border-radius: 19px; background: var(--p); color: var(--p-on); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500;">JM</span>
+      </div>
+    </div>
+  </header>
+
+  <div style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+
+    <div style="box-sizing: border-box; padding: 16px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+      <span style="font-size: 11px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: var(--on-var);">Trhová hodnota</span>
+      <div style="display: flex; align-items: flex-end; gap: 10px;">
+        <span style="font-size: 32px; font-weight: 500; line-height: 38px;">8&nbsp;930&nbsp;€</span>
+        <span style="margin-bottom: 5px; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--pos-c); color: var(--pos); font-size: 13px; font-weight: 500;">
+          <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"></path><path d="M15 7h6v6"></path></svg>
+          +43,1&nbsp;%
+        </span>
+      </div>
+      <div style="display: flex; gap: 20px; padding-top: 8px; border-top: 1px solid var(--outline);">
+        <div style="display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 11px; color: var(--on-var);">Investované</span>
+          <span style="font-size: 15px; font-weight: 500;">6&nbsp;240&nbsp;€</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 11px; color: var(--on-var);">Nerealizovaný</span>
+          <span style="font-size: 15px; font-weight: 500; color: var(--pos);">+2&nbsp;690&nbsp;€</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 11px; color: var(--on-var);">Realizovaný</span>
+          <span style="font-size: 15px; font-weight: 500; color: var(--pos);">+840&nbsp;€</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="box-sizing: border-box; height: 164px; padding: 12px 16px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 14px; font-weight: 500;">Vývoj portfólia</span>
+        <span style="font-size: 11px; color: var(--on-var);">12 mes. · ukážka</span>
+      </div>
+      <svg viewBox="0 0 340 102" style="width: 100%; flex-grow: 1; margin-top: 4px;" preserveAspectRatio="none">
+        <line x1="6" y1="96" x2="334" y2="96" stroke="var(--outline)" stroke-width="1"></line>
+        <line x1="6" y1="53" x2="334" y2="53" stroke="var(--outline)" stroke-width="1" stroke-dasharray="3 4"></line>
+        <line x1="6" y1="10" x2="334" y2="10" stroke="var(--outline)" stroke-width="1" stroke-dasharray="3 4"></line>
+        <path d="M6,61 L36,56 L66,53 L96,49 L125,44 L155,39 L185,36 L215,32 L245,27 L275,24 L304,21 L334,19 L334,96 L6,96 Z" fill="var(--p)" opacity="0.10"></path>
+        <path d="M6,69 L36,66 L66,63 L96,61 L125,58 L155,55 L185,53 L215,50 L245,48 L275,45 L304,44 L334,42" fill="none" stroke="var(--c5)" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"></path>
+        <path d="M6,96 L36,96 L66,95 L96,95 L125,92 L155,92 L185,89 L215,89 L245,85 L275,82 L304,80 L334,77" fill="none" stroke="var(--c4)" stroke-width="1.8" stroke-dasharray="2 3" stroke-linecap="round"></path>
+        <path d="M6,61 L36,56 L66,53 L96,49 L125,44 L155,39 L185,36 L215,32 L245,27 L275,24 L304,21 L334,19" fill="none" stroke="var(--p)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--on-var);"><span style="width: 11px; height: 3px; border-radius: 2px; background: var(--c5);"></span>investované</span>
+        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--on-var);"><span style="width: 11px; height: 3px; border-radius: 2px; background: var(--p);"></span>hodnota</span>
+        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--on-var);"><span style="width: 11px; height: 3px; border-radius: 2px; background: var(--c4);"></span>z predajov</span>
+      </div>
+    </div>
+
+    <div style="box-sizing: border-box; padding: 10px 16px 0; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; height: 30px; gap: 8px;">
+        <span style="font-size: 14px; font-weight: 500;">Kto sa hýbe</span>
+        <div style="margin-left: auto; display: flex; height: 28px; border-radius: 4px; border: 1px solid var(--outline); overflow: hidden;">
+          <span style="display: flex; align-items: center; padding: 0 9px; color: var(--on-var); font-size: 11px; font-weight: 500;">30&nbsp;d</span>
+          <span style="display: flex; align-items: center; padding: 0 9px; background: var(--p-c); color: var(--p-on-c); font-size: 11px; font-weight: 500;">90&nbsp;d</span>
+          <span style="display: flex; align-items: center; padding: 0 9px; color: var(--on-var); font-size: 11px; font-weight: 500;">rok</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 52px; border-top: 1px solid var(--outline);">
+        <span style="display: flex; flex-direction: column; min-width: 0; flex-grow: 1;"><span style="font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Millennium Falcon</span><span style="font-size: 11px; color: var(--on-var);">1&nbsp;103&nbsp;€ → 1&nbsp;240&nbsp;€</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--pos-c); color: var(--pos); font-size: 12px; font-weight: 500;">
+          <svg class="ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>
+          +12,4&nbsp;%
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 52px; border-top: 1px solid var(--outline);">
+        <span style="display: flex; flex-direction: column; min-width: 0; flex-grow: 1;"><span style="font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">AT-AT</span><span style="font-size: 11px; color: var(--on-var);">801&nbsp;€ → 780&nbsp;€</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--neg-c); color: var(--neg); font-size: 12px; font-weight: 500;">
+          <svg class="ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>
+          −2,6&nbsp;%
+        </span>
+      </div>
+    </div>
+
+    <div style="box-sizing: border-box; padding: 10px 16px 0; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; height: 30px;">
+        <span style="font-size: 14px; font-weight: 500;">Najväčší zisk</span>
+        <span style="margin-left: auto; display: inline-flex; align-items: center; height: 30px; padding: 0 10px; font-size: 13px; font-weight: 500; color: var(--p);">Všetko</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; height: 56px; border-top: 1px solid var(--outline);">
+        <span style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 6px; background: var(--surf-3); flex-shrink: 0;"><svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="9" width="18" height="10" rx="2" fill="var(--c5)" opacity="0.5"></rect><rect x="6" y="6" width="4" height="4" rx="1" fill="var(--c5)" opacity="0.5"></rect><rect x="14" y="6" width="4" height="4" rx="1" fill="var(--c5)" opacity="0.5"></rect></svg></span>
+        <span style="display: flex; flex-direction: column; min-width: 0; flex-grow: 1;"><span style="font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Millennium Falcon</span><span style="font-size: 11px; color: var(--on-var);">75192-1 · 1 ks</span></span>
+        <span style="display: flex; flex-direction: column; align-items: flex-end;"><span style="font-size: 14px; font-weight: 500;">1&nbsp;240&nbsp;€</span><span style="font-size: 11px; color: var(--pos); font-weight: 500;">+520&nbsp;€</span></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; height: 56px; border-top: 1px solid var(--outline);">
+        <span style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 6px; background: var(--surf-3); flex-shrink: 0;"><svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="9" width="18" height="10" rx="2" fill="var(--c5)" opacity="0.5"></rect><rect x="6" y="6" width="4" height="4" rx="1" fill="var(--c5)" opacity="0.5"></rect><rect x="14" y="6" width="4" height="4" rx="1" fill="var(--c5)" opacity="0.5"></rect></svg></span>
+        <span style="display: flex; flex-direction: column; min-width: 0; flex-grow: 1;"><span style="font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Titanic</span><span style="font-size: 11px; color: var(--on-var);">10294-1 · 2 ks</span></span>
+        <span style="display: flex; flex-direction: column; align-items: flex-end;"><span style="font-size: 14px; font-weight: 500;">1&nbsp;693&nbsp;€</span><span style="font-size: 11px; color: var(--pos); font-weight: 500;">+513&nbsp;€</span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <nav style="height: 64px; flex-shrink: 0; background: var(--surf); border-top: 1px solid var(--outline); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--p);">
+      <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>
+      <span style="font-size: 11px; font-weight: 500;">Prehľad</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--on-var);">
+      <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4-9-4z"></path><path d="M3 12l9 4 9-4"></path><path d="M3 16l9 4 9-4"></path></svg>
+      <span style="font-size: 11px; font-weight: 500;">Zbierka</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--on-var);">
+      <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-9a4 4 0 017-2.6A4 4 0 0119 11c0 4.6-7 9-7 9z"></path></svg>
+      <span style="font-size: 11px; font-weight: 500;">Chcem</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--on-var);">
+      <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 3v2.4M12 18.6V21M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M3 12h2.4M18.6 12H21M5.2 18.8l1.7-1.7M17.1 6.9l1.7-1.7"></path></svg>
+      <span style="font-size: 11px; font-weight: 500;">Nastavenia</span>
+    </div>
+  </nav>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Téma"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.dark ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

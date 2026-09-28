@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .app {
+      --p: #D01012; --p-on: #FFFFFF; --p-c: #FFDAD6; --p-on-c: #410004;
+      --s: #F5C518; --s-on: #3A2E00; --s-c: #FFF3C4;
+      --bg: #FAF8F7; --surf: #FFFFFF; --surf-2: #F4F1F0; --surf-3: #EDE9E8;
+      --on-surf: #1C1B1B; --on-var: #5C5B5B; --outline: #DEDAD9;
+      --pos: #16714A; --pos-c: #D3F0E0; --neg: #B3261E; --neg-c: #FFDAD6; --c5: #9A9695;
+    }
+    .app.dark {
+      --p: #FFB3AC; --p-on: #690006; --p-c: #93000C; --p-on-c: #FFDAD6;
+      --s: #F5C518; --s-on: #3A2E00; --s-c: #4A3B00;
+      --bg: #131212; --surf: #1B1A1A; --surf-2: #232222; --surf-3: #2C2A2A;
+      --on-surf: #E7E2E1; --on-var: #A9A4A3; --outline: #3B3939;
+      --pos: #6BD69A; --pos-c: #113827; --neg: #FFB4AB; --neg-c: #5C1410; --c5: #7C7877;
+    }
+    a { color: #D01012; text-decoration: none; }
+    a:hover { color: #96090B; }
+    .app.dark a { color: #FFB3AC; }
+    .app.dark a:hover { color: #FFDAD6; }
+    .ico { flex-shrink: 0; }
+  </style>
+</helmet>
+
+<div class="app {{theme}}" style="display: flex; width: 1440px; height: 900px; overflow: hidden; background: var(--bg); color: var(--on-surf); font-family: Roboto, system-ui, sans-serif;">
+
+  <aside style="width: 256px; flex-shrink: 0; background: var(--surf); border-right: 1px solid var(--outline); display: flex; flex-direction: column;">
+    <div style="height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; flex-shrink: 0;">
+      <svg class="ico" width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="8" width="18" height="11" rx="2" fill="var(--p)"></rect>
+        <rect x="6" y="5" width="4" height="4" rx="1.2" fill="var(--p)"></rect>
+        <rect x="14" y="5" width="4" height="4" rx="1.2" fill="var(--p)"></rect>
+      </svg>
+      <span style="font-size: 20px; font-weight: 700; letter-spacing: 0.1px;">Moje kocky</span>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 4px; padding: 8px;">
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; color: var(--on-var); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>
+        <span>Prehľad</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; color: var(--on-var); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4-9-4z"></path><path d="M3 12l9 4 9-4"></path><path d="M3 16l9 4 9-4"></path></svg>
+        <span>Zbierka</span>
+        <span style="margin-left: auto; font-size: 12px; font-weight: 500; color: var(--on-var);">24</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; color: var(--on-var); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-9a4 4 0 017-2.6A4 4 0 0119 11c0 4.6-7 9-7 9z"></path></svg>
+        <span>Chcem</span>
+        <span style="margin-left: auto; font-size: 12px; font-weight: 500; color: var(--on-var);">6</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; background: var(--p-c); color: var(--p-on-c); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 3v2.4M12 18.6V21M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M3 12h2.4M18.6 12H21M5.2 18.8l1.7-1.7M17.1 6.9l1.7-1.7"></path></svg>
+        <span>Nastavenia</span>
+      </div>
+    </nav>
+  </aside>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;">
+
+    <header style="height: 64px; flex-shrink: 0; background: var(--surf); border-bottom: 1px solid var(--outline); display: flex; align-items: center; gap: 16px; padding: 0 24px;">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 500; line-height: 28px;">Nastavenia</h1>
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+        <div style="width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; color: var(--on-var);">
+          <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 100 17 8.5 8.5 0 0010.5-6.5z"></path></svg>
+        </div>
+        <div style="width: 40px; height: 40px; border-radius: 20px; background: var(--p); color: var(--p-on); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500;">JM</div>
+      </div>
+    </header>
+
+    <main style="flex-grow: 1; padding: 0 24px 24px; overflow: hidden; display: flex; flex-direction: column;">
+
+      <div style="display: flex; gap: 4px; height: 52px; flex-shrink: 0; border-bottom: 1px solid var(--outline);">
+        <div style="display: flex; align-items: center; padding: 0 20px; color: var(--on-var); font-size: 14px; font-weight: 500;">Účet</div>
+        <div style="display: flex; align-items: center; padding: 0 20px; color: var(--p); font-size: 14px; font-weight: 500; border-bottom: 3px solid var(--p);">Zdieľanie</div>
+        <div style="display: flex; align-items: center; padding: 0 20px; color: var(--on-var); font-size: 14px; font-weight: 500;">Jazyk a mena</div>
+        <div style="display: flex; align-items: center; padding: 0 20px; color: var(--on-var); font-size: 14px; font-weight: 500;">Zálohy</div>
+      </div>
+
+      <div style="display: flex; justify-content: center; overflow: hidden; padding-top: 24px;">
+        <div style="width: 100%; max-width: 860px; display: flex; flex-direction: column; gap: 20px;">
+
+          <div style="display: flex; align-items: flex-start; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 18px; font-weight: 500;">Odkaz na pozretie</span>
+              <span style="font-size: 13px; color: var(--on-var); max-width: 520px;">Kto odkaz dostane, uvidí tvoju zbierku bez prihlásenia a nemôže v nej nič meniť. Odkaz vieš kedykoľvek zrušiť.</span>
+            </div>
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 4px; background: var(--p); color: var(--p-on); font-size: 15px; font-weight: 500; flex-shrink: 0;">
+              <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+              <span>Vytvoriť odkaz</span>
+            </div>
+          </div>
+
+          <div style="box-sizing: border-box; padding: 18px 20px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--on-var)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4.5 4.5 0 006.6.4l2.6-2.6a4.5 4.5 0 00-6.4-6.4l-1.5 1.5"></path><path d="M14 11a4.5 4.5 0 00-6.6-.4l-2.6 2.6a4.5 4.5 0 006.4 6.4l1.5-1.5"></path></svg>
+              <span style="font-size: 15px; font-family: Roboto, monospace; letter-spacing: 0.2px;">moje-kocky.sk/z/7f3a9c21</span>
+              <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-2); color: var(--on-var); font-size: 12px; font-weight: 500;">
+                <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"></path><path d="M10.6 6.3A9.7 9.7 0 0112 6.2c5 0 9 5.8 9 5.8a17 17 0 01-2.8 3.4"></path><path d="M6.3 7.9C3.9 9.6 3 12 3 12s4 5.8 9 5.8c1.4 0 2.7-.45 3.8-1.1"></path></svg>
+                sumy skryté
+              </span>
+              <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 4px; border: 1px solid var(--outline); font-size: 13px; font-weight: 500;">
+                  <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M15 5H6a2 2 0 00-2 2v9"></path></svg>
+                  <span>Kopírovať</span>
+                </div>
+                <div style="display: flex; align-items: center; height: 40px; padding: 0 14px; border-radius: 4px; color: var(--neg); font-size: 13px; font-weight: 500;">Zrušiť</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px; padding-top: 14px; border-top: 1px solid var(--outline);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="position: relative; width: 40px; height: 22px; border-radius: 11px; background: var(--surf-3); flex-shrink: 0;">
+                  <span style="position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 9px; background: var(--on-var);"></span>
+                </span>
+                <span style="font-size: 14px;">Ukazovať sumy a zisk</span>
+              </div>
+              <span style="font-size: 13px; color: var(--on-var);">Vypnuté, kamarát vidí len sety a fotky.</span>
+              <span style="margin-left: auto; font-size: 13px; color: var(--on-var);">Naposledy otvorené pred 3 dňami</span>
+            </div>
+          </div>
+
+          <div style="box-sizing: border-box; padding: 18px 20px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--on-var)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4.5 4.5 0 006.6.4l2.6-2.6a4.5 4.5 0 00-6.4-6.4l-1.5 1.5"></path><path d="M14 11a4.5 4.5 0 00-6.6-.4l-2.6 2.6a4.5 4.5 0 006.4 6.4l1.5-1.5"></path></svg>
+              <span style="font-size: 15px; font-family: Roboto, monospace; letter-spacing: 0.2px;">moje-kocky.sk/z/b28e40df</span>
+              <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--s-c); color: var(--s-on); font-size: 12px; font-weight: 500;">
+                <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12s4-5.8 9-5.8 9 5.8 9 5.8-4 5.8-9 5.8S3 12 3 12z"></path><circle cx="12" cy="12" r="2.4"></circle></svg>
+                sumy viditeľné
+              </span>
+              <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 4px; border: 1px solid var(--outline); font-size: 13px; font-weight: 500;">
+                  <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M15 5H6a2 2 0 00-2 2v9"></path></svg>
+                  <span>Kopírovať</span>
+                </div>
+                <div style="display: flex; align-items: center; height: 40px; padding: 0 14px; border-radius: 4px; color: var(--neg); font-size: 13px; font-weight: 500;">Zrušiť</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px; padding-top: 14px; border-top: 1px solid var(--outline);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="position: relative; width: 40px; height: 22px; border-radius: 11px; background: var(--p); flex-shrink: 0;">
+                  <span style="position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 9px; background: var(--p-on);"></span>
+                </span>
+                <span style="font-size: 14px;">Ukazovať sumy a zisk</span>
+              </div>
+              <span style="font-size: 13px; color: var(--on-var);">Zapnuté, tento odkaz posielaj len tomu, komu dôveruješ.</span>
+              <span style="margin-left: auto; font-size: 13px; color: var(--on-var);">Zatiaľ neotvorený</span>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border-radius: 10px; background: var(--surf-2);">
+            <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--on-var)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 7.6v.8"></path></svg>
+            <span style="font-size: 13px; line-height: 20px; color: var(--on-var);">Keď sú sumy vypnuté, ceny sa vôbec neposielajú zo servera. Nedá sa k nim dostať ani cez zdrojový kód stránky. Odkaz nie je nikde zverejnený, ale ktokoľvek s ním sa na stránku dostane, tak ho posielaj len ľuďom, ktorým dôveruješ.</span>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Téma"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.dark ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

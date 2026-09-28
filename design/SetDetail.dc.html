@@ -1,0 +1,346 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .app {
+      --p: #D01012; --p-on: #FFFFFF; --p-c: #FFDAD6; --p-on-c: #410004;
+      --s: #F5C518; --s-on: #3A2E00; --s-c: #FFF3C4;
+      --bg: #FAF8F7; --surf: #FFFFFF; --surf-2: #F4F1F0; --surf-3: #EDE9E8;
+      --on-surf: #1C1B1B; --on-var: #5C5B5B; --outline: #DEDAD9;
+      --pos: #16714A; --pos-c: #D3F0E0; --neg: #B3261E; --neg-c: #FFDAD6; --c5: #9A9695;
+    }
+    .app.dark {
+      --p: #FFB3AC; --p-on: #690006; --p-c: #93000C; --p-on-c: #FFDAD6;
+      --s: #F5C518; --s-on: #3A2E00; --s-c: #4A3B00;
+      --bg: #131212; --surf: #1B1A1A; --surf-2: #232222; --surf-3: #2C2A2A;
+      --on-surf: #E7E2E1; --on-var: #A9A4A3; --outline: #3B3939;
+      --pos: #6BD69A; --pos-c: #113827; --neg: #FFB4AB; --neg-c: #5C1410; --c5: #7C7877;
+    }
+    a { color: #D01012; text-decoration: none; }
+    a:hover { color: #96090B; }
+    .app.dark a { color: #FFB3AC; }
+    .app.dark a:hover { color: #FFDAD6; }
+    .ico { flex-shrink: 0; }
+  </style>
+</helmet>
+
+<div class="app {{theme}}" style="display: flex; width: 1440px; height: 900px; overflow: hidden; background: var(--bg); color: var(--on-surf); font-family: Roboto, system-ui, sans-serif;">
+
+  <aside style="width: 256px; flex-shrink: 0; background: var(--surf); border-right: 1px solid var(--outline); display: flex; flex-direction: column;">
+    <div style="height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; flex-shrink: 0;">
+      <svg class="ico" width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="8" width="18" height="11" rx="2" fill="var(--p)"></rect>
+        <rect x="6" y="5" width="4" height="4" rx="1.2" fill="var(--p)"></rect>
+        <rect x="14" y="5" width="4" height="4" rx="1.2" fill="var(--p)"></rect>
+      </svg>
+      <span style="font-size: 20px; font-weight: 700; letter-spacing: 0.1px;">Moje kocky</span>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 4px; padding: 8px;">
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; color: var(--on-var); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>
+        <span>Prehľad</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; background: var(--p-c); color: var(--p-on-c); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4-9-4z"></path><path d="M3 12l9 4 9-4"></path><path d="M3 16l9 4 9-4"></path></svg>
+        <span>Zbierka</span>
+        <span style="margin-left: auto; font-size: 12px; font-weight: 500;">24</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; color: var(--on-var); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-9a4 4 0 017-2.6A4 4 0 0119 11c0 4.6-7 9-7 9z"></path></svg>
+        <span>Chcem</span>
+        <span style="margin-left: auto; font-size: 12px; font-weight: 500; color: var(--on-var);">6</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 16px; border-radius: 24px; color: var(--on-var); font-size: 14px; font-weight: 500;">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 3v2.4M12 18.6V21M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M3 12h2.4M18.6 12H21M5.2 18.8l1.7-1.7M17.1 6.9l1.7-1.7"></path></svg>
+        <span>Nastavenia</span>
+      </div>
+    </nav>
+  </aside>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;">
+
+    <header style="height: 64px; flex-shrink: 0; background: var(--surf); border-bottom: 1px solid var(--outline); display: flex; align-items: center; gap: 12px; padding: 0 24px;">
+      <div style="width: 44px; height: 44px; margin-left: -10px; border-radius: 22px; display: flex; align-items: center; justify-content: center; color: var(--on-var);">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M11 18l-6-6 6-6"></path></svg>
+      </div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 500; line-height: 28px;">Titanic</h1>
+      <span style="font-size: 13px; color: var(--on-var);">10294-1</span>
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+        <div style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--outline); font-size: 14px; font-weight: 500;">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 11-2.3-5.7"></path><path d="M20 4v4.5h-4.5"></path></svg>
+          <span>Obnoviť ceny</span>
+        </div>
+        <div style="width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; color: var(--on-var);">
+          <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="var(--on-var)"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg>
+        </div>
+      </div>
+    </header>
+
+    <main style="flex-grow: 1; padding: 24px; display: flex; flex-direction: column; gap: 20px; overflow: hidden;">
+
+      <div style="height: 196px; flex-shrink: 0; box-sizing: border-box; padding: 20px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; gap: 20px;">
+        <div style="width: 156px; height: 156px; flex-shrink: 0; border-radius: 8px; background: var(--surf-3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+          <svg width="80" height="80" viewBox="0 0 96 96" fill="none" opacity="0.32"><rect x="14" y="26" width="68" height="52" rx="4" stroke="var(--on-var)" stroke-width="2.5"></rect><path d="M14 40h68" stroke="var(--on-var)" stroke-width="2.5"></path><rect x="30" y="52" width="36" height="16" rx="2.5" fill="var(--on-var)"></rect><rect x="36" y="46" width="8" height="7" rx="1.5" fill="var(--on-var)"></rect><rect x="52" y="46" width="8" height="7" rx="1.5" fill="var(--on-var)"></rect></svg>
+          <span style="font-size: 10px; color: var(--on-var);">fotka z katalógu</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px; flex-grow: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--surf-2); color: var(--on-var); font-size: 12px; font-weight: 500;">Icons</span>
+            <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--surf-2); color: var(--on-var); font-size: 12px; font-weight: 500;">2021</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--s); color: var(--s-on); font-size: 12px; font-weight: 500;">
+              <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 8v4l3 2"></path></svg>
+              Retired 2023
+            </span>
+            <a href="#" style="margin-left: auto; font-size: 13px; font-weight: 500;">Otvoriť na BrickLink</a>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; color: var(--on-var);">Dieliky</span>
+              <span style="font-size: 18px; font-weight: 500;">9&nbsp;090</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; color: var(--on-var);">Minifigúrky</span>
+              <span style="font-size: 18px; font-weight: 500;">0</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; color: var(--on-var);">Pôvodná cena</span>
+              <span style="font-size: 18px; font-weight: 500;">679,99&nbsp;€</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; color: var(--on-var);">Mám kusov</span>
+              <span style="font-size: 18px; font-weight: 500;">2</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; color: var(--on-var);">Nerealizovaný</span>
+              <span style="font-size: 18px; font-weight: 500; color: var(--pos);">+513&nbsp;€</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; color: var(--on-var);">Realizovaný</span>
+              <span style="font-size: 18px; font-weight: 500; color: var(--pos);">+290&nbsp;€</span>
+            </div>
+          </div>
+          <div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: var(--surf-2);">
+            <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--on-var)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 7.6v.8"></path></svg>
+            <span style="font-size: 12px; color: var(--on-var);">Metadáta z Rebrickable, pôvodná cena a stav retired z Brickset. Aktualizované 8.&nbsp;9.&nbsp;2026.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; flex-grow: 1; min-height: 0;">
+
+        <div style="box-sizing: border-box; padding: 16px 20px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; height: 36px;">
+            <span style="font-size: 16px; font-weight: 500;">Moje kusy</span>
+            <span style="margin-left: 8px; font-size: 13px; color: var(--on-var);">2 vlastnené · 1 predaný</span>
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 4px; border: 1px solid var(--outline); font-size: 13px; font-weight: 500;">
+              <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+              <span>Ďalší kus</span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 30px minmax(0, 1fr) 86px 96px 88px 92px; align-items: center; height: 34px; border-bottom: 1px solid var(--outline); font-size: 11px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: var(--on-var);">
+            <span>#</span><span>Stav, výbava a umiestnenie</span><span style="text-align: right;">Kúpené</span><span style="text-align: right;">Hodnota</span><span style="text-align: right;">Zisk</span><span></span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 30px minmax(0, 1fr) 86px 96px 88px 92px; align-items: center; min-height: 78px; border-bottom: 1px solid var(--outline); font-size: 14px;">
+            <span style="color: var(--on-var);">1</span>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 10px 0;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--p-c); color: var(--p-on-c); font-size: 12px; font-weight: 500;">Nové v krabici</span>
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-2); color: var(--on-var); font-size: 12px;">krabica</span>
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-2); color: var(--on-var); font-size: 12px;">manuál</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-2); color: var(--on-var); font-size: 12px;">
+                  <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-10.4A6.5 6.5 0 0112 4a6.5 6.5 0 016.5 6.6C18.5 15.4 12 21 12 21z"></path><circle cx="12" cy="10.4" r="2.3"></circle></svg>
+                  Povala
+                </span>
+              </div>
+              <span style="font-size: 12px; color: var(--on-var);">14.&nbsp;3.&nbsp;2024 · LEGO Store Bratislava</span>
+            </div>
+            <span style="text-align: right;">590&nbsp;€</span>
+            <span style="text-align: right; font-weight: 500;">945&nbsp;€</span>
+            <span style="text-align: right; color: var(--pos); font-weight: 500;">+355&nbsp;€</span>
+            <span style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;">
+              <span style="display: inline-flex; align-items: center; height: 32px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--outline); font-size: 12px; font-weight: 500;">Predať</span>
+              <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; color: var(--on-var);">
+                <svg class="ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16v4z"></path><path d="M14 6l4 4"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 30px minmax(0, 1fr) 86px 96px 88px 92px; align-items: center; min-height: 78px; border-bottom: 1px solid var(--outline); font-size: 14px;">
+            <span style="color: var(--on-var);">2</span>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 10px 0;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-2); color: var(--on-surf); font-size: 12px; font-weight: 500;">Postavené</span>
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-2); color: var(--on-var); font-size: 12px;">manuál</span>
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--neg-c); color: var(--neg); font-size: 12px;">bez krabice</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-2); color: var(--on-var); font-size: 12px;">
+                  <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-10.4A6.5 6.5 0 0112 4a6.5 6.5 0 016.5 6.6C18.5 15.4 12 21 12 21z"></path><circle cx="12" cy="10.4" r="2.3"></circle></svg>
+                  Obývačka
+                </span>
+              </div>
+              <span style="font-size: 12px; color: var(--on-var);">2.&nbsp;11.&nbsp;2022 · bazár Aukro</span>
+            </div>
+            <span style="text-align: right;">590&nbsp;€</span>
+            <span style="text-align: right; font-weight: 500;">748&nbsp;€</span>
+            <span style="text-align: right; color: var(--pos); font-weight: 500;">+158&nbsp;€</span>
+            <span style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;">
+              <span style="display: inline-flex; align-items: center; height: 32px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--outline); font-size: 12px; font-weight: 500;">Predať</span>
+              <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; color: var(--on-var);">
+                <svg class="ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16v4z"></path><path d="M14 6l4 4"></path></svg>
+              </span>
+            </span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 30px minmax(0, 1fr) 86px 96px 88px 92px; align-items: center; min-height: 78px; border-bottom: 1px solid var(--outline); font-size: 14px; background: var(--surf-2);">
+            <span style="color: var(--on-var);">3</span>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 10px 0;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--on-var); color: var(--surf); font-size: 12px; font-weight: 500;">
+                  <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"></path></svg>
+                  Predané
+                </span>
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--surf-3); color: var(--on-var); font-size: 12px;">bolo nové v krabici</span>
+              </div>
+              <span style="font-size: 12px; color: var(--on-var);">predané 8.&nbsp;6.&nbsp;2026 cez Aukro · kúpené 30.&nbsp;1.&nbsp;2021</span>
+            </div>
+            <span style="text-align: right; color: var(--on-var);">620&nbsp;€</span>
+            <span style="text-align: right; font-weight: 500;">910&nbsp;€</span>
+            <span style="text-align: right; color: var(--pos); font-weight: 500;">+290&nbsp;€</span>
+            <span style="display: flex; justify-content: flex-end; align-items: center;">
+              <span style="display: inline-flex; align-items: center; height: 32px; padding: 0 10px; border-radius: 4px; color: var(--on-var); font-size: 12px; font-weight: 500;">Vrátiť</span>
+            </span>
+          </div>
+
+          <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding-top: 12px;">
+            <div style="display: grid; grid-template-columns: 30px minmax(0, 1fr) 86px 96px 88px 92px; align-items: center; font-size: 13px;">
+              <span></span><span style="color: var(--on-var);">Vlastnené (2 ks)</span>
+              <span style="text-align: right;">1&nbsp;180&nbsp;€</span>
+              <span style="text-align: right; font-weight: 500;">1&nbsp;693&nbsp;€</span>
+              <span style="text-align: right; color: var(--pos); font-weight: 500;">+513&nbsp;€</span><span></span>
+            </div>
+            <div style="display: grid; grid-template-columns: 30px minmax(0, 1fr) 86px 96px 88px 92px; align-items: center; font-size: 13px;">
+              <span></span><span style="color: var(--on-var);">Predané (1 ks)</span>
+              <span style="text-align: right;">620&nbsp;€</span>
+              <span style="text-align: right; font-weight: 500;">910&nbsp;€</span>
+              <span style="text-align: right; color: var(--pos); font-weight: 500;">+290&nbsp;€</span><span></span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px; min-height: 0;">
+
+          <div style="box-sizing: border-box; padding: 18px 20px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center;">
+              <span style="font-size: 16px; font-weight: 500;">Trhová cena</span>
+              <span style="margin-left: auto; font-size: 12px; color: var(--on-var);">BrickLink · EU · s DPH</span>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <div style="display: flex; flex-grow: 1; height: 36px; border-radius: 4px; border: 1px solid var(--outline); overflow: hidden;">
+                <span style="flex-grow: 1; display: flex; align-items: center; justify-content: center; background: var(--p-c); color: var(--p-on-c); font-size: 13px; font-weight: 500;">Nový</span>
+                <span style="flex-grow: 1; display: flex; align-items: center; justify-content: center; color: var(--on-var); font-size: 13px; font-weight: 500;">Použitý</span>
+              </div>
+              <div style="display: flex; flex-grow: 1; height: 36px; border-radius: 4px; border: 1px solid var(--outline); overflow: hidden;">
+                <span style="flex-grow: 1; display: flex; align-items: center; justify-content: center; background: var(--p-c); color: var(--p-on-c); font-size: 13px; font-weight: 500;">Predané</span>
+                <span style="flex-grow: 1; display: flex; align-items: center; justify-content: center; color: var(--on-var); font-size: 13px; font-weight: 500;">V predaji</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: flex-end; gap: 12px;">
+              <div style="display: flex; flex-direction: column; gap: 1px;">
+                <span style="font-size: 12px; color: var(--on-var);">Priemer</span>
+                <span style="font-size: 32px; font-weight: 500; line-height: 38px;">945&nbsp;€</span>
+              </div>
+              <span style="margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 6px; background: var(--pos-c); color: var(--pos); font-size: 12px; font-weight: 500;">
+                <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"></path><path d="M15 7h6v6"></path></svg>
+                +39&nbsp;% nad pôvodnou cenou
+              </span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 8px; background: var(--surf-2);">
+                <span style="font-size: 11px; color: var(--on-var);">30 dní</span>
+                <span style="font-size: 14px; font-weight: 500; color: var(--pos);">+2,1&nbsp;%</span>
+              </div>
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 8px; background: var(--surf-2);">
+                <span style="font-size: 11px; color: var(--on-var);">90 dní</span>
+                <span style="font-size: 14px; font-weight: 500; color: var(--pos);">+8,1&nbsp;%</span>
+              </div>
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 8px; background: var(--surf-2);">
+                <span style="font-size: 11px; color: var(--on-var);">rok</span>
+                <span style="font-size: 14px; font-weight: 500; color: var(--pos);">+22,4&nbsp;%</span>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px; border-radius: 8px; background: var(--surf-2);">
+              <div style="display: flex; flex-direction: column; gap: 1px;">
+                <span style="font-size: 12px; color: var(--on-var);">Najnižšia</span>
+                <span style="font-size: 15px; font-weight: 500;">820&nbsp;€</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 1px;">
+                <span style="font-size: 12px; color: var(--on-var);">Najvyššia</span>
+                <span style="font-size: 15px; font-weight: 500;">1&nbsp;190&nbsp;€</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 1px;">
+                <span style="font-size: 12px; color: var(--on-var);">Predajov</span>
+                <span style="font-size: 15px; font-weight: 500;">47</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--outline);">
+              <span style="font-size: 12px; color: var(--on-var);">Obnovené dnes 8:14</span>
+              <a href="#" style="margin-left: auto; font-size: 12px; font-weight: 500;">Zadať vlastnú cenu</a>
+            </div>
+          </div>
+
+          <div style="flex-grow: 1; min-height: 0; box-sizing: border-box; padding: 16px 20px; border-radius: 12px; background: var(--surf); border: 1px solid var(--outline); display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 15px; font-weight: 500;">Vývoj ceny</span>
+              <span style="font-size: 12px; color: var(--on-var);">12 mesiacov</span>
+              <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--on-var);"><span style="width: 11px; height: 3px; border-radius: 2px; background: var(--p);"></span>nový</span>
+                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--on-var);"><span style="width: 11px; height: 3px; border-radius: 2px; background: var(--c5);"></span>použitý</span>
+              </div>
+            </div>
+            <svg viewBox="0 0 620 176" style="width: 100%; flex-grow: 1; margin-top: 6px;" preserveAspectRatio="none">
+              <line x1="36" y1="160" x2="612" y2="160" stroke="var(--outline)" stroke-width="1"></line>
+              <line x1="36" y1="90" x2="612" y2="90" stroke="var(--outline)" stroke-width="1" stroke-dasharray="3 4"></line>
+              <line x1="36" y1="20" x2="612" y2="20" stroke="var(--outline)" stroke-width="1" stroke-dasharray="3 4"></line>
+              <text x="30" y="164" text-anchor="end" font-size="9" fill="var(--on-var)" font-family="Roboto, sans-serif">0</text>
+              <text x="30" y="94" text-anchor="end" font-size="9" fill="var(--on-var)" font-family="Roboto, sans-serif">500</text>
+              <text x="30" y="24" text-anchor="end" font-size="9" fill="var(--on-var)" font-family="Roboto, sans-serif">1000</text>
+              <line x1="36" y1="64.8" x2="600" y2="64.8" stroke="var(--s)" stroke-width="1.6" stroke-dasharray="6 5"></line>
+              <path d="M36,62 L87,59 L139,56 L190,51 L241,47 L292,44 L344,40 L395,37 L446,34 L498,32 L549,30 L600,28" fill="none" stroke="var(--p)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M36,82 L87,80 L139,77 L190,74 L241,70 L292,68 L344,65 L395,63 L446,61 L498,59 L549,57 L600,55" fill="none" stroke="var(--c5)" stroke-width="2.2" stroke-dasharray="5 4" stroke-linecap="round"></path>
+              <circle cx="600" cy="28" r="4" fill="var(--p)" stroke="var(--surf)" stroke-width="2"></circle>
+              <text x="40" y="172" font-size="9" fill="var(--on-var)" font-family="Roboto, sans-serif">okt 2025</text>
+              <text x="560" y="172" font-size="9" fill="var(--on-var)" font-family="Roboto, sans-serif">sep 2026</text>
+            </svg>
+            <span style="font-size: 12px; color: var(--on-var);">Žltá prerušovaná čiara je pôvodná cena 679,99&nbsp;€.</span>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Téma"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.dark ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

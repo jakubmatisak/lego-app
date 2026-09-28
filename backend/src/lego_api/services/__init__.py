@@ -1,0 +1,1 @@
+"""Aplikačná logika."""

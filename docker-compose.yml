@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    image: moje-kocky:latest
+    container_name: moje-kocky
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Databáza žije na zväzku, nie v obraze.
+      DATABASE_URL: sqlite+aiosqlite:////app/data/lego.db
+      # Fotky kusov na tom istom zväzku, inak by nové nasadenie ich zmazalo.
+      PHOTOS_DIR: /app/data/photos
+    volumes:
+      - ./data:/app/data

@@ -1,0 +1,38 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Prehľad — desktop" },
+    { "file": "Collection.dc.html", "x": 1520, "y": 0, "w": 1440, "h": 900, "title": "Zbierka — desktop" },
+    { "file": "AddSet.dc.html", "x": 3040, "y": 0, "w": 1440, "h": 900, "title": "Pridať set — desktop" },
+    { "file": "SetDetail.dc.html", "x": 4560, "y": 0, "w": 1440, "h": 900, "title": "Detail setu — desktop" },
+    { "file": "Share.dc.html", "x": 6080, "y": 0, "w": 1440, "h": 900, "title": "Odkaz na pozretie — nastavenia" },
+    { "file": "PublicView.dc.html", "x": 7600, "y": 0, "w": 1440, "h": 900, "title": "Čo vidí kamarát" },
+    { "file": "DashboardMobile.dc.html", "x": 0, "y": 1080, "w": 390, "h": 844, "title": "Prehľad — mobil" },
+    { "file": "CollectionMobile.dc.html", "x": 490, "y": 1080, "w": 390, "h": 844, "title": "Zbierka — mobil" },
+    { "file": "AddSetMobile.dc.html", "x": 980, "y": 1080, "w": 390, "h": 844, "title": "Pridať set — mobil" },
+    { "file": "SetDetailMobile.dc.html", "x": 1470, "y": 1080, "w": 390, "h": 844, "title": "Detail setu — mobil" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -250,
+      "w": 620,
+      "text": "Moje kocky — evidencia LEGO zbierky\n\nMaterial 3 / Vuetify anatómia, aby sa dizajn 1:1 preniesol do kódu.\nLEGO červená #D01012 ako primárna, žltá #F5C518 na retired a upozornenia.\nKaždý artboard má prepínač Téma (svetlá / tmavá) nad rámom.\n\nVšetky sumy a sety sú ukážkové, ale navzájom si sedia: Titanic má 2 vlastnené\nkusy za 1 180 € s hodnotou 1 693 € a jeden predaný so ziskom 290 €.\nFotky sú placeholder, v appke prídu z Rebrickable."
+    },
+    {
+      "id": "note-new",
+      "x": 6080,
+      "y": -250,
+      "w": 700,
+      "text": "Doplnené v tomto kole\n\n1. Predaj — Detail setu má tlačidlo Predať a predaný kus zostáva v tabuľke.\n   Prehľad rozlišuje nerealizovaný a realizovaný zisk, graf má tretiu krivku.\n2. Umiestnenie — filter a čip na kartách, pole s našepkávačom pri pridávaní.\n3. Mám to už? — žltý pás nad náhľadom na obrazovke Pridať set.\n4. Priemerná zľava — podtitul dlaždice Investované.\n5. Kto sa hýbe — karta na Prehľade, prepínač 30 dní / 90 dní / rok.\n6. Odkaz na pozretie — dve obrazovky napravo."
+    },
+    {
+      "id": "note-mobile",
+      "x": 0,
+      "y": 960,
+      "w": 460,
+      "text": "Mobil 390×844. Bez falošného stavového riadku telefónu — ten kreslí\nsamotný systém. Dotykové ciele majú aspoň 44 px, vrátane filtračných čipov\na prepínačov nový/použitý."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

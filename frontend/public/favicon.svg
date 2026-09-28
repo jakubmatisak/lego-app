@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Moje kocky">
+  <title>Moje kocky</title>
+  <rect width="32" height="32" rx="7" fill="#D01012"/>
+  <g fill="#F5C518">
+    <circle cx="10.24" cy="10.24" r="3.7"/>
+    <circle cx="21.76" cy="10.24" r="3.7"/>
+    <circle cx="10.24" cy="21.76" r="3.7"/>
+    <circle cx="21.76" cy="21.76" r="3.7"/>
+  </g>
+</svg>
