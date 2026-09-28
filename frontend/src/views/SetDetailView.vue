@@ -11,6 +11,7 @@
   import CategoryManager from '@/components/CategoryManager.vue'
   import CategoryMembership from '@/components/CategoryMembership.vue'
   import ConditionChips from '@/components/ConditionChips.vue'
+  import KeyHint from '@/components/KeyHint.vue'
   import ListingDialog from '@/components/ListingDialog.vue'
   import PhotosDialog from '@/components/PhotosDialog.vue'
   import PieceDialog from '@/components/PieceDialog.vue'
@@ -602,6 +603,20 @@
             </div>
           </div>
 
+          <KeyHint
+            v-if="!auth.hasBricksetKey"
+            class="mt-3"
+            service="brickset"
+            :text="t('keyHint.bricksetDetail')"
+          />
+
+          <KeyHint
+            v-if="!auth.can('rebrickable.set') && catalog.source !== 'manual'"
+            class="mt-1"
+            service="rebrickable"
+            :text="t('keyHint.rebrickableDetail')"
+          />
+
           <SetGallery
             v-if="showGallery"
             :key="catalog.catalog_num"
@@ -882,6 +897,8 @@
               {{ auth.hasPriceKey ? t('detail.priceSourceNote') : t('prices.providerOff') }}
             </span>
           </div>
+
+          <KeyHint v-if="!auth.hasPriceKey" service="brickeconomy" :text="t('keyHint.priceDetail')" />
 
           <div class="price-body">
             <div class="d-flex flex-column ga-3">

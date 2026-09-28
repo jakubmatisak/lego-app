@@ -306,3 +306,28 @@ async def test_existing_owner_keeps_seeing_prices_after_the_switch(
     stranger = await _login(client, "druhy@x.sk")
     await _keys(client, stranger, brickeconomy="be-druhy")
     assert (await client.get(f"/prices/{NUM}", headers=stranger)).json()["current"] is None
+
+
+async def test_series_progress_needs_a_rebrickable_key(client: AsyncClient, sessionmaker_) -> None:
+    """Zloženie zberateľských sérií je z Rebrickable: bez kľúča sa neukáže."""
+    async with sessionmaker_() as session:
+        session.add(
+            CatalogItem(catalog_num="71051", name="Series 28", series_size=2, source="rebrickable")
+        )
+        for i in (1, 2):
+            session.add(
+                CatalogItem(
+                    catalog_num=f"71051-{i}",
+                    name=f"Figúrka {i}",
+                    kind=CatalogKind.MINIFIG,
+                    parent_num="71051",
+                    source="rebrickable",
+                )
+            )
+        await session.commit()
+    auth = await _login(client, "prvy@x.sk")
+    await client.post("/items", json={"catalog_num": "71051-1", "quantity": 1}, headers=auth)
+    assert (await client.get("/stats/series", headers=auth)).json() == []
+    await _keys(client, auth, rebrickable="rb")
+    rows = (await client.get("/stats/series", headers=auth)).json()
+    assert [(r["owned"], r["total"]) for r in rows] == [(1, 2)]

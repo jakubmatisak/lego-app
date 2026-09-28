@@ -436,7 +436,7 @@
     "refreshAll": "Refresh all prices",
     "refreshHint": "Refresh market prices · {count} calls left today",
     "noKey": "Add a BrickEconomy key in Settings first",
-    "providerOff": "No price key set, enter prices by hand",
+    "providerOff": "No BrickEconomy key, prices are entered manually",
     "manualTitle": "Your own price",
     "manualHint": "Saved as today's market price and shown in the chart.",
     "manualSave": "Save price"
@@ -1253,5 +1253,19 @@
     "password": "Password to confirm",
     "deleteConfirm": "Delete permanently",
     "deleteFailed": "The account could not be deleted"
+  },
+  "keyHint": {
+    "connect": "Connect in Settings → Data",
+    "priceDetail": "BrickEconomy (Premium key) adds the market price of new and used pieces, the history and the value forecast.",
+    "bricksetDetail": "Brickset (free key) adds the description, tags, rating, retail price and more photos of the set.",
+    "rebrickableDetail": "Rebrickable (free key) adds the name, photo, series and parts.",
+    "wishlist": "BrickEconomy (Premium key) adds the current price and a notice when a set drops to your target price.",
+    "barcode": "Brickset (free key) recognises barcodes, UPCitemdb is the fallback (just switch it on)."
+  },
+  "unlock": {
+    "title": "What else the app can do",
+    "intro": "These appear once you connect a key to the service (or switch it on). You only see data from a service with your own key.",
+    "connect": "Connect in Settings → Data",
+    "hide": "Hide"
   }
 }

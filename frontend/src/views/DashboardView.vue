@@ -17,6 +17,7 @@
   import SetImage from '@/components/SetImage.vue'
   import StatTile from '@/components/StatTile.vue'
   import ThemeDonut from '@/components/ThemeDonut.vue'
+  import UnlockCard from '@/components/UnlockCard.vue'
   import { useAuthStore } from '@/stores/auth'
   import { useCollectionStore } from '@/stores/collection'
   import { useFilterStore } from '@/stores/filters'
@@ -94,6 +95,8 @@
 </script>
 
 <template>
+  <UnlockCard class="mb-4" />
+
   <div v-if="collection.loading && !summary" class="d-flex justify-center pa-12">
     <v-progress-circular color="primary" indeterminate />
   </div>

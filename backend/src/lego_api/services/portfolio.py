@@ -702,6 +702,10 @@ async def series_progress(
     ``only`` obmedzí série na tie, ktorých vlastnený člen je v rozsahu
     Prehľadu. Počty v sérii sa rátajú z celej zbierky, séria je jeden celok.
     """
+    # Zloženie sérií je údaj z Rebrickable: bez vlastného kľúča žiadne série.
+    vis = visibility.current()
+    if not (vis.full or vis.rebrickable):
+        return []
     series_rows = (
         (await session.execute(select(CatalogItem).where(CatalogItem.series_size.is_not(None))))
         .scalars()

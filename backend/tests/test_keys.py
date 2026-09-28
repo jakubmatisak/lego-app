@@ -59,7 +59,10 @@ async def test_saved_key_never_comes_back(auth_client: AsyncClient) -> None:
     """Von ide len koncovka. Celý kľúč sa z API nedá dostať nikdy."""
     response = await auth_client.put(
         "/auth/me/keys",
-        json={"rebrickable": "rb-testovaci-kluc-nie-je-skutoc-e22d", "brickeconomy": "abcd1234efgh"},
+        json={
+            "rebrickable": "rb-testovaci-kluc-nie-je-skutoc-e22d",
+            "brickeconomy": "abcd1234efgh",
+        },
     )
     assert response.status_code == 200
     body = response.json()

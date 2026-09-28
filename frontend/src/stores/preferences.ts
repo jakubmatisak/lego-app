@@ -11,7 +11,7 @@ import { ref } from 'vue'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 
-type PreferenceKey = 'collection' | 'themes' | 'display' | 'form' | 'dashboard'
+type PreferenceKey = 'collection' | 'themes' | 'display' | 'form' | 'dashboard' | 'unlock'
 type Preference = Record<string, unknown>
 
 const SAVE_DELAY_MS = 800

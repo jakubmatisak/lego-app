@@ -56,3 +56,12 @@ async def test_dashboard_scope_is_a_known_preference(auth_client: AsyncClient) -
         "scope": {"kind": "theme", "id": "Icons", "label": "Icons", "query": {"theme": ["Icons"]}}
     }
     assert (await auth_client.put("/auth/me/preferences/dashboard", json=body)).status_code == 200
+
+
+async def test_unlock_card_can_be_hidden(auth_client: AsyncClient) -> None:
+    """Karta „Čo ešte appka vie“ si skrytie pamätá pri účte."""
+    saved = await auth_client.put("/auth/me/preferences/unlock", json={"hidden": ["brickeconomy"]})
+    assert saved.status_code == 200, saved.text
+    assert (await auth_client.get("/auth/me/preferences")).json()["unlock"] == {
+        "hidden": ["brickeconomy"]
+    }

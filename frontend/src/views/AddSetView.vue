@@ -30,6 +30,7 @@
   import BarcodeScanner from '@/components/BarcodeScanner.vue'
   import CategoryManager from '@/components/CategoryManager.vue'
   import DateField from '@/components/DateField.vue'
+  import KeyHint from '@/components/KeyHint.vue'
   import PlaceFields from '@/components/PlaceFields.vue'
   import SetImage from '@/components/SetImage.vue'
   import { useFormMemory } from '@/composables/useFormMemory'
@@ -606,6 +607,13 @@
 
       <v-alert v-if="eanMessage" type="info" variant="tonal">
         {{ eanMessage }}
+        <KeyHint
+          v-if="!auth.can('brickset.barcode') || !auth.can('upcitemdb.barcode')"
+          class="mt-1"
+          service="brickset"
+          :text="t('keyHint.barcode')"
+        />
+
         <div v-if="eanCachedAt" class="text-caption mt-1">
           {{ t('scan.cached', { date: shortDate(eanCachedAt) }) }}
         </div>

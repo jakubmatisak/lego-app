@@ -436,7 +436,7 @@
     "refreshAll": "Obnoviť všetky ceny",
     "refreshHint": "Obnoviť trhové ceny · dnes zostáva {count} volaní",
     "noKey": "Najprv zadaj kľúč k BrickEconomy v Nastaveniach",
-    "providerOff": "Kľúč k cenám nie je zadaný, ceny zadávaj ručne",
+    "providerOff": "Bez kľúča BrickEconomy, ceny zadávaš ručne",
     "manualTitle": "Vlastná cena",
     "manualHint": "Zapíše sa ako dnešná trhová cena a objaví sa v grafe.",
     "manualSave": "Uložiť cenu"
@@ -1253,5 +1253,19 @@
     "password": "Heslo na potvrdenie",
     "deleteConfirm": "Natrvalo zmazať",
     "deleteFailed": "Účet sa nepodarilo zmazať"
+  },
+  "keyHint": {
+    "connect": "Pripojiť v Nastaveniach → Dáta",
+    "priceDetail": "Trhovú cenu nového aj použitého kusu, históriu a odhad hodnoty doplní BrickEconomy (kľúč Premium).",
+    "bricksetDetail": "Popis, štítky, hodnotenie, pôvodnú cenu a ďalšie fotky setu doplní Brickset (kľúč zadarmo).",
+    "rebrickableDetail": "Názov, fotku, sériu a dieliky doplní Rebrickable (kľúč zadarmo).",
+    "wishlist": "Aktuálnu cenu a upozornenie, keď set klesne na cieľovú cenu, doplní BrickEconomy (kľúč Premium).",
+    "barcode": "Čiarové kódy spozná Brickset (kľúč zadarmo) a ako záloha UPCitemdb (stačí ho zapnúť)."
+  },
+  "unlock": {
+    "title": "Čo ešte appka vie",
+    "intro": "Tieto veci sa objavia, keď pripojíš kľúč k službe (alebo ju zapneš). Údaje zo služby vidíš len so svojím vlastným kľúčom.",
+    "connect": "Pripojiť v Nastaveniach → Dáta",
+    "hide": "Skryť"
   }
 }

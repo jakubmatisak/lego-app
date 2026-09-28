@@ -11,8 +11,10 @@
   import { useI18n } from 'vue-i18n'
   import { api, errorMessage } from '@/api/client'
   import CardGrid from '@/components/CardGrid.vue'
+  import KeyHint from '@/components/KeyHint.vue'
   import PurchaseDialog from '@/components/PurchaseDialog.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { useAuthStore } from '@/stores/auth'
   import { useNotifyStore } from '@/stores/notify'
   import { count, exactMoney, percent, toNumber } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
@@ -20,6 +22,7 @@
   import { hasWishFilter, wishlistQuery } from '@/utils/wishlistQuery'
 
   const { t } = useI18n()
+  const auth = useAuthStore()
   const notify = useNotifyStore()
 
   const items = ref<WishlistItem[]>([])
@@ -143,6 +146,8 @@
 
 <template>
   <div class="d-flex flex-column ga-4">
+    <KeyHint v-if="!auth.hasPriceKey" service="brickeconomy" :text="t('keyHint.wishlist')" />
+
     <div class="d-flex align-center flex-wrap ga-2">
       <v-text-field
         v-model="view.q"
