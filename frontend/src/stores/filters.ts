@@ -171,10 +171,23 @@ export const useFilterStore = defineStore('filters', () => {
    * počty až po chvíli; dovtedy `facets` patria predošlému filtru.
    */
   const facetsSearch = ref('')
+  /** Umiestnenie a krabica, s ktorými sa počty načítali (`placeKey`), ako pri hľadaní. */
+  const facetsPlaces = ref('')
   const categories = ref<Category[]>([])
   const views = ref<SavedView[]>([])
 
   const categoryById = computed(() => new Map(categories.value.map(c => [c.id, c])))
+
+  /**
+   * Vybrané umiestnenie a krabica ako jeden reťazec; prázdny = nevybrané nič.
+   * Zbierka podľa neho pozná, že počty patria tomuto miestu (riadok o figúrkach).
+   */
+  function placeKey (): string {
+    if (filters.location.length === 0 && filters.box.length === 0) {
+      return ''
+    }
+    return JSON.stringify([filters.location.toSorted(), filters.box.toSorted()])
+  }
 
   /** Parametre pre API. Prázdne skupiny sa vynechajú, nič nefiltrujú. */
   function query (): Record<string, string | number | boolean | string[] | number[]> {
@@ -306,11 +319,13 @@ export const useFilterStore = defineStore('filters', () => {
 
   async function loadFacets (status: string): Promise<void> {
     const search = filters.q.trim()
+    const places = placeKey()
     const { data } = await api.GET('/items/facets', {
       params: { query: { status, ...sectionQuery() } as never },
     })
     facets.value = data ?? null
     facetsSearch.value = search
+    facetsPlaces.value = places
   }
 
   async function loadCategories (): Promise<void> {
@@ -362,12 +377,14 @@ export const useFilterStore = defineStore('filters', () => {
     filters,
     facets,
     facetsSearch,
+    facetsPlaces,
     categories,
     views,
     categoryById,
     activeCount,
     query,
     sectionQuery,
+    placeKey,
     toRoute,
     fromRoute,
     clear,

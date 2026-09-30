@@ -1,7 +1,8 @@
 """Registrácia, prihlásenie a obnova tokenov."""
 
 import json
-from datetime import UTC, datetime
+import logging
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import (
@@ -13,8 +14,9 @@ from fastapi import (
     Response,
     status,
 )
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 
+from lego_api.auth import tokens
 from lego_api.auth.deps import CurrentUser, SessionDep
 from lego_api.auth.security import (
     create_access_token,
@@ -48,6 +50,7 @@ from lego_api.services.fetch_policy import parse_settings
 from lego_api.services.purchase_fill import fill_purchase_prices
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+log = logging.getLogger(__name__)
 
 REFRESH_COOKIE = "lego_refresh"
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -144,23 +147,87 @@ async def refresh(
 
     token_hash = hash_refresh_token(lego_refresh)
     stored = await session.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
-    now = datetime.now(UTC)
-    if stored is None or stored.revoked_at is not None:
+    if stored is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Neplatný obnovovací token")
-    if _aware(stored.expires_at) < now:
+    if _aware(stored.expires_at) < datetime.now(UTC):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Obnovovací token vypršal")
 
     user = await session.get(User, stored.user_id)
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Účet nie je dostupný")
+    if stored.revoked_at is not None:
+        return await _replayed(session, stored, user, request, response, settings)
 
     # Rotácia: starý token sa zruší a vydá sa nový, v tom istom režime
     # (zapamätaný sa posunie o 30 dní, bez zapamätania o pár hodín).
-    stored.revoked_at = now
+    # Zrušenie je podmienené, takže z kariet, ktoré prišli s tým istým
+    # cookie naraz, ho vymení len jedna a reťaz sa nerozdvojí. Údaj
+    # o prehliadači nesie nástupca, vymenený token ho nepotrebuje.
+    revoked = await session.execute(
+        update(RefreshToken)
+        .where(RefreshToken.id == stored.id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(UTC), user_agent=None)
+        .execution_options(synchronize_session=False)
+    )
+    if revoked.rowcount != 1:
+        # Súbežná karta bola rýchlejšia (alebo sa medzitým odhlásilo).
+        current = await session.scalar(
+            select(RefreshToken)
+            .where(RefreshToken.id == stored.id)
+            .execution_options(populate_existing=True)
+        )
+        if current is None or current.revoked_at is None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Neplatný obnovovací token")
+        return await _replayed(session, current, user, request, response, settings)
+
     new_raw = await _issue_refresh(session, user, request, stored.remember)
     await session.commit()
     _set_refresh_cookie(response, new_raw, settings, stored.remember)
     return _access_for(user, settings)
+
+
+async def _replayed(
+    session,
+    token: RefreshToken,
+    user: User,
+    request: Request,
+    response: Response,
+    settings: Settings,
+) -> TokenResponse:
+    """Prišiel už vymenený token.
+
+    V ochrannej lehote je to karta, ktorá poslala cookie tesne pred výmenou
+    alebo súčasne s ňou, alebo prehliadač, ku ktorému odpoveď s novým
+    cookie nedorazila (F5 počas obnovy, výpadok spojenia). Dostane prístup
+    aj vlastný nový token v tom istom režime: bez neho by si prehliadač
+    držal vymenený token a po lehote by to vyzeralo ako krádež, ktorá
+    odhlási všetky zariadenia. Reťaz sa tým rozdvojí najviac na 60 s
+    a token, ktorý si prehliadač nenechal (súbežné karty, cookie je jedno),
+    vyprší sám.
+    Po lehote má token niekto, kto ho mať nemá (skopírované cookie
+    zapamätaného prihlásenia): skončia všetky prihlásenia účtu, inak by si
+    útočník, ktorý obnovil prvý, reťaz posúval donekonečna.
+    """
+    now = datetime.now(UTC)
+    age = now - _aware(token.revoked_at or now)
+    if age <= timedelta(seconds=settings.refresh_grace_seconds):
+        raw = await _issue_refresh(session, user, request, token.remember)
+        await session.commit()
+        _set_refresh_cookie(response, raw, settings, token.remember)
+        return _access_for(user, settings)
+    log.warning(
+        "Účet %d: prišiel obnovovací token vymenený pred %d s. Mohol ho niekto "
+        "skopírovať, všetky prihlásenia účtu sa rušia.",
+        user.id,
+        int(age.total_seconds()),
+    )
+    await session.execute(
+        delete(RefreshToken)
+        .where(RefreshToken.user_id == user.id)
+        .execution_options(synchronize_session=False)
+    )
+    await session.commit()
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Neplatný obnovovací token")
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -170,11 +237,15 @@ async def logout(
     settings: SettingsDep,
     lego_refresh: Annotated[str | None, Cookie()] = None,
 ) -> Response:
-    # Token sa zmaže, nielen zruší: po odhlásení zo zapamätaného prihlásenia
-    # v databáze nič neostane.
+    # Aktuálny token sa zmaže, nielen zruší. Vymenené tokeny ostávajú do
+    # vypršania (bez údaju o prehliadači): podľa nich sa spozná ukradnuté
+    # cookie aj po odhlásení na inom zariadení. Platné prihlásenia na iných
+    # zariadeniach ostávajú.
     if lego_refresh:
         await session.execute(
-            delete(RefreshToken).where(RefreshToken.token_hash == hash_refresh_token(lego_refresh))
+            delete(RefreshToken)
+            .where(RefreshToken.token_hash == hash_refresh_token(lego_refresh))
+            .execution_options(synchronize_session=False)
         )
         await session.commit()
     response.delete_cookie(REFRESH_COOKIE, path="/", domain=settings.cookie_domain)
@@ -213,6 +284,8 @@ async def update_me(
         ):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Súčasné heslo nesedí")
         user.password_hash = hash_password(payload.new_password)
+        # Starší prístupový token odmietne ``current_user`` (auth/deps.py).
+        user.password_changed_at = datetime.now(UTC)
         await _end_logins(session, user, request, response, settings, lego_refresh)
     await session.commit()
     return user
@@ -224,8 +297,9 @@ async def _end_logins(
     """Zmena hesla: všetky prihlásenia účtu skončia, aj zapamätané.
 
     Kto heslo mení, lebo ho niekto pozná, nechce nechať otvorený iný počítač.
-    Tento prehliadač sa nemusí hneď prihlasovať znova: dostane nový token bez
-    zapamätania, teda session cookie do zatvorenia prehliadača.
+    Prístupové tokeny iných zariadení zneplatní ``password_changed_at``.
+    Tento prehliadač sa nemusí prihlasovať znova: dostane nový token v tom
+    istom režime (zapamätaný ostane zapamätaný), lebo nové heslo pozná.
     """
     current = None
     if raw:
@@ -237,14 +311,15 @@ async def _end_logins(
             )
         )
     keep_signed_in = current is not None and _aware(current.expires_at) >= datetime.now(UTC)
+    remember = bool(current and current.remember)
     await session.execute(
         delete(RefreshToken)
         .where(RefreshToken.user_id == user.id)
         .execution_options(synchronize_session=False)
     )
     if keep_signed_in:
-        token = await _issue_refresh(session, user, request, remember=False)
-        _set_refresh_cookie(response, token, settings, remember=False)
+        token = await _issue_refresh(session, user, request, remember=remember)
+        _set_refresh_cookie(response, token, settings, remember=remember)
 
 
 def _keys_out(user: User, settings: Settings) -> ApiKeysOut:
@@ -350,13 +425,8 @@ async def set_my_preference(
 
 async def _issue_refresh(session, user: User, request: Request, remember: bool) -> str:
     # Vypršané tokeny (aj iných účtov) už nič neotvoria; zásady sľubujú
-    # najviac 30 dní. Bez synchronize_session: načítaný token má z SQLite
-    # čas bez zóny a porovnanie v Pythone by spadlo.
-    await session.execute(
-        delete(RefreshToken)
-        .where(RefreshToken.expires_at < datetime.now(UTC))
-        .execution_options(synchronize_session=False)
-    )
+    # najviac 30 dní. To isté upratovanie beží pri štarte (auth/tokens.py).
+    await tokens.prune(session)
     raw, token_hash = new_refresh_token()
     session.add(
         RefreshToken(

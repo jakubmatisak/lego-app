@@ -101,6 +101,10 @@ async def lifespan(app: FastAPI):
     from lego_api.services import access_backfill
 
     await access_backfill.run(get_sessionmaker(), settings)
+    # Vypršané prihlásenia zmaže aj štart, nielen ďalšie prihlásenie niekoho.
+    from lego_api.auth import tokens
+
+    await tokens.prune_at_startup(get_sessionmaker())
     # Skutočný stav registrácie drží databáza, správca ho mení v Nastaveniach.
     log.info("Aplikácia je pripravená. Predvolená registrácia: %s", settings.allow_registration)
     yield

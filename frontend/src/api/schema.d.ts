@@ -608,6 +608,9 @@ export interface paths {
         /**
          * Identify Item
          * @description Rozbalený sáčok série sa zmení na konkrétnu figúrku.
+         *
+         *     Figúrku, ktorá bola v Chcem, vyradí v tej istej transakcii, rovnako ako
+         *     pridanie kusu (`drop_bought`); predaný kus Chcem nemení.
          */
         patch: operations["identify_item_api_v1_items__item_id__identify_patch"];
         trace?: never;
@@ -3454,6 +3457,8 @@ export interface components {
             total: number;
             /** Owned */
             owned: number;
+            /** Exact */
+            exact: boolean;
             /** Members */
             members: components["schemas"]["CmfMemberOut"][];
         };

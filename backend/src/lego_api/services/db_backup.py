@@ -13,9 +13,11 @@ Meno zálohy je ``lego-RRRRMMDD-HHMMSS-v<verzia>-<revízia>.db``, teda
 verzia a revízia, s ktorými databáza do štartu bola. Databáza spred
 zapisovania verzie (staršie inštalácie, revízie ešte bez ``app_settings``)
 verziu nemá, zálohuje sa ako prvý štart novej verzie a v mene je len
-revízia. Keby niečo spadlo alebo pokazilo údaje, stačí appku zastaviť,
-zmazať zvyšky žurnálu vedľa databázy (``lego.db-journal``, ``-wal``,
-``-shm``) a zálohu skopírovať späť.
+revízia. Keby niečo spadlo alebo pokazilo údaje, stačí appku zastaviť
+a spustiť ``python -m lego_api.cli restore-backup <záloha>``
+(``restore_backup``): doterajšiu databázu aj so zvyškami žurnálu
+(``lego.db-journal``, ``-wal``, ``-shm``) odloží do ``backups`` a zálohu
+skopíruje na jej miesto. Ručne treba žurnál zmazať a zálohu skopírovať späť.
 
 Kópia ide cez zálohovacie API SQLite, takže je konzistentná aj pri
 otvorenom spojení. Nová alebo prázdna databáza (bez ``alembic_version``)
@@ -24,7 +26,10 @@ po štarte len zapíše. Keď sa záloha nepodarí (plný disk, práva), migrác
 sa nespustí: bez zálohy dáta nemeníme.
 
 Až po úspešnej migrácii sa zapíše verzia a ostane posledných ``KEEP``
-záloh; iné súbory v priečinku ostanú. Pred migráciou sa nemaže nič: keď
+záloh, žiadna staršia než ``MAX_AGE_DAYS`` dní; iné súbory v priečinku
+ostanú. Vek sa stráži pri každom úspešnom štarte, aj bez novej zálohy:
+zálohy nesú aj údaje zmazaných účtov a nemajú ostať natrvalo, keď nová
+verzia dlho nevyjde. Pred migráciou sa nemaže nič: keď
 štart padá a appka sa spúšťa znova (Docker ``restart``, ďalšie spustenie
 desktopu), rotácia by inak vytlačila jedinú zálohu spred aktualizácie
 kópiami napoly zmigrovanej databázy. Zlyhanie si pamätá značka
@@ -38,12 +43,13 @@ import json
 import logging
 import os
 import re
+import shutil
 import sqlite3
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from contextlib import closing, suppress
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from alembic.config import Config
@@ -56,6 +62,13 @@ log = logging.getLogger(__name__)
 
 #: Koľko posledných záloh ostane. Aktualizácia býva raz za čas.
 KEEP = 5
+#: Zálohu staršiu než toľko dní zmaže každý úspešný štart. Nesú aj údaje
+#: neskôr zmazaných účtov (zásady /sukromie, Ako dlho).
+MAX_AGE_DAYS = 90
+#: Zvyšky žurnálu SQLite vedľa databázy: ``lego.db-journal`` a spol.
+SIDECARS = ("journal", "wal", "shm")
+#: Časť mena databázy odloženej pri návrate zálohy (``restore_backup``).
+ASIDE_LABEL = "pred-obnovou"
 FOLDER = "backups"
 _STAMP = "%Y%m%d-%H%M%S"
 #: Kľúč v ``app_settings``: verzia appky, ktorá nad databázou naposledy nabehla.
@@ -130,9 +143,17 @@ def recorded_version(db_path: Path) -> str | None:
     """
     try:
         with closing(sqlite3.connect(db_path)) as conn:
-            row = conn.execute(
-                "SELECT value FROM app_settings WHERE key = ?", (VERSION_KEY,)
-            ).fetchone()
+            return _version_of(conn)
+    except sqlite3.Error:
+        return None
+
+
+def _version_of(conn: sqlite3.Connection) -> str | None:
+    """Verzia z ``app_settings`` otvorenej databázy; None = nezapísaná či nečitateľná."""
+    try:
+        row = conn.execute(
+            "SELECT value FROM app_settings WHERE key = ?", (VERSION_KEY,)
+        ).fetchone()
     except sqlite3.Error:
         return None
     if row is None:
@@ -261,6 +282,16 @@ def _forget_failure(db_path: Path) -> None:
         failure_marker(db_path).unlink(missing_ok=True)
 
 
+def _marked_backup(db_path: Path) -> Path | None:
+    """Záloha, na ktorú ukazuje značka o zlyhaní, kým značka je (napr. nešla zmazať)."""
+    marker = failure_marker(db_path)
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        return marker.parent / Path(str(data["backup"])).name
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def _pattern(stem: str) -> re.Pattern[str]:
     """Mená záloh tejto databázy, s verziou v mene aj staršie bez nej."""
     return re.compile(rf"^{re.escape(stem)}-\d{{8}}-\d{{6}}-[0-9A-Za-z_.-]+\.db$")
@@ -296,24 +327,64 @@ def backup(db_path: Path, label: str, *, now: datetime | None = None) -> Path:
     return target
 
 
-def prune(folder: Path, stem: str, keep: int = KEEP) -> list[Path]:
-    """Zmaže staršie zálohy tejto databázy nad ``keep``; cudzie súbory nechá."""
+def _with_sidecars(path: Path) -> list[Path]:
+    """Súbor databázy a mená jeho žurnálu, v tomto poradí."""
+    return [path, *(path.with_name(f"{path.name}-{suffix}") for suffix in SIDECARS)]
+
+
+def prune(
+    folder: Path,
+    stem: str,
+    keep: int = KEEP,
+    *,
+    max_age_days: int = MAX_AGE_DAYS,
+    now: datetime | None = None,
+    protect: Collection[Path] = (),
+) -> list[Path]:
+    """Zmaže zálohy tejto databázy nad ``keep`` a staršie než ``max_age_days`` dní.
+
+    Vek je čas v mene zálohy, nie čas súboru, ktorý kópia zmení. Zálohy
+    v ``protect`` ostanú vždy. So zálohou zmizne aj jej žurnál (``-journal``,
+    ``-wal``, ``-shm``; má ho len databáza odložená pri návrate zálohy).
+    Cudzie súbory ostanú.
+    """
     pattern = _pattern(stem)
-    # V mene je čas s pevnou šírkou hneď za menom databázy,
-    # takže abecedne = chronologicky, s verziou v mene aj bez nej.
-    ours = sorted(
-        (p for p in folder.iterdir() if p.is_file() and pattern.match(p.name)),
-        key=lambda p: p.name,
-        reverse=True,
-    )
+    try:
+        # V mene je čas s pevnou šírkou hneď za menom databázy,
+        # takže abecedne = chronologicky, s verziou v mene aj bez nej.
+        ours = sorted(
+            (p for p in folder.iterdir() if p.is_file() and pattern.match(p.name)),
+            key=lambda p: p.name,
+            reverse=True,
+        )
+    except OSError as exc:
+        if folder.exists():
+            log.warning("Priečinok záloh %s sa nepodarilo prečítať: %s", folder, exc)
+        return []
+    kept = {p.name for p in protect}
+    cutoff = ((now or datetime.now()) - timedelta(days=max_age_days)).strftime(_STAMP)
+    start = len(stem) + 1
     removed: list[Path] = []
-    for old in ours[keep:]:
+    for index, old in enumerate(ours):
+        too_old = old.name[start : start + len(cutoff)] < cutoff
+        if old.name in kept or (index < keep and not too_old):
+            continue
         try:
             old.unlink()
         except OSError as exc:
-            log.warning("Staršiu zálohu %s sa nepodarilo zmazať: %s", old, exc)
-        else:
-            removed.append(old)
+            log.warning("Starú zálohu %s sa nepodarilo zmazať: %s", old, exc)
+            continue
+        removed.append(old)
+        for leftover in _with_sidecars(old)[1:]:
+            with suppress(OSError):
+                leftover.unlink(missing_ok=True)
+    if removed:
+        log.info(
+            "Zmazané staré zálohy (ostáva najviac %s, žiadna staršia než %s dní): %s",
+            keep,
+            max_age_days,
+            ", ".join(p.name for p in removed),
+        )
     return removed
 
 
@@ -392,13 +463,21 @@ def upgrade_with_backup(
     except Exception as exc:
         if saved is not None and db_path is not None:
             _remember_failure(db_path, saved)
+            restore = f"python -m lego_api.cli restore-backup {saved}"
+            leftovers = ", ".join(p.name for p in _with_sidecars(db_path)[1:])
             log.error(
                 "Migrácia databázy zlyhala (%s). Stav pred aktualizáciou je v zálohe %s. "
-                "Na návrat zastav appku, zmaž vedľa databázy súbory %s, ak tam sú, "
-                "a skopíruj zálohu na miesto databázy %s.",
+                "Na návrat zastav appku a spusti %s (v Dockeri docker compose run --rm app "
+                "%s), potom spusti verziu appky z mena zálohy. Príkaz odloží databázu aj "
+                "so súbormi %s do %s a zálohu skopíruje na jej miesto. Ručne: zmaž vedľa "
+                "databázy súbory %s, ak tam sú, a skopíruj zálohu na miesto databázy %s.",
                 exc,
                 saved,
-                ", ".join(f"{db_path.name}-{suffix}" for suffix in ("journal", "wal", "shm")),
+                restore,
+                restore,
+                leftovers,
+                saved.parent,
+                leftovers,
                 db_path,
             )
         raise
@@ -409,6 +488,141 @@ def upgrade_with_backup(
     # Aj po štarte bez zálohy (vrátená záloha a predchádzajúca verzia): značka
     # by inak ukazovala na zálohu, ktorá k databáze už nepatrí.
     _forget_failure(db_path)
-    if saved is not None:
-        prune(saved.parent, db_path.stem)
+    # Po každom úspešnom štarte, aj bez novej zálohy: inak by staré zálohy
+    # ostali, kým nevyjde nová verzia. Záloha tohto štartu a záloha zo značky,
+    # ktorá nešla zmazať, ostanú bez ohľadu na vek.
+    protect = [p for p in (saved, _marked_backup(db_path)) if p is not None]
+    prune(db_path.parent / FOLDER, db_path.stem, protect=protect)
     return saved
+
+
+# --- návrat zálohy (python -m lego_api.cli restore-backup) -------------------------
+
+
+class RestoreFailed(RuntimeError):
+    """Zálohu sa nepodarilo vrátiť; databáza ostala, ako bola."""
+
+
+@dataclass(frozen=True)
+class Restored:
+    """Čo ``restore_backup`` urobil."""
+
+    source: Path
+    database: Path
+    #: Meno, pod ktoré sa odložila doterajšia databáza (v ``backups``).
+    aside: Path
+    #: Súbory, ktoré sa naozaj odložili (databáza a jej žurnál), a kam.
+    moved: tuple[tuple[Path, Path], ...]
+    #: Revízia a verzia appky v zálohe; verzia None = nezapísaná (spred 1.0.0).
+    revision: str
+    version: str | None
+
+
+def find_backup(db_path: Path, name: str) -> Path:
+    """Súbor zálohy z príkazového riadku; samotné meno sa hľadá aj v ``backups``."""
+    path = Path(name)
+    if not path.exists() and path.name == name:
+        candidate = db_path.parent / FOLDER / name
+        if candidate.exists():
+            return candidate
+    return path
+
+
+def _open_readonly(path: Path) -> sqlite3.Connection:
+    """Len na čítanie: chýbajúci súbor nezaloží a zálohu nezmení."""
+    return sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+
+
+def _check_backup(source: Path) -> tuple[str, str | None]:
+    """Revízia a verzia zálohy; súbor, ktorý nie je celá databáza appky, odmietne."""
+    try:
+        with closing(_open_readonly(source)) as conn:
+            problems = [row[0] for row in conn.execute("PRAGMA integrity_check").fetchall()]
+            if problems != ["ok"]:
+                raise RestoreFailed(
+                    f"Súbor {source} je poškodená databáza ({'; '.join(problems[:3])})."
+                )
+            table = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'alembic_version'"
+            ).fetchone()
+            rows = []
+            if table is not None:
+                rows = conn.execute("SELECT version_num FROM alembic_version").fetchall()
+            version = _version_of(conn)
+    except sqlite3.Error as exc:
+        raise RestoreFailed(f"Súbor {source} nie je čitateľná databáza SQLite ({exc}).") from exc
+    revisions = sorted(row[0] for row in rows if row[0])
+    if not revisions:
+        raise RestoreFailed(
+            f"Súbor {source} nie je databáza appky Moje kocky (chýba alembic_version)."
+        )
+    return "_".join(revisions), version
+
+
+def _aside_path(db_path: Path, now: datetime) -> Path:
+    """Voľné meno v ``backups`` pre doterajšiu databázu aj jej žurnál.
+
+    Tvar mena je ako pri zálohe, takže ju rotácia a vek zmažú ako zálohu.
+    """
+    folder = db_path.parent / FOLDER
+    base = f"{db_path.stem}-{now.strftime(_STAMP)}-{ASIDE_LABEL}"
+    candidate, number = folder / f"{base}.db", 1
+    while any(p.exists() for p in _with_sidecars(candidate)):
+        number += 1
+        candidate = folder / f"{base}-{number}.db"
+    return candidate
+
+
+def _copy_into_place(source: Path, db_path: Path) -> None:
+    """Zálohu skopíruje zálohovacím API SQLite; na miesto ide až hotová kópia."""
+    partial = db_path.with_name(db_path.name + ".part")
+    try:
+        with closing(_open_readonly(source)) as src, closing(sqlite3.connect(partial)) as dst:
+            _copy(src, dst)
+        os.replace(partial, db_path)
+    except BaseException:
+        with suppress(OSError):
+            partial.unlink(missing_ok=True)
+        raise
+
+
+def restore_backup(db_path: Path, source: Path, *, now: datetime | None = None) -> Restored:
+    """Vráti zálohu ``source`` na miesto databázy ``db_path``. Appka musí stáť.
+
+    Doterajšia databáza sa nemaže: aj so zvyškami žurnálu ide do ``backups``
+    pod meno ``lego-RRRRMMDD-HHMMSS-pred-obnovou.db`` (žurnál vedľa nej s tým
+    istým menom, takže sa dá otvoriť, ako bola). Bez toho by SQLite žurnál
+    pokazenej databázy vrátil do obnovenej. Súbor, ktorý nie je celá
+    databáza appky, odmietne; keď niečo zlyhá, všetko vráti na miesto.
+    """
+    if not source.is_file():
+        raise RestoreFailed(f"Záloha {source} neexistuje alebo nie je súbor.")
+    if db_path.exists() and os.path.samefile(source, db_path):
+        raise RestoreFailed(f"Súbor {source} je samotná databáza, nie jej záloha.")
+    revision, version = _check_backup(source)
+    aside = _aside_path(db_path, now or datetime.now())
+    moved: list[tuple[Path, Path]] = []
+    try:
+        aside.parent.mkdir(parents=True, exist_ok=True)
+        for original, target in zip(_with_sidecars(db_path), _with_sidecars(aside), strict=True):
+            if original.exists():
+                shutil.move(original, target)
+                moved.append((original, target))
+        _copy_into_place(source, db_path)
+    except (OSError, sqlite3.Error) as exc:
+        left: list[Path] = []
+        for original, target in reversed(moved):
+            try:
+                shutil.move(target, original)
+            except OSError:
+                left.append(target)
+        where = (
+            f"Pôvodné súbory ostali v {', '.join(map(str, left))}."
+            if left
+            else "Databáza ostala, ako bola."
+        )
+        raise RestoreFailed(
+            f"Zálohu {source} sa nepodarilo vrátiť ({exc}). {where} "
+            "Beží ešte appka? Zastav ju a skús znova."
+        ) from exc
+    return Restored(source, db_path, aside, tuple(moved), revision, version)

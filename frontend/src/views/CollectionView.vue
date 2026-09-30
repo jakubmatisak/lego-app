@@ -225,22 +225,27 @@
 
   /**
    * Riadok o figúrkach nad výsledkom len pri hľadaní, ktoré ich trafilo:
-   * inak by sa zdalo, že appka hľadanú figúrku nepozná. Bežný filter (stav,
-   * umiestnenie…), ktorý niečo ukazuje, nehlási nič; prázdny výsledok to
-   * povie v prázdnom stave. Počty musia patriť tomuto hľadaniu, nie filtru
-   * spred písania, inak by chvíľu svietil cudzí počet.
+   * inak by sa zdalo, že appka hľadanú figúrku nepozná. Rovnako pri filtri
+   * umiestnenia či krabice: na otázku „čo je v krabici 3“ patria aj figúrky,
+   * ktoré tam ležia. Iný bežný filter (stav, téma…), ktorý niečo ukazuje,
+   * nehlási nič; prázdny výsledok to povie v prázdnom stave. Počty musia
+   * patriť tomuto hľadaniu a miestu, nie filtru spred zmeny, inak by chvíľu
+   * svietil cudzí počet.
    *
-   * `pending`: hľadanie sa spresňuje („shrek“ → „shrek 2“) a predošlé tiež
-   * trafilo figúrky. Riadok drží miesto bez starého počtu, kým neprídu nové
-   * počty; inak by pri každej pauze v písaní zmizol a vrátil sa a výsledky
-   * pod ním by poskočili. Bez hľadania nie je čo držať.
+   * `pending`: hľadanie sa spresňuje („shrek“ → „shrek 2“) alebo sa mení
+   * miesto a predošlé tiež trafilo figúrky. Riadok drží miesto bez starého
+   * počtu, kým neprídu nové počty; inak by pri každej pauze v písaní zmizol
+   * a vrátil sa a výsledky pod ním by poskočili. Bez hľadania a miesta nie
+   * je čo držať.
    */
   const figuresLine = computed<'shown' | 'pending' | null>(() => {
     const search = filterStore.facetsSearch
-    if (isEmpty.value || hiddenFigures.value <= 0 || search === '') return null
+    const places = filterStore.facetsPlaces
+    if (isEmpty.value || hiddenFigures.value <= 0 || (search === '' && places === '')) return null
     const typed = filterStore.filters.q.trim()
-    if (search === typed) return 'shown'
-    return typed === '' ? null : 'pending'
+    const chosen = filterStore.placeKey()
+    if (search === typed && places === chosen) return 'shown'
+    return typed === '' && chosen === '' ? null : 'pending'
   })
 
   /** Hodnota kusu. Bez známej ceny pomlčka, nie nula. */

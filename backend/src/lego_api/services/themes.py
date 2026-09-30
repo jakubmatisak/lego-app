@@ -377,6 +377,8 @@ class WaveResult:
     year: int
     fetched_at: datetime
     members: list[WaveMember]
+    #: Presné ako pri roku (``YearRow.exact``): vo vlne nechýba môj set.
+    exact: bool = True
 
 
 def _by_number(item: CatalogItem) -> tuple[int, str]:
@@ -454,7 +456,7 @@ async def wave(
     if row is None or not visibility.current().sees(BRICKSET, wave_subject(theme, year)):
         return None
 
-    nums = [
+    in_wave = [
         n
         for (n,) in (
             await session.execute(
@@ -464,6 +466,11 @@ async def wave(
             )
         ).all()
     ]
+    # Môj set, ktorý do vlny patrí, ale v nej nie je (Brickset ho pridal po
+    # stiahnutí a nové stiahnutie brána nepustila, alebo ho nepozná), sa ráta
+    # aj tu, rovnako ako pri roku. Počet je potom odhad, nie presný.
+    extra = (await _mine(session, user_id)).extra(theme, year) - set(in_wave)
+    nums = [*in_wave, *sorted(extra)]
     items = list(
         (
             await session.execute(select(CatalogItem).where(CatalogItem.catalog_num.in_(nums)))
@@ -485,4 +492,6 @@ async def wave(
         WaveMember(catalog=c, owned=counts.get(c.catalog_num, 0), wanted=c.catalog_num in wanted)
         for c in items
     ]
-    return WaveResult(theme=theme, year=year, fetched_at=row.fetched_at, members=members)
+    return WaveResult(
+        theme=theme, year=year, fetched_at=row.fetched_at, members=members, exact=not extra
+    )

@@ -108,12 +108,14 @@ Aktuálna verzia je **1.0.1**.
 - **Zapamätať si prihlásenie na tomto počítači**: so zaškrtnutým políčkom
   ostaneš prihlásený aj po zatvorení prehliadača, 30 dní od poslednej
   návštevy. Bez neho prihlásenie skončí so zatvorením prehliadača alebo
-  po 12 hodinách bez návštevy. Zmena hesla odhlási všetky zariadenia.
+  po 12 hodinách bez návštevy. Zmena hesla hneď odhlási všetky ostatné
+  zariadenia, tento prehliadač ostane prihlásený.
 - Rozhranie po slovensky aj po anglicky, svetlý a tmavý režim, telefón aj
   počítač. Nastavenia zobrazenia sa pamätajú pri účte.
 - Prehľad spotreby volaní cudzích služieb a prepínače, čo sa z ktorej
   služby smie sťahovať.
-- Automatická záloha databázy pri každej aktualizácii appky.
+- Automatická záloha databázy pri každej aktualizácii appky a príkaz, ktorý
+  ju vráti.
 
 ## Rýchly štart cez Docker
 
@@ -160,26 +162,44 @@ cez zálohovacie API SQLite, takže je celá aj pri otvorenom spojení. Keď sa
 záloha nepodarí (plný disk, práva), migrácia sa nespustí a databáza ostane
 bez zmeny.
 
-- Po úspešnom štarte ostane posledných **5 záloh**, staršie sa zmažú. Iné
-  súbory v priečinku appka nechá tak.
+- Po každom úspešnom štarte, aj keď sa nič nezálohovalo, ostane posledných
+  **5 záloh** a žiadna staršia než **90 dní**; ostatné sa zmažú. Iné súbory
+  v priečinku appka nechá tak.
 - Kým štart padá (Docker ho skúša znova), nemaže sa nič a nové kópie
   pokazeného stavu nepribúdajú; stále platí záloha spred aktualizácie.
 - Nová inštalácia s prázdnou databázou sa nezálohuje.
 - Automatická záloha je len databáza, fotky v nej nie sú.
 - Zálohy obsahujú aj údaje účtov, ktoré sa medzitým zmazali, kým sa
-  neprestriedajú. Spomínajú to aj zásady ochrany súkromia v appke.
+  neprestriedajú, najdlhšie do prvého štartu po 90 dňoch. Spomínajú to aj
+  zásady ochrany súkromia v appke.
 
 **Obnova zo zálohy.** Keby sa po aktualizácii niečo pokazilo:
 
 1. Zastav appku: `docker compose stop`. Kde je záloha spred aktualizácie,
    napíše aj log: `docker compose logs app` (cesta `/app/data/backups/`
    v kontajneri je na disku `data/backups/`).
-2. Zmaž `data/lego.db-journal`, `data/lego.db-wal` a `data/lego.db-shm`, ak
-   tam sú. Bez toho by SQLite zvyšok žurnálu pri ďalšom otvorení vrátil do
-   obnoveného súboru a pokazil ho.
-3. Skopíruj zálohu na miesto databázy, napríklad
+2. Vráť zálohu príkazom, kým appka stojí:
+
+   ```bash
+   docker compose run --rm app python -m lego_api.cli restore-backup lego-20261015-083000-v1.0.0-<revízia>.db
+   ```
+
+   Stačí meno súboru z `data/backups/`, alebo celá cesta v kontajneri
+   (`/app/data/backups/…`). Mimo Dockeru je to
+   `cd backend && uv run python -m lego_api.cli restore-backup <záloha>`.
+   Súbor, ktorý nie je celá a čitateľná databáza appky, príkaz odmietne
+   a nič nezmení. Doterajšiu databázu nemaže: aj so zvyškami žurnálu
+   (`lego.db-journal`, `-wal`, `-shm`) ju odloží do `data/backups/` ako
+   `lego-<čas>-pred-obnovou.db`, kde sa zmaže ako ostatné zálohy, a zálohu
+   skopíruje na jej miesto. Nakoniec napíše, z ktorej verzie záloha je.
+
+   Ručne, bez príkazu (appka ho má od verzie 1.0.1): zmaž
+   `data/lego.db-journal`, `data/lego.db-wal` a `data/lego.db-shm`, ak tam
+   sú, inak by SQLite zvyšok žurnálu pri ďalšom otvorení vrátil do
+   obnoveného súboru a pokazil ho. Potom skopíruj zálohu na miesto databázy,
+   napríklad
    `cp data/backups/lego-20261015-083000-v1.0.0-<revízia>.db data/lego.db`.
-4. Vráť kód na verziu z mena zálohy a spusti `docker compose up --build -d`.
+3. Vráť kód na verziu z mena zálohy a spusti `docker compose up --build -d`.
    Každé vydanie má tag: `git fetch --tags` a `git tag` vypíšu vydania,
    potom napríklad `git checkout v1.0.0`. Záloha, ktorá má v mene len
    revíziu, je z inštalácie spred verzie 1.0.0; vtedy vráť commit tesne pred
@@ -519,12 +539,14 @@ The app's interface is available in Slovak and English.*
 - **Remember me on this computer**: with the box ticked you stay signed in
   after closing the browser, for 30 days since your last visit. Without it,
   the sign-in ends when the browser closes or after 12 hours without a visit.
-  Changing the password signs out every device.
+  Changing the password signs out every other device at once; this browser
+  stays signed in.
 - Slovak and English interface, light and dark mode, phone and desktop.
   Display settings are stored with the account.
 - An overview of calls made to external services, and switches for what may
   be downloaded from which service.
-- Automatic database backup on every app update.
+- Automatic database backup on every app update, and a command that
+  restores it.
 
 ## Quick start with Docker
 
@@ -574,27 +596,46 @@ revision in the name. The copy is made through SQLite's backup API, so it is
 complete even while a connection is open. If the backup fails (full disk,
 permissions), the migration does not run and the database is left untouched.
 
-- After a successful start the **5 most recent backups** are kept and older
-  ones are deleted. Other files in the folder are left alone.
+- After every successful start, even one that backed nothing up, the
+  **5 most recent backups** are kept and none older than **90 days**; the
+  rest are deleted. Other files in the folder are left alone.
 - While startup keeps failing (Docker retries it), nothing is deleted and no
   new copies of the broken state pile up; the backup from before the update
   remains the one to use.
 - A fresh installation with an empty database is not backed up.
 - The automatic backup covers the database only, not the photos.
-- Until they rotate out, backups still contain data of accounts deleted in
-  the meantime. The in-app privacy policy mentions this as well.
+- Until they rotate out, at the longest until the first start after
+  90 days, backups still contain data of accounts deleted in the meantime.
+  The in-app privacy policy mentions this as well.
 
 **Restoring a backup.** If something goes wrong after an update:
 
 1. Stop the app: `docker compose stop`. The log also tells you where the
    pre-update backup is: `docker compose logs app` (`/app/data/backups/`
    inside the container is `data/backups/` on disk).
-2. Delete `data/lego.db-journal`, `data/lego.db-wal` and `data/lego.db-shm`
-   if they exist. Otherwise SQLite would replay the leftover journal into the
-   restored file the next time it opens it and corrupt it.
-3. Copy the backup over the database, for example
+2. Restore the backup with a command while the app is stopped:
+
+   ```bash
+   docker compose run --rm app python -m lego_api.cli restore-backup lego-20261015-083000-v1.0.0-<revision>.db
+   ```
+
+   The file name from `data/backups/` is enough, or the full path inside
+   the container (`/app/data/backups/…`). Outside Docker it is
+   `cd backend && uv run python -m lego_api.cli restore-backup <backup>`.
+   The command refuses a file that is not a complete, readable database of
+   the app and changes nothing. It does not delete the current database: it
+   moves it, together with any leftover journal (`lego.db-journal`, `-wal`,
+   `-shm`), to `data/backups/` as `lego-<time>-pred-obnovou.db`, where it is
+   deleted like the other backups, and copies the backup into its place.
+   Finally it tells you which version the backup comes from.
+
+   By hand, without the command (the app has it since version 1.0.1):
+   delete `data/lego.db-journal`, `data/lego.db-wal` and `data/lego.db-shm`
+   if they exist, otherwise SQLite would replay the leftover journal into the
+   restored file the next time it opens it and corrupt it. Then copy the
+   backup over the database, for example
    `cp data/backups/lego-20261015-083000-v1.0.0-<revision>.db data/lego.db`.
-4. Check out the app version named in the backup and run
+3. Check out the app version named in the backup and run
    `docker compose up --build -d`. Every release has a tag:
    `git fetch --tags` and `git tag` list the releases, then for example
    `git checkout v1.0.0`. A backup with only the revision in its name comes

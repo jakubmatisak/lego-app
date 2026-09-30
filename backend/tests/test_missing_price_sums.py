@@ -86,11 +86,20 @@ def test_breakdown_group_without_any_price_has_no_value() -> None:
 
 
 def test_breakdown_mixed_group_sums_the_priced_pieces() -> None:
+    """Zisk skupiny je z ocenených kusov voči ich vkladu, ako súhrn a súčty výberu.
+
+    Dva kusy po 100 €, cenu má len jeden (150 €): zarobil +50 €, nie −50 €
+    voči vkladu aj za kus bez ceny.
+    """
     items = [_item(_catalog("a-1")), _item(_catalog("b-1"))]
-    row = breakdown(value_items(items, SnapshotIndex([_price("a-1", "150")])), "theme")[0]
+    valued = value_items(items, SnapshotIndex([_price("a-1", "150")]))
+    row = breakdown(valued, "theme")[0]
 
     assert row["market_value"] == Decimal("150")
-    assert row["unrealized"] is not None
+    assert row["unrealized"] == Decimal("50")
+    assert row["unrealized"] == summarize(valued).unrealized
+    # Vklad ostáva celý, percento sa pri chýbajúcej cene nehlási.
+    assert row["invested"] == Decimal("200")
     assert row["unrealized_pct"] is None
     assert row["price_missing"] == 1
 

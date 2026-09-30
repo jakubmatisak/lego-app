@@ -557,11 +557,16 @@ async def identify_item(
     settings: SettingsDep,
     keys: CurrentKeys,
 ) -> CollectionItem:
-    """Rozbalený sáčok série sa zmení na konkrétnu figúrku."""
+    """Rozbalený sáčok série sa zmení na konkrétnu figúrku.
+
+    Figúrku, ktorá bola v Chcem, vyradí v tej istej transakcii, rovnako ako
+    pridanie kusu (`drop_bought`); predaný kus Chcem nemení.
+    """
     item = await _owned_item(session, user.id, item_id)
     catalog = await _ensure_catalog(session, settings, keys, payload.catalog_num)
     item.catalog_num = catalog.catalog_num
     item.unidentified = False
+    await drop_bought(session, user.id, [item])
     await session.commit()
     await session.refresh(item, ["catalog"])
     return item

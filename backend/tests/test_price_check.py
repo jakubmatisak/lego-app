@@ -339,3 +339,47 @@ async def test_a_price_check_miss_is_kept_for_the_batch(
         plan = await collect_targets(session, user_id, settings, fingerprint="fp-over")
     assert plan.targets == []
     assert plan.skipped_fresh == 1
+
+
+# --- obnova jednej položky ---------------------------------------------------------
+
+
+async def test_refresh_of_one_item_remembers_a_missing_price(
+    auth_client: AsyncClient, sessionmaker_, settings, monkeypatch
+) -> None:
+    """``POST /prices/{num}/refresh`` bez ceny: dávka sa na set s tým kľúčom znova nepýta.
+
+    Rovnako ako Overiť cenu a obnova cien zapíše ``pricing.store_miss``.
+    """
+    calls = _market_provider(monkeypatch, found=False)
+    monkeypatch.setattr(BrickEconomyProvider, "fingerprint", property(lambda self: "fp-jeden"))
+    await _set(sessionmaker_)
+    user_id = await _own(sessionmaker_, "42228-1")
+
+    response = await auth_client.post("/prices/42228-1/refresh")
+    assert response.status_code == 404, response.text
+    assert calls == ["42228-1"]
+    price_misses.clear()
+
+    async with sessionmaker_() as session:
+        plan = await collect_targets(session, user_id, settings, fingerprint="fp-jeden")
+    assert plan.targets == []
+    assert plan.skipped_fresh == 1
+
+
+async def test_refresh_of_one_item_after_an_outage_stays_in_the_batch(
+    auth_client: AsyncClient, sessionmaker_, settings, monkeypatch
+) -> None:
+    """Výpadok nie je odpoveď „cenu nemám“: set ostane v najbližšej dávke."""
+    _market_provider(monkeypatch, found=False, answered=False)
+    monkeypatch.setattr(BrickEconomyProvider, "fingerprint", property(lambda self: "fp-jeden"))
+    await _set(sessionmaker_)
+    user_id = await _own(sessionmaker_, "42228-1")
+
+    response = await auth_client.post("/prices/42228-1/refresh")
+    assert response.status_code == 404, response.text
+
+    async with sessionmaker_() as session:
+        plan = await collect_targets(session, user_id, settings, fingerprint="fp-jeden")
+    assert [t.catalog_num for t in plan.targets] == ["42228-1"]
+    assert plan.skipped_fresh == 0

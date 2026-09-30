@@ -5,11 +5,12 @@
    * by hľadanie figúrky skončilo „Nič sa nenašlo“ bez vysvetlenia a import
    * samých figúrok by vyzeral ako prázdny. Počet je `FacetsOut.hidden_figures`.
    *
-   * Kedy sa ukáže, rozhoduje Zbierka (len pri hľadaní alebo prázdnom
-   * výsledku). Je to nenápadný riadok ako súčty nad ním, nie `v-alert`:
+   * Kedy sa ukáže, rozhoduje Zbierka (len pri hľadaní, filtri umiestnenia
+   * či krabice alebo prázdnom výsledku). Je to nenápadný riadok ako súčty nad ním, nie `v-alert`:
    * ten má v rozložení Zbierky `flex: 1 1` a roztiahol by sa do výšky.
-   * Písmo je `text-body-medium` (14 px): Vuetify 4 má typografiu MD3 a stará
-   * `text-body-medium` v ňom nie je, riadok by bol väčší než text okolo.
+   * Písmo je `text-body-medium` (14 px) z typografie MD3 vo Vuetify 4. Staré
+   * triedy písma z Vuetify 3 (body-2, caption) v ňom nie sú: riadok by s nimi
+   * zdedil veľkosť rodiča a bol väčší než text okolo.
    *
    * `pending`: hľadanie sa práve spresňuje a počty ešte patria predošlému.
    * Riadok si podrží miesto, aby výsledky pod ním pri písaní neposkakovali,

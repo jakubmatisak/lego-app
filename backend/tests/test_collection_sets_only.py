@@ -134,6 +134,42 @@ async def test_panel_says_how_many_series_figures_the_filter_would_find(
     assert unscoped["hidden_figures"] == 0
 
 
+async def test_place_and_box_with_only_figures_stay_in_the_panel(
+    auth_client: AsyncClient, sessionmaker_
+) -> None:
+    """Krabica, v ktorej sú len figúrky zo sérií, nesmie z filtra Zbierky zmiznúť.
+
+    Voľba ostane (s nulou setov, zošedne) a filter po nej povie, koľko
+    figúrok z tej krabice je vo Figúrkach. Iné skupiny (téma) figúrky
+    do ponuky nepúšťajú.
+    """
+    ids = await _seed(auth_client, sessionmaker_)
+    for key, changes in (
+        ("titanic", {"location": "Obývačka"}),
+        ("figure", {"location": "Povala", "box": "3"}),
+        ("machine", {"location": "Povala", "box": "3"}),
+    ):
+        response = await auth_client.patch(f"/items/{ids[key]}", json=changes)
+        assert response.status_code == 200, response.text
+
+    panel = (await auth_client.get("/items/facets", params=SECTION)).json()
+    locations = {o["value"]: o["count"] for o in panel["location"]}
+    assert locations["Obývačka"] == 1
+    assert locations["Povala"] == 0
+    boxes = {o["value"]: o["count"] for o in panel["box"]}
+    assert boxes["Povala · krabica 3"] == 0
+    assert [o["value"] for o in panel["theme"]] == ["Icons"]
+
+    in_box = (
+        await auth_client.get("/items/facets", params={"box": "Povala · krabica 3", **SECTION})
+    ).json()
+    assert (in_box["total"], in_box["hidden_figures"]) == (0, 2)
+    in_room = (
+        await auth_client.get("/items/facets", params={"location": "Povala", **SECTION})
+    ).json()
+    assert (in_room["total"], in_room["hidden_figures"]) == (0, 2)
+
+
 async def test_bulk_update_from_the_collection_leaves_figures(
     auth_client: AsyncClient, sessionmaker_
 ) -> None:

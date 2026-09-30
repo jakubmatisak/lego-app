@@ -84,5 +84,6 @@ async def theme_wave(
         fetched_at=result.fetched_at,
         total=len(members),
         owned=sum(1 for m in members if m.owned),
+        exact=result.exact,
         members=members,
     )

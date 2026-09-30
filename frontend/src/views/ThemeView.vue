@@ -5,7 +5,8 @@
    *
    * Roky sú z Brickset zadarmo. Sety roka (vlna) sú jedno volanie, prvýkrát
    * pri otvorení roka; potom sa berú z databázy. Kým vlna nie je stiahnutá,
-   * počet vlastnených pri roku je odhad (≈).
+   * počet vlastnených pri roku je odhad (≈). Odhad ostane aj pri starej vlne,
+   * v ktorej chýba môj set (`exact` vlny); ten je potom medzi setmi roka.
    */
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -93,8 +94,9 @@
       return
     }
     wave.value = data
-    // Po stiahnutí vlny je počet pri roku presný.
-    years.value = years.value.map(y => (y.year === data.year ? { ...y, owned: data.owned, set_count: data.total, exact: true } : y))
+    // Po stiahnutí vlny je počet pri roku presný, kým v nej nechýba môj set
+    // (stará vlna, ktorú sa nepodarilo stiahnuť znova): vtedy ostane odhad.
+    years.value = years.value.map(y => (y.year === data.year ? { ...y, owned: data.owned, set_count: data.total, exact: data.exact } : y))
   }
 
   async function onOwned (): Promise<void> {
@@ -177,7 +179,7 @@
       <div class="d-flex align-center flex-wrap ga-3">
         <div>
           <span class="text-body-large font-weight-medium">
-            {{ t('dashboard.seriesOf', { owned: wave.owned, total: wave.total }) }}
+            <span v-if="!wave.exact">≈ </span>{{ t('dashboard.seriesOf', { owned: wave.owned, total: wave.total }) }}
           </span>
 
           <v-chip

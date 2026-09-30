@@ -111,9 +111,12 @@ Pred migráciou ju `recorded_version` číta surovým SQL, lebo schéma môže
 byť hocijaká stará; chýbajúca tabuľka či nečitateľná hodnota = verzia
 neznáma = záloha (staršie inštalácie, v mene len revízia). Nová databáza,
 pamäť ani head s tou istou verziou sa nezálohujú. Keď záloha zlyhá,
-migrácia sa nespustí (`BackupFailed`). Staré zálohy maže `prune` (ostane 5,
-iné súbory v priečinku nie) až po úspešnej migrácii: SQLite potvrdzuje každú
-migráciu zvlášť, takže po páde je databáza napoly zmigrovaná a Docker
+migrácia sa nespustí (`BackupFailed`). Staré zálohy maže `prune` (ostane
+`KEEP` 5 a žiadna staršia než `MAX_AGE_DAYS` 90 podľa času v mene, so
+zálohou aj jej `-journal`/`-wal`/`-shm`, iné súbory v priečinku nie) po
+každom úspešnom štarte, aj bez novej zálohy; záloha tohto štartu a záloha
+zo značky, ktorá ostala, vek nepozerajú. Po zlyhanom štarte sa nemaže
+nič: SQLite potvrdzuje každú migráciu zvlášť, takže po páde je databáza napoly zmigrovaná a Docker
 (`restart`) či ďalšie spustenie desktopu by inak rotáciou vytlačili
 jedinú zálohu spred aktualizácie. Zlyhanie si pamätá
 `backups/lego-failed-migration.json` (záloha, revízia, odtlačok databázy);
@@ -124,13 +127,22 @@ platí aj pre štart novej verzie bez migrácie. Nové vydanie = zvýšiť
 `version` v `pyproject.toml`, `uv lock` a verziu vo `frontend/package.json`
 aj `package-lock.json` (zhodu stráži `tests/test_version.py`), inak sa pri
 aktualizácii bez migrácie nezálohuje. Verziu hlási `/health`, OpenAPI a Nastavenia →
-Aplikácia (`components/AppVersion.vue`). Log pri páde povie, kde je záloha
-a že pred jej skopírovaním treba zmazať `lego.db-journal` (`-wal`, `-shm`), inak ho SQLite vráti do
-obnoveného súboru. Aby sa to do logu dostalo, `_migrate` nastaví
+Aplikácia (`components/AppVersion.vue`). Log pri páde povie, kde je záloha,
+príkaz na návrat `python -m lego_api.cli restore-backup <záloha>` (v Dockeri
+cez `docker compose run --rm app`) a ručný postup: pred skopírovaním zálohy
+treba zmazať `lego.db-journal` (`-wal`, `-shm`), inak ho SQLite vráti do
+obnoveného súboru. Príkaz (`db_backup.restore_backup`) odmietne súbor bez
+`integrity_check` ok a bez `alembic_version`, doterajšiu databázu aj so
+žurnálom nemaže, ale presunie do `backups/` ako
+`lego-RRRRMMDD-HHMMSS-pred-obnovou.db` (tvar zálohy, takže ju rotácia aj
+vek zmažú ako zálohu; zásady to spomínajú), zálohu skopíruje zálohovacím
+API a pri chybe všetko vráti. Aby sa to do logu dostalo, `_migrate` nastaví
 `config.attributes["keep_logging"]` a `alembic/env.py` potom nevolá
 `fileConfig`, ktorý by vypol loggery appky aj uvicornu. Fotky záloha
 nenesie. Zálohy obsahujú aj údaje neskôr zmazaných účtov, preto to
-spomínajú zásady `/sukromie` (Ako dlho, Vymazanie); `data/backups/` je
+spomínajú zásady `/sukromie` (Ako dlho, Vymazanie: najdlhšie do prvého
+štartu po 90 dňoch); zmena `KEEP` či `MAX_AGE_DAYS` = text zásad
+a `privacy_version`. `data/backups/` je
 v `.gitignore`.
 
 **Bez trhovej ceny sa nezobrazuje nula.** Keď `price_source == "missing"`,
@@ -183,7 +195,8 @@ Vek je čas od posledného volania vlastného kľúča, s cenou aj bez nej
 najprv neznáme, teda kľúč sa ešte nepýtal a cena chýba (Zbierka pred Chcem,
 naposledy pridané prvé), potom ostatné od najstaršieho volania. Keď zdroj
 odpovie, že cenu nemá (400/404 alebo odpoveď bez ceny), `store_miss` zapíše
-`miss:{číslo}`, nie číslo samo, lebo to by odomklo cudzie ceny. Bez tejto
+`miss:{číslo}`, nie číslo samo, lebo to by odomklo cudzie ceny; rovnako
+obnova jednej položky (`POST /prices/{num}/refresh`). Bez tejto
 stopy by bola položka pri každom kliknutí neznáma, prvá a stála by volanie;
 rovnako postavený kus setu v predaji, ktorému použitá cena nepríde nikdy.
 Výpadok (`provider.last_answered` je False) sa nezapíše, skúsi sa nabudúce.
@@ -227,8 +240,9 @@ cenia sa ako sety. Minifigúrky ostávajú v `cmf_series`, oddelene.
 `components/PurchaseDialog.vue` pridá do zbierky vec, ktorú katalóg už
 pozná, z Chcem aj z chýbajúcej figúrky; Chcem sám nemaže. Kúpené vyradí
 server pri každom pridaní: `services/wishlist.py::drop_bought` v tej istej
-transakcii volajú `POST /items`, `/items/bulk` aj import (Pridať set
-číslom aj skenom, Mám ju, Mám všetky, ďalší kus). Porovnáva katalógové
+transakcii volajú `POST /items`, `/items/bulk`, import (Pridať set
+číslom aj skenom, Mám ju, Mám všetky, ďalší kus) aj určenie figúrky
+z rozbaleného sáčku (`PATCH /items/{id}/identify`). Porovnáva katalógové
 číslo: figúrka vyradí seba, sáčok pod holým číslom sériu; vlastnený aj
 rezervovaný kus áno, predaný nie. Pôvodnú položku nesie
 `removed_from_wishlist` na prvom kuse setu (viac kusov vyradí raz) a Späť
@@ -239,8 +253,12 @@ uložení zo skenu jedno oznámenie a jedno Späť pre kusy aj Chcem. To vracia
 Chcem až po zmazaní kusov a s `?unless_owned=true`: set, ktorý účet ešte
 má (pri skenoch X, Y, X druhý kus X), server nevráti a odpovie 204
 (`still_bought`, to isté pravidlo ako `drop_bought`). Import Chcem
-z importov nechá (`keep_imported`) a vyradené si pamätá na vrátenie, aj
-s dátumom pridania (`added_at`).
+z importov nechá (`keep_imported`, aj zo staršieho importu; náhľad sľubuje
+vyradenie len pri ostatných a pri týchto povie, že ostanú) a vyradené si
+pamätá na vrátenie, aj s dátumom pridania (`added_at`). Stránka Chcem
+po pridaní či odobratí obnoví aj súhrn (odznak v ponuke) a zoznam načíta
+raz (`WishlistView.vue::afterChange`); po kúpe ho načíta watch nad
+`wishlist_count`, nie `@saved` dialógu, inak by šiel dvakrát.
 
 **Katalógové vzťahy sa načítavajú výslovným dotazom.** `CatalogItem` zámerne
 nemá ORM vzťah na členov série. Lenivé načítanie v asynchrónnej session padne
@@ -264,7 +282,9 @@ diakritiku (`filters.fold`), každé slovo musí sedieť.
 
 **Zbierka sú len sety, figúrky zo sérií sú vo Figúrkach.** Zbierka posiela
 `sets_only=true` (`filterStore.sectionQuery()` v zozname, počtoch aj hromadnej
-úprave), čo vyradí figúrky aj z ponuky volieb panela. Do adresy ani do
+úprave), čo vyradí figúrky aj z ponuky volieb panela, okrem Umiestnenia
+a Krabice: miesto len s figúrkami tam ostane s nulou setov, inak by
+krabica s figúrkami vo filtri chýbala. Do adresy ani do
 uloženého pohľadu nejde, takže Prehľad, export, súpis a detail setu počítajú
 všetko. Filtre len pre figúrky (Typ, Séria, Podoba, nekompletné, chýbajúce)
 a zoskupenie podľa série panel ani `facets()` nemajú; zo stavu účtu ich
@@ -275,11 +295,13 @@ uložený pohľad s nimi je označený a po kliknutí to oznámi
 nenašlo“, `FacetsOut.hidden_figures` povie, koľko figúrok zo sérií by filter
 našiel, a `FiguresElsewhere.vue` odkáže do Figúrok. Je to nenápadný riadok
 pod súčtami, nie `v-alert`, a len keď na tom záleží: hľadanie (`q`) ich
-trafilo, alebo Zbierka nenašla nič (vtedy je riadok v prázdnom stave).
-Bežný filter s výsledkom nehlási nič. Počty musia patriť tomu istému
-hľadaniu (`filterStore.facetsSearch`), inak by po napísaní chvíľu svietil
-počet zo starého filtra. Pri spresňovaní hľadania, ktoré tiež trafilo
-figúrky, riadok drží miesto (`pending`, `visibility: hidden`), kým neprídu
+trafilo, filter Umiestnenie či Krabica ich skryl („čo je v krabici 3“
+sú aj figúrky), alebo Zbierka nenašla nič (vtedy je riadok v prázdnom
+stave). Iný bežný filter s výsledkom nehlási nič. Počty musia patriť tomu
+istému hľadaniu a miestu (`filterStore.facetsSearch`, `facetsPlaces`),
+inak by po napísaní chvíľu svietil počet zo starého filtra. Pri
+spresňovaní hľadania či zmene miesta, ktoré tiež trafilo figúrky, riadok
+drží miesto (`pending`, `visibility: hidden`), kým neprídu
 nové počty, inak by výsledky pri každej pauze v písaní poskočili. Písmo je
 `text-body-medium`: Vuetify 4 má typografiu MD3 a staré triedy
 (`text-body-2`, `text-caption`, `text-subtitle-1`…) v jeho CSS nie sú.
@@ -457,7 +479,9 @@ hodnotenie a obľúbenosť. Nové sety ich dostanú pri vyhľadaní; staršie do
 `services/brickset_extras.py` na pozadí pri otvorení Zbierky, najviac 40 za
 beh, a detail setu pri otvorení (jedno volanie). Prístup kľúča v
 `source_access` (aj pri nenájdenom sete, `found=False`) stráži, aby sa ten
-istý kľúč na set nepýtal znova. Štítky sú aj filter.
+istý kľúč na set nepýtal znova. Štítky sú aj filter: štítok v detaile
+setu vedie do Zbierky s ním, na detaile figúrky zo série (aj série samej)
+je obyčajný čip, lebo Zbierka figúrku neukazuje.
 
 **Ďalšie fotky setu sú z Brickset, raz na set.** `getAdditionalImages`
 sa do limitu nepočíta, ale chce `setID` Brickset, nie číslo setu. `setID`
@@ -495,7 +519,10 @@ setov témy či roka; či je téma naozaj celá, povie `ThemeOut.complete`
 (úplná zhoda a vo vlnách nič nechýba) a len vtedy je `SeriesBar` zelený,
 aj filter Nekompletné ide podľa neho. Prop `complete` má predvolené
 `undefined`, chýbajúci boolean by Vue zmenilo na false. Kým vlna nie je
-stiahnutá, počet pri roku je odhad, potom presný. Existujúcim setom
+stiahnutá, počet pri roku je odhad, potom presný; odhad ostane, keď v nej
+chýba môj set (stará vlna, ktorú brána nepustila stiahnuť znova):
+`ThemeWaveOut.exact` je False, počty aj sety vlny ho rátajú ako `years()`
+a otvorený rok čip neprepne na presný. Existujúcim setom
 Brickset nič neprepisuje, len dopĺňa chýbajúce.
 
 **UPCitemdb je posledná možnosť.** Rebrickable kódy
@@ -590,12 +617,27 @@ cookie na `refresh_token_days` (30), bez neho session cookie bez Max-Age
 a token na serveri platí `refresh_session_hours` (12 h): prehliadač
 s obnovou kariet vráti aj session cookie. Režim je v `refresh_tokens.remember`,
 obnova tokenu ho zdedí a platnosť posunie (kĺzavé). Tokeny spred stĺpca sú
-bez zapamätania, inak by kĺzavých 30 dní ostalo trvalých naveky. Vypršané
-tokeny všetkých účtov maže `_issue_refresh`, zásady sľubujú najviac 30 dní.
-Odhlásenie token zmaže (nielen zruší), zmazanie účtu tiež (`_OWNED`). Zmena
-hesla (`_end_logins`) zmaže všetky tokeny účtu, aj na iných počítačoch;
-tento prehliadač dostane nový token bez zapamätania (session cookie), takže
-sa nemusí hneď prihlasovať, no zapamätanie treba zaškrtnúť znova.
+bez zapamätania, inak by kĺzavých 30 dní ostalo trvalých naveky; migrácia
+`9332cb64e9a6` im skrátila platnosť na 12 h. Výmena pri obnove je atómová
+(`UPDATE … WHERE revoked_at IS NULL`, rowcount): z kariet s tým istým cookie
+vymení token len jedna. Vymenený token do `refresh_grace_seconds` (60 s)
+dá prístup aj vlastný nový token v tom istom režime (súbežné karty po
+reštarte prehliadača, stratená odpoveď s cookie pri F5): bez neho by
+prehliadač držal vymenený token a po lehote by to vyzeralo ako krádež.
+Po lehote je to ukradnuté cookie:
+zmažú sa všetky tokeny účtu a do logu ide varovanie. Vymenený token preto
+ostáva do vypršania, bez `user_agent`. Vypršané tokeny všetkých účtov maže
+`auth/tokens.py::prune` pri každom vydaní aj pri štarte, zásady sľubujú
+najviac 30 dní. Odhlásenie zmaže len aktuálny token (vymenené ostanú, inak
+by odhlásenie na telefóne zmazalo stopu ukradnutého cookie z PC), zmazanie
+účtu všetky (`_OWNED`). Zmena hesla (`_end_logins`) zmaže všetky
+tokeny účtu a nastaví `users.password_changed_at`: `current_user` odmietne
+prístupový token so starším `iat` (na celé sekundy), takže iné zariadenia
+stratia prístup hneď. Tento prehliadač dostane nový token v tom istom
+režime (zapamätanie ostane) a nový prístupový token si vezme hneď
+(`stores/auth.ts::updateProfile`); inak ho obnoví 401 v `api/client.ts`,
+ktorý si kópiu požiadavky s telom robí pred odoslaním, lebo odoslané telo
+sa zopakovať nedá. `restore()` ide cez tú istú `refreshSession`.
 Zmena trvania = text zásad (Ako dlho, tabuľka cookies) a `privacy_version`.
 
 **Filter Zbierky si pamätá účet, nie prehliadač.** `users.preferences`
@@ -676,7 +718,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 607 testov, frontend 237. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 656 testov, frontend 257. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá

@@ -261,6 +261,37 @@ async def test_sold_row_and_wish_from_the_same_file_stay_in_wishlist(
     assert wishes == {"75192-1"}
 
 
+async def test_preview_does_not_promise_to_drop_a_wish_from_an_older_import(
+    auth_client: AsyncClient,
+) -> None:
+    """Chcem z predošlého importu import nevyradí, náhľad to preto nesľubuje.
+
+    Potvrdenie volá ``drop_bought(..., keep_imported=True)``, ktorý položky
+    Chcem s ``import_batch_id`` nechá; ručne pridaná položka sa vyradí.
+    """
+    for num, name in (("10294-1", "Titanic"), ("21318-1", "Tree House")):
+        await _catalog(auth_client, num, name)
+    header = CSV.splitlines()[0] + "\n"
+    first = await _upload(auth_client, header + "10294-1;;chcem;;;;;;;;;450\n")
+    done = await auth_client.post(f"/imports/{first['id']}/commit", json={})
+    assert done.status_code == 200, done.text
+    await auth_client.post("/wishlist", json={"catalog_num": "21318-1"})
+
+    preview = await _upload(
+        auth_client, header + "10294-1;1;;;;500;1.3.2021;;;;;\n21318-1;1;;;;;;;;;;\n"
+    )
+    rows = {r["raw_num"]: r for r in preview["rows"]}
+    dropped = "Je v Chcem, po importe sa odtiaľ vyradí."
+    assert dropped not in rows["10294-1"]["warnings"]
+    assert "Je v Chcem z predošlého importu, ostane tam." in rows["10294-1"]["warnings"]
+    assert dropped in rows["21318-1"]["warnings"]
+
+    done = await auth_client.post(f"/imports/{preview['id']}/commit", json={})
+    assert done.status_code == 200, done.text
+    wishes = {w["catalog_num"] for w in (await auth_client.get("/wishlist")).json()}
+    assert wishes == {"10294-1"}
+
+
 async def test_undo_puts_the_wish_back_with_its_original_date(auth_client: AsyncClient) -> None:
     """Vrátená položka Chcem ostane na svojom mieste, nie navrchu ako nová."""
     for num, name in (("10294-1", "Titanic"), ("75192-1", "Falcon"), ("21318-1", "Tree House")):

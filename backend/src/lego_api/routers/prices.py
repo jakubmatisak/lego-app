@@ -393,6 +393,12 @@ async def refresh_one(
             status.HTTP_409_CONFLICT, "Obnova ceny z detailu je vypnutá v Nastaveniach → Dáta."
         ) from exc
     if data is None or not data.has_price:
+        if provider.last_answered:
+            # Zdroj odpovedal, že cenu nemá: stopa ako v obnove cien a Overiť
+            # cenu, inak by sa dávka na tú istú položku opýtala znova. Výpadok
+            # sa nepamätá, ďalší pokus by mohol uspieť.
+            await store_miss(session, num, provider.fingerprint)
+            await session.commit()
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pre túto položku sa nenašla cena")
 
     await store_market(session, data, provider.fingerprint)

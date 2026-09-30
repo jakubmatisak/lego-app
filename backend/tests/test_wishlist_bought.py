@@ -281,3 +281,36 @@ async def test_undo_without_the_flag_returns_the_wish_even_when_owned(
     )
     assert response.status_code == 201, response.text
     assert await _wished(auth_client) == {"10294-1"}
+
+
+async def test_identified_bag_drops_its_figure_from_wishlist(
+    auth_client: AsyncClient, session
+) -> None:
+    """Rozbalený sáčok určený ako figúrka ju vyradí z Chcem, rovnako ako pridanie kusu."""
+    await _seed(session)
+    [bag] = await _add(auth_client, "71046")
+    await _wish(auth_client, "71046-3")
+    await _wish(auth_client, "71046-1")
+
+    response = await auth_client.patch(
+        f"/items/{bag['id']}/identify", json={"catalog_num": "71046-3"}
+    )
+    assert response.status_code == 200, response.text
+    assert await _wished(auth_client) == {"71046-1"}
+
+
+async def test_identifying_a_sold_bag_keeps_the_wish(auth_client: AsyncClient, session) -> None:
+    """Predaný kus Chcem nemení ani pri určení figúrky."""
+    await _seed(session)
+    [bag] = await _add(auth_client, "71046")
+    sold = await auth_client.post(
+        f"/items/{bag['id']}/sell", json={"sold_price_eur": "5", "sold_date": "2026-09-01"}
+    )
+    assert sold.status_code == 200, sold.text
+    await _wish(auth_client, "71046-3")
+
+    response = await auth_client.patch(
+        f"/items/{bag['id']}/identify", json={"catalog_num": "71046-3"}
+    )
+    assert response.status_code == 200, response.text
+    assert await _wished(auth_client) == {"71046-3"}

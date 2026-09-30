@@ -107,23 +107,34 @@ docs/superpowers/specs/  tieto dokumenty
   databázou naposledy bežala iná verzia appky (aktualizácia aj návrat na
   staršiu, aj bez zmeny schémy), databáza sa najprv skopíruje zálohovacím
   API SQLite do `data/backups/` (`lego-RRRRMMDD-HHMMSS-v<verzia>-<revízia>.db`,
-  verzia a revízia pred štartom, posledných 5). Verzia appky je verzia
-  balíka `lego-api` z `pyproject.toml` (`lego_api.__version__`); po úspešnej
+  verzia a revízia pred štartom, posledných 5, žiadna staršia než 90 dní).
+  Verzia appky je verzia balíka `lego-api` z `pyproject.toml`
+  (`lego_api.__version__`); po úspešnej
   migrácii sa zapíše do `app_settings` → `app_version` a pred ďalšou sa
   číta surovým SQL, keďže schéma môže byť stará. Databáza bez zapísanej
   verzie (inštalácie spred tejto evidencie) sa zálohuje ako prvý štart novej
   verzie, v mene je len revízia; nová prázdna databáza sa nezálohuje. Bez
   zálohy sa migrácia nespustí; pri páde migrácie log povie, kde záloha je
-  a že pred návratom treba zmazať `lego.db-journal` (`-wal`, `-shm`)
-  (`services/db_backup.py`). Staré zálohy sa mažú až po úspešnej migrácii
-  a po zlyhanej si značka `backups/lego-failed-migration.json` pamätá
+  a že pred návratom treba zmazať `lego.db-journal` (`-wal`, `-shm`),
+  aj príkaz, ktorý to urobí sám (`python -m lego_api.cli restore-backup
+  <záloha>`, v Dockeri cez `docker compose run --rm app`;
+  `services/db_backup.py`). Príkaz odmietne súbor, ktorý nie je celá
+  databáza appky (`integrity_check`, `alembic_version`), doterajšiu
+  databázu aj so žurnálom nemaže, ale presunie do `backups/` ako
+  `lego-RRRRMMDD-HHMMSS-pred-obnovou.db` (maže sa ako záloha), zálohu
+  skopíruje zálohovacím API SQLite a pri chybe všetko vráti na miesto.
+  Staré zálohy (nad 5 a staršie než 90 dní podľa času v mene, aj so
+  žurnálom) sa mažú po každom úspešnom štarte, aj bez novej zálohy;
+  záloha tohto štartu a záloha zo značky vek nepozerajú. Po zlyhanej
+  migrácii sa nemaže nič a značka `backups/lego-failed-migration.json` pamätá
   zálohu spred aktualizácie: slučka reštartov (`restart: unless-stopped`)
   ju tak nevytlačí kópiami napoly zmigrovanej databázy, kým sa databáza
   nezmení. Každý úspešný štart značku zmaže, aj keď nič nezálohoval.
   Verzia sa pri páde nezapíše, takže to platí aj pre novú verziu bez
   migrácie. Aby sa chyba do logu dostala, appka nastaví Alembicu
   `keep_logging` a `env.py` nevolá `fileConfig`. Zálohy nesú aj údaje
-  neskôr zmazaných účtov, spomínajú ich zásady `/sukromie`.
+  neskôr zmazaných účtov, spomínajú ich zásady `/sukromie` (najdlhšie
+  do prvého štartu po 90 dňoch).
 - **Tajomstvá:** v `.env` (nie je v gite) je len `JWT_SECRET`
   a prevádzkové nastavenia. Kľúče k službám tam nie sú.
 - **Prístup:** appka beží doma a von je dostupná pod doménou.
@@ -138,6 +149,7 @@ docs/superpowers/specs/  tieto dokumenty
 | `JWT_SECRET` | – | podpis tokenov a šifrovanie kľúčov |
 | `ACCESS_TOKEN_MINUTES` / `REFRESH_TOKEN_DAYS` | 15 / 30 | platnosť tokenov (30 dní so zapamätaním prihlásenia) |
 | `REFRESH_SESSION_HOURS` | 12 | obnovovací token bez zapamätania |
+| `REFRESH_GRACE_SECONDS` | 60 | ochranná lehota po výmene obnovovacieho tokenu |
 | `COOKIE_SECURE`, `COOKIE_DOMAIN` | false / – | cookie obnovovacieho tokenu |
 | `ALLOW_REGISTRATION` | true | východisko, kým ho správca v appke nezmení |
 | `BRICKECONOMY_DAILY_LIMIT` | 90 | vlastný strop pod oficiálnych 100 |
@@ -168,23 +180,45 @@ docs/superpowers/specs/  tieto dokumenty
 
 - Prístupový JWT platí 15 minút a drží sa len v pamäti prehliadača.
 - Obnovovací token je v httpOnly cookie, v databáze je jeho sha256. Pri
-  každom použití sa vymení a starý sa odvolá; odhlásenie ho zmaže.
+  každom použití sa vymení a starý sa odvolá. Výmena je atómová
+  (podmienený `UPDATE`): keď prehliadač po reštarte obnoví viac kariet
+  naraz s tým istým cookie, token vymení len jedna. Ostatné, ktoré prídu
+  do 60 s od výmeny (ochranná lehota), dostanú prístup aj vlastný nový token;
+  rovnako prehliadač, ku ktorému odpoveď s cookie nedorazila (F5 počas
+  obnovy). Nikoho to neodhlási a po lehote nemá nikto vymenený token.
+- Vymenený token prijatý po ochrannej lehote znamená skopírované cookie
+  (útočník obnovil prvý alebo obnovuje po obeti): zmažú sa všetky tokeny
+  účtu, do logu ide varovanie a odpoveď je 401. Vymenený token preto
+  v databáze ostáva do svojho vypršania (najviac 30 dní), už bez údaja
+  o prehliadači.
+- Odhlásenie zmaže aktuálny token. Vymenené tokeny (bez údaja o prehliadači)
+  ostávajú do vypršania, aby sa ukradnuté cookie spoznalo aj po odhlásení na
+  inom zariadení; platné prihlásenia iných zariadení ostávajú.
 - **Zapamätať si prihlásenie na tomto počítači** (políčko pri prihlásení
   aj registrácii, predvolene nie, `remember` v tele): trvalé cookie na
   30 dní. Bez neho session cookie bez Max-Age, ktoré zanikne so zatvorením
   prehliadača, a token na serveri platí 12 hodín, lebo prehliadač s obnovou
   kariet vráti aj session cookie. Režim je v `refresh_tokens.remember`,
   obnova ho zdedí a platnosť posunie (kĺzavé: aktívne používanie
-  neodhlási). Tokeny spred zavedenia sú bez zapamätania. Vypršané tokeny
-  všetkých účtov sa mažú pri vydaní nového.
+  neodhlási). Tokeny spred zavedenia sú bez zapamätania a migrácia
+  `9332cb64e9a6` im skrátila platnosť na teraz + 12 h (1.0.0 im dala
+  30 dní). Vypršané tokeny všetkých účtov sa mažú pri vydaní nového aj pri
+  štarte appky.
 - Zmena hesla zmaže všetky tokeny účtu, teda aj zapamätané prihlásenia
-  na iných počítačoch. Prehliadač, v ktorom sa heslo zmenilo, dostane nový
-  token bez zapamätania (session cookie) a ostane prihlásený do zatvorenia.
-  Zmazanie účtu zmaže tokeny s ostatnými údajmi.
+  na iných počítačoch, a zapíše `users.password_changed_at`. Prístupový
+  token so starším `iat` (porovnáva sa na celé sekundy) server odmietne,
+  takže iné zariadenia stratia prístup hneď, nie až po 15 minútach.
+  Prehliadač, v ktorom sa heslo zmenilo, dostane nový obnovovací token
+  v tom istom režime (zapamätané ostane zapamätané, nové heslo pozná)
+  a hneď si vezme nový prístupový token. Zmazanie účtu zmaže tokeny
+  s ostatnými údajmi.
 - Trvalé cookie vznikne len na výslovnú voľbu: zaškrtnutie políčka je
   súhlas s ním, lištu netreba. Zásady ho opisujú v tabuľke cookies
   a v Ako dlho.
 - Klient pri 401 raz skúsi obnovenie a potom pošle na prihlásenie.
+  Obnova ide naraz len raz (`api/client.ts::refreshSession`, aj pre
+  `restore()` pri načítaní stránky) a požiadavku s telom zopakuje z kópie
+  urobenej pred odoslaním, lebo odoslané telo sa znova poslať nedá.
 - Súbory na stiahnutie (CSV, fotky) preto idú cez klienta ako blob, nie
   obyčajným odkazom: odkaz by odišiel bez tokenu.
 
@@ -490,7 +524,8 @@ nie (`source_access` čísla, pri neúspechu `miss:{číslo}`, a neúspech
 z Overiť cenu v pamäti procesu), prípadne od novšej ručnej ceny. Keď zdroj
 odpovie, že set nepozná alebo preň cenu nemá, `pricing.store_miss` to
 zapíše pod `miss:{číslo}`; prístup pod samotným číslom by účtu odomkol
-ceny iného kľúča. Overiť cenu zapisuje neúspech tou istou funkciou.
+ceny iného kľúča. Overiť cenu aj obnova jednej položky
+(`POST /prices/{num}/refresh`) zapisujú neúspech tou istou funkciou.
 Výpadok siete či chyba servera (`provider.last_answered` je False) sa
 nezapíše nikde, ani v Overiť cenu, a skúsi sa pri ďalšej obnove.
 
@@ -567,7 +602,8 @@ Set, ktorý nie je v žiadnom katalógu, sa dá zadať ručne (`POST /catalog`).
   sú `kind=set` a cenia sa ako sety.
 
 **Nerozbalený sáčok** je kus ukazujúci na sériu s `unidentified=true`.
-Po rozbalení ho `PATCH /items/{id}/identify` prepne na konkrétnu figúrku.
+Po rozbalení ho `PATCH /items/{id}/identify` prepne na konkrétnu figúrku
+a tú v tej istej transakcii vyradí z Chcem (`drop_bought`, predaný kus nie).
 
 **Čiarový kód** (`services/barcode.py`) sa hľadá v poradí:
 
@@ -618,7 +654,9 @@ Podrobnosti:
   otvorení Zbierky, najviac 40 za beh, a detail setu pri otvorení (jedno
   volanie).
 - Existujúcim údajom Brickset nič neprepisuje, len dopĺňa chýbajúce.
-  Štítky sú aj filter.
+  Štítky sú aj filter; štítok v detaile setu vedie do Zbierky s ním, na
+  detaile figúrky zo série (aj série samej) je obyčajný čip, lebo Zbierka
+  figúrku neukazuje.
 
 **Témy a vlny** (`services/themes.py`):
 
@@ -646,7 +684,10 @@ Podrobnosti:
   kompletná (`complete`, zelený pruh), len keď sa počty naozaj zhodujú a vo
   stiahnutých vlnách nič nechýba; orezaný počet je plný pruh, ale žltý.
 - Kým vlna nie je stiahnutá, počet pri roku je odhad, potom je presný
-  (odhad ostane, keď v nej chýba môj set).
+  (odhad ostane, keď v nej chýba môj set). Aj otvorený rok: stará vlna,
+  ktorú sa nepodarilo stiahnuť znova (vypnuté vlny, bez limitu), ráta môj
+  chýbajúci set medzi setmi roka a hlási `exact: false`, takže čip roka aj
+  súhrn vlny ostanú s ≈.
 
 **Vlastné kategórie** (`services/categories.py`):
 
@@ -765,8 +806,10 @@ Podrobnosti:
   súčtov je nenápadný riadok „N figúrok zo sérií je vo Figúrkach“
   s odkazom Otvoriť Figúrky (`FacetsOut.hidden_figures`); keď Zbierka
   nenašla nič a filter by trafil figúrky, ten istý riadok je v prázdnom
-  stave. Bežný filter (stav, umiestnenie…), ktorý niečo ukazuje, figúrky
-  nehlási. Kým sa hľadanie spresňuje a nové počty ešte neprišli, riadok
+  stave. Filter Umiestnenie či Krabica, ktorý figúrky skryl, ich hlási aj
+  pri neprázdnom výsledku (v krabici 3 sú sety aj figúrky). Iný bežný
+  filter (stav, téma…), ktorý niečo ukazuje, figúrky nehlási. Kým sa
+  hľadanie spresňuje alebo mení miesto a nové počty ešte neprišli, riadok
   drží miesto bez starého počtu, aby výsledky neposkakovali. Písmo 14 px
   (`text-body-medium`). Starý odkaz s filtrom série vedie do
   Figúrok, uložený pohľad s filtrom figúrok je označený a po kliknutí to
@@ -828,6 +871,12 @@ Podrobnosti:
   stav, príznaky, kategória).
 - Úprava kusu sa počas ukladania nedá zavrieť a uloží sa na kus, pre ktorý
   sa začala; výber kategórií hlási načítanie aj chybu so „Skúsiť znova“.
+  Keď server úpravu neuloží, dialóg ostane otvorený so zadanými poľami
+  a dá sa uložiť znova; kategórie, ktoré sa už zapísali, sa druhýkrát
+  neposielajú a dialóg povie, že ostali uložené.
+  Keď server úpravu neuloží, dialóg ostane otvorený so zadanými poľami
+  a dá sa uložiť znova; kategórie, ktoré sa už zapísali, sa druhýkrát
+  neposielajú a dialóg povie, že ostali uložené.
 
 **Figúrky** (`/figurky`):
 
@@ -856,11 +905,17 @@ cieľová a trhová cena a vzdialenosť od cieľa
 market|target|name|theme|added&dir=&q=&reached=&retired=&no_price=`),
 predvolene najbližšie k cieľu navrch, prázdne hodnoty na konci. „Kúpil som“ presunie položku do zbierky, bez hľadania.
 Z Chcem ju vyradí server, rovnako ako každé iné pridanie kusu (Pridať set
-číslom aj skenom, Mám ju, Mám všetky, Ďalší kus, import): porovnáva sa
+číslom aj skenom, Mám ju, Mám všetky, Ďalší kus, import, určenie figúrky
+z rozbaleného sáčku): porovnáva sa
 katalógové číslo, vyraďuje vlastnený aj rezervovaný kus, predaný nie
 (dodatočne zapísaný predaj neznamená, že set už nechcem). `POST /wishlist`
 berie `created_at`, aby Späť vrátil položku na jej pôvodné miesto;
-rovnako ju s pôvodným dátumom obnoví vrátenie importu.
+rovnako ju s pôvodným dátumom obnoví vrátenie importu. Import položky
+Chcem z importov (aj zo staršieho) nevyraďuje; náhľad pri vlastnenom
+riadku sľubuje vyradenie len pri ručne pridanej položke, pri položke
+z importu povie, že ostane. Pridanie a odobratie na stránke Chcem
+obnoví aj súhrn, takže odznak Chcem v ponuke hneď ukáže nový počet;
+zoznam sa po každej zmene, aj po kúpe, načíta raz.
 
 **Nastavenia** (`/nastavenia`):
 
@@ -949,7 +1004,8 @@ Pravidlá API:
   - skupina sa zadáva opakovaním parametra (`?theme=a&theme=b`);
   - hodnota „nič“ je `__none__`;
   - `sets_only` je rozsah sekcie Zbierka, nie filter: vyradí figúrky zo
-    sérií (`kind_of`) aj z ponuky volieb (`in_section`);
+    sérií (`kind_of`) aj z ponuky volieb (`in_section`), okrem Umiestnenia
+    a Krabice: miesto len s figúrkami ostane v ponuke s nulou setov;
   - počet pri voľbe ráta s ostatnými skupinami, nie s vlastnou. Voľba,
     po ktorej by nič neostalo, zošedne, ale ostane.
 - **`Literal` na číselnom query parametri nefunguje**, lebo hodnota príde

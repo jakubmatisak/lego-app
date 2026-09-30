@@ -436,7 +436,8 @@ def test_missing_settings_table_after_upgrade_only_warns(tmp_path, clock, caplog
 def _old_backups(tmp_path: Path) -> tuple[list[str], list[str]]:
     folder = tmp_path / "backups"
     folder.mkdir()
-    old = [f"lego-2026010{d}-120000-{OLD}.db" for d in range(1, 7)]
+    # Z posledných 90 dní (hodiny ukazujú 2026-09-30), inak by ich zmazal vek, nie počet.
+    old = [f"lego-2026090{d}-120000-{OLD}.db" for d in range(1, 7)]
     foreign = [
         "poznamka.txt",
         "lego-rucna-kopia.db",
@@ -471,8 +472,8 @@ def test_rotation_counts_backups_with_and_without_version(tmp_path, clock):
     _stamp_version(db, PREV)
     folder = tmp_path / "backups"
     folder.mkdir()
-    without = [f"lego-2026010{d}-120000-{OLD}.db" for d in (1, 3, 5)]
-    with_version = [f"lego-2026010{d}-120000-v0.{d}.0-{OLD}.db" for d in (2, 4, 6)]
+    without = [f"lego-2026090{d}-120000-{OLD}.db" for d in (1, 3, 5)]
+    with_version = [f"lego-2026090{d}-120000-v0.{d}.0-{OLD}.db" for d in (2, 4, 6)]
     for name in without + with_version:
         (folder / name).write_bytes(b"x")
     (folder / "poznamka.txt").write_bytes(b"x")
@@ -494,6 +495,142 @@ def test_failed_upgrade_deletes_no_backup(tmp_path, clock):
         db_backup.upgrade_with_backup(_url(db), _config(), _broken)
 
     assert _backups(db) == sorted([f"lego-20260930-080001-{OLD}.db", *old, *foreign])
+
+
+# --- najviac 90 dní ------------------------------------------------------------
+
+
+def _dated(tmp_path: Path, *stamps: str, label: str = OLD) -> list[str]:
+    """Zálohy s daným časom v mene (RRRRMMDD-HHMMSS)."""
+    folder = tmp_path / "backups"
+    folder.mkdir(exist_ok=True)
+    names = [f"lego-{stamp}-{label}.db" for stamp in stamps]
+    for name in names:
+        (folder / name).write_bytes(b"x")
+    return names
+
+
+#: Hodiny v teste ukazujú 2026-09-30 08:00, hranica 90 dní je 2026-07-02.
+TOO_OLD = ("20250101-120000", "20260701-080000")
+YOUNG = "20260703-080000"
+
+
+def test_start_without_backup_deletes_backups_older_than_90_days(tmp_path, clock):
+    """Aj štart, ktorý nič nezálohuje, zmaže zálohy staršie než 90 dní.
+
+    Keď nová verzia dlho nevyjde, zálohy s údajmi zmazaných účtov by inak
+    ostali natrvalo. Mladšie zálohy a cudzie súbory ostanú.
+    """
+    db = tmp_path / "lego.db"
+    _make_db(db, _head())
+    _stamp_version(db, NEW)
+    old = _dated(tmp_path, *TOO_OLD) + _dated(tmp_path, "20250601-120000", label=f"v{PREV}-{OLD}")
+    (young,) = _dated(tmp_path, YOUNG)
+    foreign = [
+        "poznamka.txt",
+        "lego-rucna-kopia.db",
+        f"ina-20250101-120000-{OLD}.db",
+        f"lego-20250101-120000-{OLD}.db.bak",
+    ]
+    for name in foreign:
+        (tmp_path / "backups" / name).write_bytes(b"x")
+
+    saved = db_backup.upgrade_with_backup(_url(db), _config(), lambda: None, version=NEW)
+
+    assert saved is None
+    assert old, "test potrebuje staré zálohy"
+    assert _backups(db) == sorted([young, *foreign])
+
+
+def test_start_with_backup_deletes_old_ones_but_keeps_the_new_one(tmp_path, clock):
+    db = tmp_path / "lego.db"
+    _make_db(db, OLD)
+    _dated(tmp_path, *TOO_OLD)
+    (young,) = _dated(tmp_path, YOUNG)
+
+    saved = db_backup.upgrade_with_backup(_url(db), _config(), lambda: None)
+
+    assert saved is not None
+    assert _backups(db) == sorted([saved.name, young])
+
+
+def test_failed_start_deletes_no_backup_even_old_one(tmp_path, clock):
+    """Kým štart padá, nemaže sa nič, ani záloha staršia než 90 dní."""
+    db = tmp_path / "lego.db"
+    _make_db(db, OLD)
+    old = _dated(tmp_path, *TOO_OLD)
+
+    with pytest.raises(RuntimeError):
+        db_backup.upgrade_with_backup(_url(db), _config(), _broken)
+
+    assert set(old) <= set(_backups(db))
+
+
+def test_old_backup_returned_by_this_start_is_kept(tmp_path, clock, monkeypatch):
+    """Štart zlyhal pred vyše 90 dňami a databáza sa odvtedy nezmenila.
+
+    Úspešný štart vráti zálohu spred toho zlyhania; tá je stav pred
+    aktualizáciou, ktorá práve prebehla, a zmazať sa nesmie.
+    """
+    db = tmp_path / "lego.db"
+    _make_db(db, OLD)
+    monkeypatch.setattr(_Clock, "start", datetime(2026, 6, 1, 8, 0, 0))
+    with pytest.raises(RuntimeError):
+        db_backup.upgrade_with_backup(_url(db), _config(), _broken)
+    monkeypatch.setattr(_Clock, "start", datetime(2026, 9, 30, 8, 0, 0))
+
+    saved = db_backup.upgrade_with_backup(_url(db), _config(), lambda: None)
+
+    assert saved is not None
+    assert saved.name.startswith("lego-20260601-")
+    assert _backups(db) == [saved.name]
+
+
+def test_backup_of_failure_marker_is_kept_regardless_of_age(tmp_path, clock, monkeypatch):
+    """Značka o zlyhaní, ktorá ostala (nešla zmazať), chráni svoju zálohu pred vekom."""
+    db = tmp_path / "lego.db"
+    _make_db(db, _head())
+    _stamp_version(db, NEW)
+    marked, other = _dated(tmp_path, *TOO_OLD)
+    db_backup.failure_marker(db).write_text(
+        json.dumps({"backup": marked, "revision": OLD, "fingerprint": {}}), encoding="utf-8"
+    )
+    monkeypatch.setattr(db_backup, "_forget_failure", lambda db_path: None)
+
+    db_backup.upgrade_with_backup(_url(db), _config(), lambda: None, version=NEW)
+
+    assert _backups(db) == [marked]
+
+
+def test_deleted_backup_takes_its_journal_files_along(tmp_path, clock):
+    """Databáza odložená pri návrate zálohy môže mať vedľa seba žurnál; zmizne s ňou.
+
+    Cudzí žurnál (k súboru, ktorý nie je záloha) ostane.
+    """
+    db = tmp_path / "lego.db"
+    _make_db(db, _head())
+    _stamp_version(db, NEW)
+    (aside,) = _dated(tmp_path, TOO_OLD[0], label="pred-obnovou")
+    folder = tmp_path / "backups"
+    for suffix in ("journal", "wal", "shm"):
+        (folder / f"{aside}-{suffix}").write_bytes(b"x")
+    (folder / "poznamka.db-journal").write_bytes(b"x")
+
+    db_backup.upgrade_with_backup(_url(db), _config(), lambda: None, version=NEW)
+
+    assert _backups(db) == ["poznamka.db-journal"]
+
+
+def test_count_rotation_takes_journal_files_along_too(tmp_path, clock):
+    db = tmp_path / "lego.db"
+    _make_db(db, OLD)
+    old, _foreign = _old_backups(tmp_path)
+    oldest = tmp_path / "backups" / f"{old[0]}-journal"
+    oldest.write_bytes(b"x")
+
+    db_backup.upgrade_with_backup(_url(db), _config(), lambda: None)
+
+    assert not oldest.exists()
 
 
 def test_repeated_failed_upgrade_keeps_backup_from_before_update(tmp_path, clock, caplog):
@@ -679,6 +816,23 @@ def test_failure_message_explains_restore_with_journal(tmp_path, caplog):
         assert leftover in caplog.text
 
 
+def test_failure_message_names_restore_command(tmp_path, caplog):
+    """Log po páde povie aj príkaz, ktorý zálohu vráti bez ručného mazania žurnálu."""
+    db = tmp_path / "lego.db"
+    _make_db(db, OLD)
+
+    with (
+        caplog.at_level(logging.ERROR, logger="lego_api.services.db_backup"),
+        pytest.raises(RuntimeError),
+    ):
+        db_backup.upgrade_with_backup(_url(db), _config(), _broken)
+
+    (name,) = _backups(db)
+    backup = tmp_path / "backups" / name
+    assert f"python -m lego_api.cli restore-backup {backup}" in caplog.text
+    assert "docker compose run --rm app python -m lego_api.cli restore-backup" in caplog.text
+
+
 def test_upgrade_runs_after_backup(tmp_path):
     db = tmp_path / "lego.db"
     _make_db(db, OLD)
@@ -837,3 +991,20 @@ async def test_startup_backs_up_when_app_version_changes(tmp_path, settings, mon
     ((name,),) = seen
     assert re.fullmatch(rf"lego-\d{{8}}-\d{{6}}-v{re.escape(PREV)}-{_head()}\.db", name), name
     assert _version_in(db) == NEW
+
+
+async def test_startup_deletes_backups_older_than_90_days(tmp_path, settings, monkeypatch):
+    """Štart appky bez novej verzie a bez migrácie zmaže staré zálohy (skutočné hodiny)."""
+    import lego_api
+    from lego_api import main
+
+    db = tmp_path / "lego.db"
+    _make_db(db, _head())
+    _stamp_version(db, lego_api.__version__)
+    (old,) = _dated(tmp_path, "20200101-120000", label=f"v{PREV}-{OLD}")
+    monkeypatch.setattr(settings, "database_url", _url(db))
+    monkeypatch.setattr(command, "upgrade", lambda config, rev: None)
+
+    await main._migrate()
+
+    assert old not in _backups(db)

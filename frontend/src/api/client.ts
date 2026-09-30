@@ -28,8 +28,12 @@ export function onSessionExpired (handler: () => void): void {
   onSessionLost = handler
 }
 
-/** Obnovu spúšťame naraz len raz, aj keď zlyhá viac požiadaviek súčasne. */
-async function refreshAccessToken (): Promise<boolean> {
+/**
+ * Nový prístupový token z obnovovacieho cookie. Obnovu spúšťame naraz len
+ * raz, aj keď zlyhá viac požiadaviek súčasne alebo sa stránka práve načíta:
+ * každá obnova vymení cookie a súbežná so starým by dostala len prístup.
+ */
+export async function refreshSession (): Promise<boolean> {
   if (!refreshing) {
     refreshing = (async () => {
       try {
@@ -58,14 +62,26 @@ async function refreshAccessToken (): Promise<boolean> {
 
 const NO_RETRY = ['/auth/login', '/auth/register', '/auth/refresh']
 
+/**
+ * Kópie odosielaných požiadaviek s telom podľa `id` z openapi-fetch.
+ * Odoslaním sa telo minie a po 401 by sa už nedalo zopakovať (TypeError),
+ * napríklad uloženie hneď po zmene hesla. Kópia sa preto robí vopred.
+ */
+const retryCopies = new Map<string, Request>()
+
 const authMiddleware: Middleware = {
-  async onRequest ({ request }) {
+  async onRequest ({ request, id }) {
     if (accessToken) {
       request.headers.set('Authorization', `Bearer ${accessToken}`)
     }
+    if (request.body !== null) {
+      retryCopies.set(id, request.clone())
+    }
     return request
   },
-  async onResponse ({ request, response }) {
+  async onResponse ({ request, response, id }) {
+    const copy = retryCopies.get(id)
+    retryCopies.delete(id)
     if (response.status !== 401) {
       return response
     }
@@ -73,16 +89,19 @@ const authMiddleware: Middleware = {
       return response
     }
 
-    const ok = await refreshAccessToken()
+    const ok = await refreshSession()
     if (!ok) {
       accessToken = null
       onSessionLost?.()
       return response
     }
 
-    const retried = request.clone()
+    const retried = copy ?? request.clone()
     retried.headers.set('Authorization', `Bearer ${accessToken}`)
     return fetch(retried)
+  },
+  onError ({ id }) {
+    retryCopies.delete(id)
   },
 }
 

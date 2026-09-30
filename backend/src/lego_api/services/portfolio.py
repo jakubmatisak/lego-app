@@ -456,9 +456,10 @@ def breakdown(valued: list[ValuedItem], by: str, today: date | None = None) -> l
     """Výkonnosť vlastnených kusov podľa témy, podtémy alebo zoznamu.
 
     Kusy bez trhovej ceny sa do hodnoty nezapočítajú a skupina s nimi
-    nehlási percento, rovnako ako karta setu, aby nevyšlo −100 %. Keď cenu
-    nemá ani jeden kus skupiny, hodnota aj zisk sú None (pomlčka, nie 0 €)
-    a skupina ide na koniec.
+    nehlási percento, rovnako ako karta setu, aby nevyšlo −100 %. Zisk je
+    z ocenených kusov voči ich vkladu, rovnako ako ``summarize`` a súčty
+    výberu; vklad skupiny ostáva celý. Keď cenu nemá ani jeden kus skupiny,
+    hodnota aj zisk sú None (pomlčka, nie 0 €) a skupina ide na koniec.
     """
     groups: dict[str, list[ValuedItem]] = defaultdict(list)
     for v in valued:
@@ -478,7 +479,9 @@ def breakdown(valued: list[ValuedItem], by: str, today: date | None = None) -> l
         priced = [v for v in members if v.price_source != "missing"]
         missing = len(members) - len(priced)
         value = sum((v.market_value for v in priced), ZERO) if priced else None
-        unrealized = value - invested if value is not None else None
+        # Kus bez ceny by zisk stiahol o celú svoju kúpnu cenu.
+        priced_invested = sum((v.purchase for v in priced), ZERO)
+        unrealized = value - priced_invested if value is not None else None
         cagr, sample = collection_cagr(members, today)
         rows.append(
             {

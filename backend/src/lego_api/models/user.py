@@ -28,6 +28,9 @@ class User(Base):
     #: Kedy a ktorú verziu zásad ochrany súkromia si používateľ prečítal.
     privacy_accepted_at: Mapped[datetime | None] = mapped_column(TimestampTZ, default=None)
     privacy_version: Mapped[str | None] = mapped_column(String(20), default=None)
+    #: Posledná zmena hesla. Prístupový token vydaný skôr (``iat``) neplatí,
+    #: takže iné zariadenia stratia prístup hneď, nie až po 15 minútach.
+    password_changed_at: Mapped[datetime | None] = mapped_column(TimestampTZ, default=None)
 
     # Vlastné kľúče k cudzím službám, zašifrované (services/keys.py).
     # Každý používateľ má svoje, a teda aj vlastnú dennú kvótu volaní.
@@ -54,12 +57,15 @@ class RefreshToken(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(TimestampTZ)
+    #: Kedy ho obnova vymenila. Vymenený token ostáva do vypršania (bez
+    #: ``user_agent``): po ochrannej lehote prezradí ukradnuté cookie.
     revoked_at: Mapped[datetime | None] = mapped_column(TimestampTZ, default=None)
     created_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow)
     user_agent: Mapped[str | None] = mapped_column(String(255), default=None)
     #: Zapamätané prihlásenie: cookie na 30 dní, inak do zatvorenia prehliadača.
     #: Obnova tokenu režim zdedí. Tokeny spred tohto stĺpca sú bez zapamätania:
     #: kĺzavých 30 dní by inak ostalo trvalých naveky, hoci ich nikto nezvolil.
+    #: Ich platnosť z 1.0.0 (30 dní) skrátila migrácia 9332cb64e9a6 na 12 h.
     remember: Mapped[bool] = mapped_column(default=False, server_default="0")
 
     user: Mapped[User] = relationship(back_populates="refresh_tokens")

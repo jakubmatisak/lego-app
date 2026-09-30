@@ -176,6 +176,7 @@ async def export_account(session: AsyncSession, user: User, settings: Settings) 
             "locale": user.locale,
             "created_at": _plain(user.created_at),
             "privacy_accepted_at": _plain(user.privacy_accepted_at),
+            "password_changed_at": _plain(user.password_changed_at),
             "preferences": user.preferences or {},
             "fetch_settings": user.fetch_settings or {},
         },

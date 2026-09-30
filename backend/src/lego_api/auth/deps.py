@@ -1,5 +1,6 @@
 """Závislosti na overenie prihláseného používateľa."""
 
+from datetime import UTC
 from typing import Annotated
 
 import jwt
@@ -42,12 +43,34 @@ async def current_user(
     user = await session.get(User, int(payload["sub"]))
     if user is None or not user.is_active:
         raise _UNAUTHORIZED
+    if _issued_before_password_change(payload, user):
+        raise _UNAUTHORIZED
     # Volania cudzích služieb v tejto požiadavke sa zapíšu na tento účet;
     # účel nesie každé volanie samo (schopnosť).
     api_log.set_user(user.id)
     # Čo z údajov cudzích služieb smie tento účet vidieť (lego_api.visibility).
     visibility.use(await load_visibility(session, user, keys_of(user, get_settings())))
     return user
+
+
+def _issued_before_password_change(payload: dict, user: User) -> bool:
+    """Token spred zmeny hesla neplatí: iné zariadenia stratia prístup hneď.
+
+    ``iat`` je v celých sekundách, preto aj čas zmeny. Inak by token, ktorý
+    tento prehliadač dostal hneď po zmene (v tej istej sekunde), neprešiel.
+    Prehliadač, ktorý heslo zmenil, dostane 401 a klient si token obnoví.
+    """
+    changed = user.password_changed_at
+    if changed is None:
+        return False
+    if changed.tzinfo is None:
+        # SQLite vráti čas bez zóny, uložený je v UTC.
+        changed = changed.replace(tzinfo=UTC)
+    try:
+        issued = int(payload.get("iat", 0))
+    except (TypeError, ValueError):
+        return True
+    return issued < int(changed.timestamp())
 
 
 CurrentUser = Annotated[User, Depends(current_user)]

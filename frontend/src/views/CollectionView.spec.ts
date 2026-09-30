@@ -215,6 +215,56 @@ describe('Zbierka: riadok o figúrkach zo sérií len vtedy, keď na tom zálež
     }
   })
 
+  it('krabica, v ktorej sú aj figúrky, ich hlási aj pri neprázdnom výsledku', async () => {
+    // „Čo je v krabici 3“: sety ukáže Zbierka, o figúrkach povie riadok.
+    query = { box: 'Povala · krabica 3' }
+    grouped = [TITANIC]
+    facets = facetsWith(2, 1)
+    const wrapper = await mountCollection()
+
+    const lines = wrapper.findAllComponents(FiguresElsewhere)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]!.props('pending')).toBe(false)
+    expect(lines[0]!.text()).toContain('2 figúrky zo sérií sú vo Figúrkach')
+  })
+
+  it('umiestnenie rovnako, iný bežný filter vedľa neho nevadí', async () => {
+    query = { location: 'Povala', condition: 'new_sealed' }
+    grouped = [TITANIC]
+    facets = facetsWith(1, 1)
+    const wrapper = await mountCollection()
+
+    expect(wrapper.findComponent(FiguresElsewhere).text()).toContain('1 figúrka zo série je vo Figúrkach')
+  })
+
+  it('zmena krabice: riadok drží miesto, kým neprídu jej počty; bez krabice zmizne hneď', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      query = { box: 'Povala · krabica 3' }
+      grouped = [TITANIC]
+      facets = facetsWith(2, 1)
+      const wrapper = await mountCollection()
+      const store = useFilterStore(pinia)
+
+      facets = facetsWith(5, 1)
+      store.filters.box = ['Povala · krabica 4']
+      await flushPromises()
+      expect(wrapper.findComponent(FiguresElsewhere).props('pending')).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(300)
+      await flushPromises()
+      const line = wrapper.findComponent(FiguresElsewhere)
+      expect(line.props('pending')).toBe(false)
+      expect(line.text()).toContain('5 figúrok zo sérií je vo Figúrkach')
+
+      store.filters.box = []
+      await flushPromises()
+      expect(wrapper.findComponent(FiguresElsewhere).exists()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('po anglicky', async () => {
     i18n.global.locale.value = 'en'
     query = { q: 'shrek' }

@@ -417,7 +417,8 @@
     "saveFailed": "Úpravu sa nepodarilo uložiť.",
     "removeFailed": "Kus sa nepodarilo zmazať.",
     "categories": "Kategórie setu",
-    "categoriesHint": "Kategória patrí setu, nie kusu: zmena platí pre všetky jeho kusy. Zapíše sa pri uložení."
+    "categoriesHint": "Kategória patrí setu, nie kusu: zmena platí pre všetky jeho kusy. Zapíše sa pri uložení.",
+    "categoriesKept": "Kategórie setu sa už uložili, úprava kusu nie. Skús ju uložiť znova."
   },
   "condition": {
     "new_sealed": "Nové v krabici",

@@ -227,12 +227,15 @@ async def classify(session: AsyncSession, user_id: int, batch: ImportBatch) -> N
         .scalars()
         .all()
     )
-    wishes = {
-        w.catalog_num
-        for w in (
-            await session.execute(select(WishlistItem).where(WishlistItem.user_id == user_id))
-        ).scalars()
-    }
+    wish_rows = list(
+        (await session.execute(select(WishlistItem).where(WishlistItem.user_id == user_id)))
+        .scalars()
+        .all()
+    )
+    wishes = {w.catalog_num for w in wish_rows}
+    # Potvrdenie vyradí z Chcem len položky pridané inak než importom
+    # (`drop_bought(..., keep_imported=True)`), náhľad sľubuje to isté.
+    removable = {w.catalog_num for w in wish_rows if w.import_batch_id is None}
     owned_nums = {i.catalog_num for i in items if i.status != ItemStatus.SOLD}
     wished_in_file: set[str] = set()
 
@@ -282,7 +285,11 @@ async def classify(session: AsyncSession, user_id: int, batch: ImportBatch) -> N
                         "Preskočí sa, ak ho nezaškrtneš."
                     )
                 if num in wishes and row["ownership"] == OWNED:
-                    checks.append("Je v Chcem, po importe sa odtiaľ vyradí.")
+                    checks.append(
+                        "Je v Chcem, po importe sa odtiaľ vyradí."
+                        if num in removable
+                        else "Je v Chcem z predošlého importu, ostane tam."
+                    )
         row["check_warnings"] = checks
         row["check_errors"] = problems
         if row["errors"] or problems:

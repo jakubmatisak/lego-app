@@ -174,6 +174,16 @@ def test_privacy_version_covers_remembered_login() -> None:
     assert Settings().privacy_version >= "2026-09-30.4"
 
 
+def test_privacy_version_covers_backup_age_limit() -> None:
+    """Zásady od 2026-09-30.5 hovoria, že záloha pred aktualizáciou ostane najviac 90 dní.
+
+    Predtým ostávalo 5 posledných záloh bez časového limitu.
+    """
+    from lego_api.config import Settings
+
+    assert Settings().privacy_version >= "2026-09-30.5"
+
+
 async def test_operator_contact_is_public_for_the_privacy_page(client: AsyncClient) -> None:
     """Zásady musia povedať, kto je prevádzkovateľ; vyplní to správca."""
     admin = await _register(client, "spravca@x.sk")

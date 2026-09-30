@@ -12,6 +12,11 @@
    * Uloženie čaká na kategórie, preto sa dialóg počas neho nedá zavrieť
    * a udalosť nesie id kusu, pre ktorý sa začalo: rodič by inak mohol
    * zapísať úpravu na kus, ktorý je v dialógu medzitým.
+   *
+   * Udalosť nesie aj `done`: rodič ním povie výsledok. Pri chybe dialóg
+   * ostane otvorený so zadanými úpravami a dá sa uložiť znova; kategórie,
+   * ktoré sa už zapísali, sa druhýkrát neposielajú a dialóg povie, že
+   * ostali uložené (Zrušiť ich nevráti). Zavrieť po úspechu je vec rodiča.
    */
   import { computed, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -28,7 +33,7 @@
   const open = defineModel<boolean>({ required: true })
   const props = defineProps<{ item: ValuedItem | null, locations?: string[] }>()
   const emit = defineEmits<{
-    'save': [id: number, payload: Record<string, unknown>]
+    'save': [id: number, payload: Record<string, unknown>, done: (ok: boolean) => void]
     'remove': [id: number]
     /** Zmenili sa kategórie setu (výber alebo správca); rodič obnoví ich zobrazenie. */
     'categories-changed': []
@@ -50,6 +55,8 @@
   const note = ref('')
   const saving = ref(false)
   const confirmRemove = ref(false)
+  /** Úprava kusu sa neuložila, kategórie setu áno. */
+  const categoriesKept = ref(false)
 
   /** Varianty ceny dávajú zmysel len pri minifigúrke. */
   const isMinifig = computed(() => props.item?.catalog.kind === 'minifig')
@@ -72,6 +79,7 @@
     note.value = item.note ?? ''
     saving.value = false
     confirmRemove.value = false
+    categoriesKept.value = false
     categories.reset()
     // Chybu načítania ukáže výber sám (so Skúsiť znova), úprava kusu ide ďalej.
     categories.load(item.catalog_num)
@@ -81,15 +89,20 @@
     open.value = false
   }
 
-  /** Zapíše zmenený výber kategórií setu; bez zmeny nejde von nič. */
-  async function saveCategories (num: string): Promise<void> {
-    if (!categories.dirty.value) return
+  /** Zapíše zmenený výber kategórií setu; bez zmeny nejde von nič. Vráti, či sa zapísal. */
+  async function saveCategories (num: string): Promise<boolean> {
+    if (!categories.dirty.value) return false
+    let written = false
+    const before = categories.changes.value.length
     try {
-      await categories.apply(num)
+      written = (await categories.apply(num)) > 0
     } catch (error_) {
+      // Časť kategórií sa mohla zapísať aj pri chybe: zmien potom ubudlo.
+      written = categories.changes.value.length < before
       notify.error(error_, t('notice.categoriesFailed'))
     }
     emit('categories-changed')
+    return written
   }
 
   async function save (): Promise<void> {
@@ -110,8 +123,13 @@
       purchase_place: (place.value ?? '').trim() || null,
       note: note.value.trim() || null,
     }
-    await saveCategories(num)
-    emit('save', id, payload)
+    const written = await saveCategories(num)
+    emit('save', id, payload, ok => {
+      if (ok) return
+      // Chybu ohlásil rodič; úpravy ostávajú v poliach.
+      saving.value = false
+      if (written) categoriesKept.value = true
+    })
   }
 
   function remove (): void {
@@ -232,6 +250,16 @@
           title-class="text-title-small"
           @managed="emit('categories-changed')"
         />
+
+        <!-- Kategórie sa zapisujú pred kusom; po chybe kusu ostali uložené. -->
+        <v-alert
+          v-if="categoriesKept"
+          density="comfortable"
+          type="info"
+          variant="tonal"
+        >
+          {{ t('piece.categoriesKept') }}
+        </v-alert>
 
         <v-alert
           v-if="confirmRemove"

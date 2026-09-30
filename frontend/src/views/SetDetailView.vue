@@ -141,8 +141,17 @@
     editOpen.value = true
   }
 
-  /** `id` posiela dialóg: kus, pre ktorý sa ukladanie začalo, nie ten, čo je v ňom teraz. */
-  async function savePiece (id: number, payload: Record<string, unknown>): Promise<void> {
+  /**
+   * `id` posiela dialóg: kus, pre ktorý sa ukladanie začalo, nie ten, čo je v ňom teraz.
+   * `done` mu povie výsledok. Pri chybe dialóg ostane otvorený so zadanými
+   * úpravami, inak by ich po chybe servera či výpadku spojenia bolo treba
+   * písať znova.
+   */
+  async function savePiece (
+    id: number,
+    payload: Record<string, unknown>,
+    done?: (ok: boolean) => void,
+  ): Promise<void> {
     const { error: err } = await api.PATCH('/items/{item_id}', {
       params: { path: { item_id: id } },
       body: payload as never,
@@ -150,11 +159,13 @@
     // Chyba ide do oznámenia; stránková chyba je len pre nenačítaný set.
     if (err) {
       notify.error(err, t('piece.saveFailed'))
-    } else {
-      notify.success(t('notice.pieceSaved'))
+      done?.(false)
+      return
     }
+    notify.success(t('notice.pieceSaved'))
     // Dialóg iného kusu, otvorený medzitým, ostane otvorený.
     if (editTarget.value?.id === id) editOpen.value = false
+    done?.(true)
     await loadPieces()
     collection.refreshAll()
   }
@@ -343,6 +354,12 @@
 
   /** Stránka série: kusy sú jej členovia, séria sama cenu nemá. Aj nezačatá. */
   const isSeriesPage = computed(() => isSeriesDetail(catalog.value, pieces.value))
+
+  /**
+   * Figúrka zo série (aj blind-box) alebo séria sama: patrí do Figúrok.
+   * Zbierka ju neukazuje, takže štítok odtiaľto do Zbierky neodkazuje.
+   */
+  const inFigures = computed(() => Boolean(catalog.value?.parent_num) || isSeriesPage.value)
 
   /** Hromadná úprava vlastnených kusov série; rozsah pre server je séria. */
   const selection = createSelection({ items: () => owned.value.map(p => p.id) })
@@ -595,14 +612,17 @@
             </div>
 
             <div v-if="catalog.tags?.length" class="d-flex flex-wrap ga-1">
-              <!-- Štítok vedie do Zbierky vyfiltrovanej podľa neho. -->
+              <!--
+                Štítok setu vedie do Zbierky vyfiltrovanej podľa neho. Figúrka
+                zo série v Zbierke nie je, tam by odkaz ukázal zoznam bez nej.
+              -->
               <v-chip
                 v-for="tag in catalog.tags"
                 :key="tag"
                 label
                 prepend-icon="mdi-tag-outline"
                 size="small"
-                :to="{ name: 'collection', query: { tag } }"
+                :to="inFigures ? undefined : { name: 'collection', query: { tag } }"
                 variant="tonal"
               >{{ tag }}</v-chip>
             </div>

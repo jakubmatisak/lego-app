@@ -106,7 +106,8 @@ Excelová šablóna má navyše:
 
    Popri stave môže mať riadok aj upozornenia, ktoré ho neblokujú:
    - holé číslo zberateľskej série sa importuje ako nerozbalený sáčok;
-   - set je v Chcem a importom sa odtiaľ vyradí;
+   - set je v Chcem a importom sa odtiaľ vyradí; položka Chcem
+     z predošlého importu ostane (`keep_imported`) a upozornenie to povie;
    - želaný set už v zbierke je.
 4. **Potvrdenie.** `POST /imports/{id}/commit` s čiarovými číslami
    duplicít, ktoré sa majú importovať aj tak. Všetko prebehne v jednej

@@ -417,7 +417,8 @@
     "saveFailed": "Could not save the changes.",
     "removeFailed": "Could not delete the piece.",
     "categories": "Set categories",
-    "categoriesHint": "Categories belong to the set, not the piece: a change applies to all its pieces. Saved with the piece."
+    "categoriesHint": "Categories belong to the set, not the piece: a change applies to all its pieces. Saved with the piece.",
+    "categoriesKept": "The set's categories were saved, the piece changes were not. Try saving again."
   },
   "condition": {
     "new_sealed": "New, sealed",

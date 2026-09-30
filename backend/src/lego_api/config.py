@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     #: Server ho preto stráži sám: po 12 h bez použitia (noc, zabudnutá
     #: karta na cudzom počítači) sa pýta heslo, cez deň obnova stačí.
     refresh_session_hours: int = 12
+    #: Ochranná lehota po výmene obnovovacieho tokenu. Karty obnovené naraz
+    #: pošlú to isté cookie; kto príde do lehoty po výmene, dostane len
+    #: prístupový token (nové cookie už prehliadač má z prvej odpovede).
+    #: Vymenený token po lehote znamená krádež: skončia všetky prihlásenia účtu.
+    refresh_grace_seconds: int = 60
     cookie_secure: bool = False
     cookie_domain: str | None = None
     #: Len východisko pre novú inštaláciu. Správca to prebije v Nastaveniach.
@@ -60,7 +65,7 @@ class Settings(BaseSettings):
     photos_per_item: int = 12
     #: Verzia zásad ochrany súkromia (frontend `/sukromie`). Po zmene textu
     #: zvýšiť; prihlásený používateľ uvidí jednorazové oznámenie.
-    privacy_version: str = "2026-09-30.4"
+    privacy_version: str = "2026-09-30.5"
 
     # Ostatné
     cors_origins: str = "http://localhost:3000,http://localhost:5173"

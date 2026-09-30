@@ -39,6 +39,9 @@ describe('zásady: zálohy pred aktualizáciou', () => {
     expect(body).not.toContain('mení štruktúru databázy')
     expect(body).toContain('5 posledných záloh')
     expect(body).toContain('zmazaného účtu')
+    // Zálohy nemajú ostať natrvalo, ani keď nová verzia dlho nevyjde.
+    expect(body).toContain('staršiu než 90 dní')
+    expect(body).toContain('najdlhšie do prvého štartu appky po 90 dňoch')
   })
 
   it('anglický text povie to isté', async () => {
@@ -50,6 +53,8 @@ describe('zásady: zálohy pred aktualizáciou', () => {
     expect(body).not.toContain('changes the database structure')
     expect(body).toContain('last 5 backups')
     expect(body).toContain('deleted account')
+    expect(body).toContain('older than 90 days')
+    expect(body).toContain('until the first start of the app after 90 days')
   })
 })
 

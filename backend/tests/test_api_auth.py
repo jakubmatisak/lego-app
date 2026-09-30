@@ -90,10 +90,12 @@ async def test_refresh_rotates_the_token(client: AsyncClient) -> None:
     second_cookie = client.cookies.get("lego_refresh")
     assert second_cookie != first_cookie
 
-    # Starý token je zrušený a druhý raz už neprejde.
+    # Starý token je zrušený: v ochrannej lehote dá prístup aj vlastné nové
+    # cookie (test_login_tokens.py), po nej neprejde vôbec.
     client.cookies.set("lego_refresh", first_cookie or "")
     replay = await client.post("/auth/refresh")
-    assert replay.status_code == 401
+    assert replay.status_code == 200
+    assert [c for c in replay.headers.get_list("set-cookie") if "lego_refresh=" in c]
 
 
 async def test_logout_revokes_the_token(client: AsyncClient) -> None:
@@ -308,8 +310,8 @@ async def test_logout_deletes_the_token_on_the_server(client: AsyncClient, sessi
 async def test_password_change_ends_remembered_logins(client: AsyncClient, sessionmaker_) -> None:
     """Kto mení heslo, lebo ho niekto pozná, nechce nechať otvorené iné počítače.
 
-    Ostatné prihlásenia skončia hneď. Tento prehliadač ostane prihlásený, no
-    už bez zapamätania: session cookie do zatvorenia prehliadača.
+    Ostatné prihlásenia skončia hneď. Tento prehliadač ostane prihlásený
+    a zapamätanie si nechá: nové heslo pozná, nie je cieľom ochrany.
     """
     await client.post("/auth/register", json=REGISTER)
     await client.post("/auth/login", json={**LOGIN, "remember": True})
@@ -323,14 +325,14 @@ async def test_password_change_ends_remembered_logins(client: AsyncClient, sessi
         headers=bearer,
     )
     assert changed.status_code == 200, changed.text
-    assert _is_session_cookie(_refresh_cookie(changed))
+    assert f"max-age={THIRTY_DAYS}" in _refresh_cookie(changed)
     tokens = await _tokens(sessionmaker_)
-    assert [t.remember for t in tokens] == [False]
-    assert timedelta(hours=11) < _lifetime(tokens[0]) <= timedelta(hours=12, minutes=1)
+    assert [t.remember for t in tokens] == [True]
+    assert _lifetime(tokens[0]) >= timedelta(days=29, hours=23)
 
     still_here = await client.post("/auth/refresh")
     assert still_here.status_code == 200
-    assert _is_session_cookie(_refresh_cookie(still_here))
+    assert f"max-age={THIRTY_DAYS}" in _refresh_cookie(still_here)
 
     client.cookies.clear()
     client.cookies.set("lego_refresh", elsewhere or "")

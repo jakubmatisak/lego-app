@@ -11,6 +11,7 @@ import respx
 from httpx import AsyncClient
 
 from lego_api import visibility
+from lego_api.capabilities import Cap
 from lego_api.config import Settings
 from lego_api.models import CatalogItem, CatalogKind, CollectionItem, ItemCondition, User
 from lego_api.models.base import utcnow
@@ -19,6 +20,7 @@ from lego_api.providers.base import CatalogMetadata
 from lego_api.providers.brickset import BricksetProvider
 from lego_api.services import themes
 from lego_api.services.catalog import apply_brickset
+from lego_api.services.fetch_policy import CallBlocked
 from lego_api.visibility import BRICKECONOMY, BRICKSET, Visibility
 
 #: getSets theme=Speed Champions year=2025, skrátené.
@@ -591,6 +593,78 @@ async def test_set_newer_than_its_downloaded_wave_still_counts(session) -> None:
     assert [(y.year, y.set_count, y.owned, y.exact) for y in years] == [(2026, 2, 2, True)]
     await themes.wave(session, provider, 1, "Technic", 2026)
     assert provider.wave_calls == 2
+
+
+class BlockedWave(GrowingWave):
+    """Sťahovanie vĺn vypnuté (``brickset.waves``) alebo bez limitu."""
+
+    async def get_wave(self, theme: str, year: int) -> list[CatalogMetadata]:
+        self.wave_calls += 1
+        raise CallBlocked(Cap.BRICKSET_WAVES, "disabled")
+
+
+async def test_stale_wave_that_cannot_be_refreshed_counts_my_new_set(session) -> None:
+    """Stará vlna ostane, lebo nové stiahnutie brána nepustí.
+
+    Rok v Sériách hovorí „≈ 2 z 2“ (môj nový set vo vlne chýba). Otvorený
+    rok nesmie tvrdiť presné „1 z 1“ bez neho: vlna je odhad, počty a sety
+    rátajú aj môj set, rovnako ako roky.
+    """
+    session.add(User(id=1, email="a@x.sk", password_hash="x"))
+    session.add(_item("42210-1", "Technic", 2026))
+    session.add(_item("42299-1", "Technic", 2026))
+    await session.flush()
+    await _own(session, "42210-1", "42299-1")
+    await themes.wave(session, GrowingWave("42210-1"), 1, "Technic", 2026)
+    row = await session.get(ThemeWave, ("Technic", 2026))
+    assert row is not None
+    row.fetched_at = utcnow() - timedelta(days=20)
+    item = await session.get(CatalogItem, "42299-1")
+    assert item is not None
+    facts = item.facts_for(BRICKSET)
+    facts.theme, facts.year, facts.category = "Technic", 2026, "Normal"
+    facts.fetched_at = utcnow()
+    await session.commit()
+
+    provider = BlockedWave()
+    wave = await themes.wave(session, provider, 1, "Technic", 2026)
+    assert provider.wave_calls == 1
+    assert wave is not None
+    assert wave.exact is False
+    assert [(m.catalog.catalog_num, m.owned) for m in wave.members] == [
+        ("42210-1", 1),
+        ("42299-1", 1),
+    ]
+    years = await themes.years(session, 1, YearsBrickset({2026: 30}), "Technic")
+    assert years is not None
+    assert [(y.year, y.set_count, y.owned, y.exact) for y in years] == [
+        (2026, len(wave.members), sum(1 for m in wave.members if m.owned), wave.exact)
+    ]
+
+
+async def test_downloaded_wave_without_my_missing_set_is_exact(session) -> None:
+    await _collection(session)
+    wave = await themes.wave(session, FakeBrickset(), 1, "Speed Champions", 2025)
+    assert wave is not None
+    assert wave.exact is True
+
+
+async def test_api_wave_says_whether_the_counts_are_exact(
+    auth_client: AsyncClient, sessionmaker_
+) -> None:
+    """Router berie počty aj príznak zo služby; vlna je v databáze, von nejde nič."""
+    async with sessionmaker_() as session:
+        session.add(_item("42210-1", "Technic", 2019))
+        session.add(_item("42211-1", "Technic", 2019))
+        _wave(session, "Technic", 2019, "42210-1", "42211-1")
+        await session.commit()
+    for num in ("42210-1", "42211-1"):
+        response = await auth_client.post("/items", json={"catalog_num": num})
+        assert response.status_code == 201, response.text
+    response = await auth_client.get("/themes/wave", params={"theme": "Technic", "year": 2019})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["total"], body["owned"], body["exact"]) == (2, 2, True)
 
 
 async def test_set_without_brickset_data_is_not_dropped_by_rebrickable_year(session) -> None:

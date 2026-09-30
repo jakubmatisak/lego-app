@@ -1,7 +1,7 @@
 import type { ApiKeys, ApiKeysUpdate, ProviderStatus, User } from '@/api/types'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { api, errorMessage, onSessionExpired, setAccessToken } from '@/api/client'
+import { api, errorMessage, onSessionExpired, refreshSession, setAccessToken } from '@/api/client'
 import { reloadTo } from '@/utils/navigation'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -68,13 +68,8 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
     try {
-      const response = await fetch('/api/v1/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-      })
-      if (response.ok) {
-        const data = await response.json() as { access_token: string }
-        setAccessToken(data.access_token)
+      // Tá istá obnova ako pri 401 v klientovi, nech nejdú dve so starým cookie.
+      if (await refreshSession()) {
         await loadMe()
         await loadKeys()
       }
@@ -179,6 +174,12 @@ export const useAuthStore = defineStore('auth', () => {
       return false
     }
     user.value = data
+    if (payload.new_password) {
+      // Server odteraz odmieta prístupové tokeny spred zmeny hesla (ostatné
+      // zariadenia sú odhlásené). Tento prehliadač dostal nové cookie a hneď
+      // si vezme nový token, aby ďalšia požiadavka nešla zbytočne cez 401.
+      await refreshSession()
+    }
     return true
   }
 

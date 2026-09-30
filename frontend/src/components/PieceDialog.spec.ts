@@ -256,6 +256,86 @@ describe('úprava kusu: kým sa ukladá', () => {
   })
 })
 
+describe('úprava kusu: chyba uloženia', () => {
+  type Done = (ok: boolean) => void
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    get.mockReset()
+    put.mockReset()
+    get.mockImplementation(async (path: string) =>
+      path === '/catalog/{num}/categories' ? { data: [category(1, true), category(2, false)] } : { data: [] },
+    )
+    put.mockResolvedValue({ data: [category(1, true), category(2, true)] })
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = null
+    document.body.innerHTML = ''
+  })
+
+  function note (): HTMLTextAreaElement {
+    const found = document.body.querySelector<HTMLTextAreaElement>('textarea')
+    if (!found) {
+      throw new Error('poznámka nie je v dialógu')
+    }
+    return found
+  }
+
+  function saved (dialog: ReturnType<typeof mount>, at: number): [number, Record<string, unknown>, Done] {
+    return (dialog.emitted('save') as [number, Record<string, unknown>, Done][])[at]!
+  }
+
+  it('dialóg ostane s úpravami a dá sa uložiť znova, kategórie sa druhýkrát neposielajú', async () => {
+    const dialog = await openDialog()
+    chip('Kategória 2').click()
+    note().value = 'Chýba nálepka'
+    note().dispatchEvent(new Event('input'))
+    await flushPromises()
+    button('Uložiť').click()
+    await flushPromises()
+
+    const [id, payload, done] = saved(dialog, 0)
+    expect([id, payload.note]).toEqual([7, 'Chýba nálepka'])
+    done(false)
+    await flushPromises()
+
+    expect(dialog.findComponent(VDialog).props('persistent')).toBe(false)
+    expect(button('Zrušiť').hasAttribute('disabled')).toBe(false)
+    expect(note().value).toBe('Chýba nálepka')
+    // Kategórie sa zapísali pred kusom a Zrušiť ich nevráti: dialóg to povie.
+    expect(document.body.textContent).toContain('Kategórie setu sa už uložili, úprava kusu nie.')
+
+    button('Uložiť').click()
+    await flushPromises()
+    expect(dialog.emitted('save')).toHaveLength(2)
+    expect(saved(dialog, 1)[1].note).toBe('Chýba nálepka')
+    expect(put).toHaveBeenCalledTimes(1)
+  })
+
+  it('bez zmeny kategórií o nich chyba nehovorí', async () => {
+    const dialog = await openDialog()
+    button('Uložiť').click()
+    await flushPromises()
+    saved(dialog, 0)[2](false)
+    await flushPromises()
+
+    expect(button('Zrušiť').hasAttribute('disabled')).toBe(false)
+    expect(document.body.textContent).not.toContain('Kategórie setu sa už uložili')
+  })
+
+  it('po úspechu dialóg nič nemení, zavrie ho rodič', async () => {
+    const dialog = await openDialog()
+    button('Uložiť').click()
+    await flushPromises()
+    saved(dialog, 0)[2](true)
+    await flushPromises()
+
+    expect(dialog.findComponent(VDialog).props('persistent')).toBe(true)
+  })
+})
+
 describe('úprava kusu: načítanie kategórií', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

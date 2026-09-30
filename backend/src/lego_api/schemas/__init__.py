@@ -1076,8 +1076,11 @@ class ThemeWaveOut(BaseModel):
     theme: str
     year: int
     fetched_at: datetime
+    #: Sety vlny a moje sety, ktoré v nej chýbajú (ako ``ThemeYearOut``).
     total: int
     owned: int
+    #: Presné, keď vo vlne nechýba môj set; inak odhad (stará vlna).
+    exact: bool
     members: list[CmfMemberOut]
 
 

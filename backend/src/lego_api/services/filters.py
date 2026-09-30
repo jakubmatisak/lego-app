@@ -528,8 +528,13 @@ def facets(valued: list[ValuedItem], f: ItemFilter, ctx: FilterContext) -> dict:
     ]
 
     # Ponuka volieb je z celej sekcie. V Zbierke by inak ostali s nulou
-    # témy či umiestnenia, ktoré majú len figúrky zo sérií.
+    # témy či podtémy, ktoré majú len figúrky zo sérií.
     everything = [v for v in valued if in_section(v, f)]
+    # Umiestnenie a krabica sú miesta v byte, nie vlastnosť setu: krabica
+    # len s figúrkami musí vo filtri ostať (s nulou setov), inak by na
+    # otázku „čo je v krabici 3“ Zbierka mlčala. Koľko figúrok tam je,
+    # povie hidden_figures.
+    places = valued
     # Figúrky zo sérií, ktoré by filter našiel, keby Zbierka nemala rozsah.
     # Prázdna Zbierka po hľadaní figúrky potom povie, že je vo Figúrkach.
     result["hidden_figures"] = (
@@ -571,7 +576,7 @@ def facets(valued: list[ValuedItem], f: ItemFilter, ctx: FilterContext) -> dict:
         Counter(v.item.location or NONE for v in base("location")),
         f.location,
         {NONE: "Bez umiestnenia"},
-        universe=Counter(v.item.location or NONE for v in everything),
+        universe=Counter(v.item.location or NONE for v in places),
     )
     flag_counter: Counter[str] = Counter()
     for v in base("flag"):
@@ -656,7 +661,7 @@ def facets(valued: list[ValuedItem], f: ItemFilter, ctx: FilterContext) -> dict:
         Counter(box_key(v) for v in base("box")),
         f.box,
         {NONE: "Bez krabice"},
-        universe=Counter(box_key(v) for v in everything),
+        universe=Counter(box_key(v) for v in places),
     )
     result["purchase"] = _options(
         Counter(purchase_origin(v) for v in base("purchase")),

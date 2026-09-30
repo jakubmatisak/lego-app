@@ -107,11 +107,38 @@
 
   const reload = useDebounceFn(load, 250)
   watch(() => ({ ...view }), reload, { deep: true })
-  // Chcem mení aj pridanie kusu inde alebo Späť v oznámení; počet v súhrne
-  // (ponuka) sa po nich obnoví a prezradí to.
+
+  /** Súhrn obnovuje zmena z tejto stránky, ktorá zoznam načíta sama. */
+  let ownChange = false
+
+  // Chcem mení aj kúpa (PurchaseDialog obnoví súhrn), pridanie kusu inde
+  // alebo Späť v oznámení; počet v súhrne (ponuka) sa po nich obnoví
+  // a prezradí to. Synchrónne, aby zmena z tejto stránky (`ownChange`)
+  // zoznam nenačítala druhý raz.
   watch(() => collection.summary?.wishlist_count, (now, before) => {
-    if (before !== undefined && now !== before) reload()
-  })
+    if (!ownChange && before !== undefined && now !== before) reload()
+  }, { flush: 'sync' })
+
+  /**
+   * Pridanie či odobratie tu: zoznam sa načíta hneď a súhrn s ním, aby
+   * odznak Chcem v ponuke ukázal nový počet.
+   */
+  async function afterChange (): Promise<void> {
+    ownChange = true
+    const summary = collection.loadDashboard().finally(() => {
+      ownChange = false
+    })
+    await Promise.all([load(), summary])
+  }
+
+  /**
+   * Kúpa z Chcem: súhrn obnoví dialóg a zoznam načíta watch nad počtom
+   * (server kúpený set z Chcem vždy vyradí). Len bez súhrnu, keď watch
+   * zmenu nespozná, sa zoznam načíta tu.
+   */
+  function afterPurchase (): void {
+    if (!collection.summary) void load()
+  }
 
   const filtered = (): boolean => hasWishFilter(view)
 
@@ -135,7 +162,7 @@
     addOpen.value = false
     newNumber.value = ''
     targetPrice.value = ''
-    await load()
+    await afterChange()
   }
 
   async function remove (item: WishlistItem): Promise<void> {
@@ -145,7 +172,7 @@
       return
     }
     notify.success(t('notice.wishRemoved', { name: item.catalog.name }))
-    await load()
+    await afterChange()
   }
 
   onMounted(load)
@@ -389,7 +416,7 @@
       v-model="buyOpen"
       :catalog="buying?.catalog ?? null"
       :wishlist-id="buying?.id ?? null"
-      @saved="load"
+      @saved="afterPurchase"
     />
   </div>
 </template>
