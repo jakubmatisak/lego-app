@@ -393,7 +393,7 @@ def test_new_version_backup_failure_prevents_upgrade(tmp_path):
     db = tmp_path / "lego.db"
     _make_db(db, _head())
     _stamp_version(db, PREV)
-    (tmp_path / "backups").write_text("nie som priečinok")
+    (tmp_path / "backups").write_text("nie som priečinok", encoding="utf-8")
     calls: list[str] = []
 
     with pytest.raises(db_backup.BackupFailed):
@@ -618,7 +618,7 @@ def test_backup_failure_prevents_upgrade(tmp_path):
     db = tmp_path / "lego.db"
     _make_db(db, OLD)
     # Priečinok zálohy sa nedá založiť: v ceste stojí súbor.
-    (tmp_path / "backups").write_text("nie som priečinok")
+    (tmp_path / "backups").write_text("nie som priečinok", encoding="utf-8")
     calls: list[str] = []
 
     with pytest.raises(db_backup.BackupFailed) as info:
@@ -770,7 +770,7 @@ async def test_startup_does_not_migrate_when_backup_fails(tmp_path, settings, mo
 
     db = tmp_path / "lego.db"
     _make_db(db, OLD)
-    (tmp_path / "backups").write_text("nie som priečinok")
+    (tmp_path / "backups").write_text("nie som priečinok", encoding="utf-8")
     monkeypatch.setattr(settings, "database_url", _url(db))
     calls: list[str] = []
     monkeypatch.setattr(command, "upgrade", lambda config, rev: calls.append(rev))
