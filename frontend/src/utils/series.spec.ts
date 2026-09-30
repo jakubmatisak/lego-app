@@ -18,6 +18,12 @@ describe('pruh kompletnosti série', () => {
   it('séria bez členov nedelí nulou', () => {
     expect(seriesBar(0, 0)).toEqual({ color: 'warning', pct: 0, complete: false })
   })
+
+  it('orezaný počet bez úplnej zhody je plný, ale nie zelený', () => {
+    // Séria (téma) povie sama, či je kompletná: počet sa na serveri oreže.
+    expect(seriesBar(3, 3, false)).toEqual({ color: 'warning', pct: 100, complete: false })
+    expect(seriesBar(3, 3, true)).toEqual({ color: 'positive', pct: 100, complete: true })
+  })
 })
 
 describe('kam po pridaní', () => {

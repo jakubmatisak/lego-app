@@ -50,6 +50,8 @@
     "soldSummary": "{sold} za {total}",
     "setsCount": "{count} setov",
     "piecesAndParts": "{pieces} · {parts} dielikov",
+    "figuresPlural": "{count} figúrka | {count} figúrky | {count} figúrok",
+    "bagsPlural": "{count} sáčok | {count} sáčky | {count} sáčkov",
     "priceSource": "BrickEconomy, trhová hodnota",
     "manualPrices": "ručne zadané ceny",
     "chartTitle": "Hodnota portfólia",
@@ -118,7 +120,7 @@
     "pieces": "{count} ks",
     "empty": "Nič sa nenašlo",
     "emptyHint": "Skús zmeniť filtre alebo pridaj nový set.",
-    "figuresElsewherePlural": "{count} figúrka zo sérií je v sekcii Figúrky, Zbierka ukazuje len sety. | {count} figúrky zo sérií sú v sekcii Figúrky, Zbierka ukazuje len sety. | {count} figúrok zo sérií je v sekcii Figúrky, Zbierka ukazuje len sety.",
+    "figuresElsewherePlural": "{count} figúrka zo série je vo Figúrkach | {count} figúrky zo sérií sú vo Figúrkach | {count} figúrok zo sérií je vo Figúrkach",
     "openMinifigs": "Otvoriť Figúrky",
     "addSet": "Pridať set",
     "exportCsv": "Export CSV",
@@ -306,7 +308,8 @@
     "edited": "Uložené: {name}",
     "setTarget": "Zadať",
     "targetHint": "Upozorním, keď trhová cena klesne na túto sumu alebo pod ňu. Prázdne = bez cieľa.",
-    "note": "Poznámka"
+    "note": "Poznámka",
+    "itemsPlural": "{count} položka | {count} položky | {count} položiek"
   },
   "settings": {
     "title": "Nastavenia",
@@ -906,7 +909,7 @@
     "reserve": "Rezerva volaní",
     "reserveHint": "Práca na pozadí skončí, keď zostane toľko volaní; zvyšok ostane na pridávanie a skenovanie.",
     "batch": "Najviac setov na jednu obnovu cien",
-    "batchHint": "Pri veľkej zbierke sa ceny obnovia postupne, najstaršie najskôr.",
+    "batchHint": "Pri veľkej zbierke sa ceny obnovia postupne: najprv sety bez známej ceny (naposledy pridané prvé), potom od najdlhšie neobnovených.",
     "loadFailed": "Služby sa nepodarilo načítať",
     "saveFailed": "Nastavenie sa nepodarilo uložiť",
     "rebrickable": {
@@ -1043,6 +1046,11 @@
     "undo": "Späť",
     "undone": "Vrátené, kusy sú zo zbierky preč",
     "undoFailed": "Vrátenie sa nepodarilo",
+    "autoSavedWish": "Uložené: {num} {name} ×{count}, odstránené z Chcem",
+    "undoneWish": "Vrátené, kusy sú zo zbierky preč a Chcem je ako predtým",
+    "undoneStillOwned": "Vrátené, kusy sú zo zbierky preč. Do Chcem sa nevracia, čo v zbierke ešte máš: {what}",
+    "wishDropped": "Odstránené z Chcem: {what}",
+    "wishRestored": "Vrátené do Chcem: {what}",
     "seriesNotSaved": "Séria {name} sa neuložila, nevybral si žiadnu figúrku",
     "catalogSaved": "Set {num} je uložený v katalógu",
     "saved": "Uložené",

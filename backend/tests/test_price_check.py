@@ -4,9 +4,21 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from httpx import AsyncClient
+from sqlalchemy import select
 
-from lego_api.models import CatalogItem, CatalogKind, PriceCondition, PriceKind, PriceSnapshot
+from lego_api.models import (
+    CatalogItem,
+    CatalogKind,
+    CollectionItem,
+    ItemCondition,
+    PriceCondition,
+    PriceKind,
+    PriceSnapshot,
+    User,
+)
 from lego_api.providers.brickeconomy import BrickEconomyProvider, MarketData
+from lego_api.services import price_misses
+from lego_api.services.refresh import collect_targets
 
 
 def _fake_provider(monkeypatch) -> list[str]:
@@ -132,12 +144,17 @@ async def test_unknown_set_cannot_be_recorded(auth_client: AsyncClient) -> None:
 # --- overenie jedným tlačidlom -----------------------------------------------------
 
 
-def _market_provider(monkeypatch, found: bool = True) -> list[str]:
-    """BrickEconomy, ktoré set pozná aj s menom, sériou a rokom (alebo nepozná)."""
+def _market_provider(monkeypatch, found: bool = True, answered: bool = True) -> list[str]:
+    """BrickEconomy, ktoré set pozná aj s menom, sériou a rokom (alebo nepozná).
+
+    ``answered=False`` je výpadok (timeout, chyba 5xx): zdroj nepovedal nič.
+    """
     calls: list[str] = []
 
     async def get_market(self, num, kind, *, cap):
         calls.append(num)
+        # Ako skutočný zdroj: aj „nepoznám“ (404) je odpoveď, výpadok nie.
+        self.last_answered = answered
         if not found:
             return None
         return MarketData(
@@ -249,3 +266,76 @@ async def test_an_unknown_number_is_not_asked_again_the_same_day(
     await auth_client.post("/prices/lookup/99999")
     await auth_client.post("/prices/lookup/99999")
     assert calls == ["99999-1"]
+
+
+# --- výpadok nie je odpoveď „cenu nemám“ -------------------------------------------
+
+
+async def _own(sessionmaker_, num: str) -> int:
+    """Set v Zbierke prihláseného účtu; vráti jeho id."""
+    async with sessionmaker_() as session:
+        user_id = await session.scalar(select(User.id).where(User.email == "otec@example.com"))
+        session.add(
+            CollectionItem(
+                user_id=user_id, catalog_num=num, condition=ItemCondition.NEW_SEALED, flags=[]
+            )
+        )
+        await session.commit()
+    return user_id
+
+
+async def test_an_outage_is_asked_again(
+    auth_client: AsyncClient, sessionmaker_, monkeypatch
+) -> None:
+    """Timeout či chyba 5xx nepovedali, že zdroj cenu nemá; ďalšie overenie sa opýta."""
+    calls = _market_provider(monkeypatch, found=False, answered=False)
+    await _set(sessionmaker_)
+    await auth_client.post("/prices/lookup/42228-1")
+    await auth_client.post("/prices/lookup/42228-1")
+    assert calls == ["42228-1", "42228-1"]
+
+
+async def test_an_outage_for_an_unknown_number_is_asked_again(
+    auth_client: AsyncClient, monkeypatch
+) -> None:
+    calls = _market_provider(monkeypatch, found=False, answered=False)
+    await auth_client.post("/prices/lookup/99999")
+    await auth_client.post("/prices/lookup/99999")
+    assert calls == ["99999-1", "99999-1"]
+
+
+async def test_an_outage_in_the_price_check_does_not_block_the_batch(
+    auth_client: AsyncClient, sessionmaker_, settings, monkeypatch
+) -> None:
+    """Po výpadku v Overiť cenu dostane set cenu z najbližšej obnovy, nie o 24 h."""
+    _market_provider(monkeypatch, found=False, answered=False)
+    await _set(sessionmaker_)
+    user_id = await _own(sessionmaker_, "42228-1")
+    await auth_client.post("/prices/lookup/42228-1")
+
+    async with sessionmaker_() as session:
+        plan = await collect_targets(session, user_id, settings)
+    assert [t.catalog_num for t in plan.targets] == ["42228-1"]
+    assert plan.skipped_fresh == 0
+
+
+async def test_a_price_check_miss_is_kept_for_the_batch(
+    auth_client: AsyncClient, sessionmaker_, settings, monkeypatch
+) -> None:
+    """Zdroj v Overiť cenu odpovedal, že cenu nemá: dávka to vie aj po reštarte.
+
+    Rovnako ako neúspech v samotnej obnove sa zapíše pri kľúči
+    (``pricing.store_miss``), nielen do pamäte procesu.
+    """
+    _market_provider(monkeypatch, found=False)
+    monkeypatch.setattr(BrickEconomyProvider, "fingerprint", property(lambda self: "fp-over"))
+    await _set(sessionmaker_)
+    user_id = await _own(sessionmaker_, "42228-1")
+    await auth_client.post("/prices/lookup/42228-1")
+    # Reštart: pamäť procesu je preč.
+    price_misses.clear()
+
+    async with sessionmaker_() as session:
+        plan = await collect_targets(session, user_id, settings, fingerprint="fp-over")
+    assert plan.targets == []
+    assert plan.skipped_fresh == 1

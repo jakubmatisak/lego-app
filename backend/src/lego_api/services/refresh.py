@@ -1,9 +1,14 @@
-"""Obnova cien spustená prihlásením. Žiadny plánovač.
+"""Obnova cien na tlačidlo v hornej lište. Žiadny plánovač.
 
-Beží ako úloha na pozadí, takže odpoveď na prihlásenie nikdy nečaká na
-cudzie API. Poistiek proti plytvaniu kvótou je päť: vek poslednej snímky,
-strop na dávku, zvyšok dennej kvóty, jedno volanie na položku namiesto
-štyroch a zámok proti súbehu.
+Beží ako úloha na pozadí, takže odpoveď nikdy nečaká na cudzie API.
+Poistiek proti plytvaniu kvótou je päť: vek posledného volania, strop na
+dávku, zvyšok dennej kvóty, jedno volanie na položku namiesto štyroch
+a zámok proti súbehu.
+
+Poradie dávky: najprv ceny, na ktoré sa kľúč ešte nepýtal (Zbierka pred
+Chcem, naposledy pridané prvé), potom ostatné od najstaršieho volania.
+Volanie, na ktoré zdroj cenu nemal, sa zapíše (``pricing.store_miss``)
+a čaká rovnako dlho ako cena, inak by bolo navrchu pri každom kliknutí.
 """
 
 import asyncio
@@ -28,13 +33,17 @@ from lego_api.models import (
 )
 from lego_api.providers.base import PriceProvider
 from lego_api.providers.brickeconomy import MarketData, QuotaExhausted
+from lego_api.services import price_misses
 from lego_api.services.fetch_policy import CallBlocked
 from lego_api.services.pricing import (
     PriceTarget,
     apply_catalog_extras,
+    last_attempts,
     resolve_price_target,
     snapshot_age_hours,
+    source_prices,
     store_market,
+    store_miss,
 )
 from lego_api.services.purchase_fill import fill_purchase_prices
 
@@ -51,8 +60,9 @@ class RefreshState:
     started_at: datetime | None = None
     finished_at: datetime | None = None
     last_error: str | None = None
-    #: Koľko položiek sa preskočilo, lebo ich cena je čerstvá. Používateľ
-    #: tak vidí, prečo po kliknutí nepribudlo nič a nič sa neminulo.
+    #: Koľko položiek sa preskočilo, lebo sme sa na ne nedávno pýtali (cena
+    #: je čerstvá, alebo ju zdroj nemal). Používateľ tak vidí, prečo po
+    #: kliknutí nepribudlo nič a nič sa neminulo.
     skipped_fresh: int = 0
 
 
@@ -81,6 +91,19 @@ class RefreshPlan:
     over_budget: int = 0
 
 
+@dataclass(slots=True)
+class _Candidate:
+    """Jedno volanie a čo o ňom vieme zo všetkých kusov, ktoré pokryje."""
+
+    target: PriceTarget
+    #: Vek najstaršej snímky zo všetkých stavov; None = niektorý stav ju nemá.
+    snapshot_age: float | None
+    #: Pokryje aspoň jeden kus zo Zbierky, nielen Chcem.
+    owned: bool
+    #: Kedy pribudol najnovší z kusov.
+    added_at: datetime
+
+
 async def collect_targets(
     session: AsyncSession,
     user_id: int,
@@ -88,6 +111,7 @@ async def collect_targets(
     budget: int | None = None,
     only: str | None = None,
     force: bool = False,
+    fingerprint: str | None = None,
 ) -> RefreshPlan:
     """Zoznam položiek, ktoré používateľ naozaj potrebuje obnoviť.
 
@@ -95,12 +119,18 @@ async def collect_targets(
     aj použitý kus toho istého setu sa obnovia spolu. Ak je niektorý stav
     zastaraný, ťahá sa celá položka.
 
+    Vek je čas od posledného volania kľúča ``fingerprint`` (``source_access``,
+    s cenou aj bez nej, a neúspech v pamäti procesu), alebo od novšej
+    viditeľnej snímky (ručná cena). Poradie: najprv neznáme, na ktoré sa
+    kľúč ešte nepýtal a cenu nemajú, potom ostatné od najstaršieho.
+
     ``only`` obmedzí obnovu na jeden set, pri sérii na jej členov. Samotné
     číslo série si vyrába appka a zdroj cien ho nepozná, volanie naň by
-    len minulo kvótu.
+    len minulo kvótu. Rovnako holá figúrka (fig-…), ktorú zdroj ako set
+    nepozná (``pricing.source_prices``); v pláne nie je vôbec.
 
-    ``force`` vynechá poistku na vek snímky. Používa ju len ručná obnova
-    jednej položky z detailu: používateľ chce cenu teraz a vie, čo to stojí.
+    ``force`` vynechá poistku na vek. Používa ju len ručná obnova jednej
+    položky z detailu: používateľ chce cenu teraz a vie, čo to stojí.
     Strop dávky, zvyšok kvóty a jedno volanie na položku platia aj vtedy.
     """
     plan = RefreshPlan()
@@ -112,23 +142,30 @@ async def collect_targets(
     if only is not None:
         items = [i for i in items if _belongs(i, only)]
 
-    # call_key -> (zástupca volania, vek najstaršej snímky)
-    candidates: dict[tuple[str, str], tuple[PriceTarget, float | None]] = {}
+    candidates: dict[tuple[str, str], _Candidate] = {}
 
-    async def consider(target: PriceTarget) -> None:
+    async def consider(
+        target: PriceTarget, catalog: CatalogItem, owned: bool, added_at: datetime
+    ) -> None:
+        if not source_prices(target, catalog):
+            # Holá figúrka (fig-…): zdroj ju ako set nepozná, volanie by zlyhalo vždy.
+            return
         age = await snapshot_age_hours(session, target)
+        added_at = _aware(added_at)
         known = candidates.get(target.call_key())
         if known is None:
-            candidates[target.call_key()] = (target, age)
+            candidates[target.call_key()] = _Candidate(target, age, owned, added_at)
             return
         # Rozhoduje najstaršia snímka zo všetkých stavov tej istej položky.
-        candidates[target.call_key()] = (known[0], _older(known[1], age))
+        known.snapshot_age = _older(known.snapshot_age, age)
+        known.owned = known.owned or owned
+        known.added_at = max(known.added_at, added_at)
 
     for item in items:
         catalog = item.catalog or await session.get(CatalogItem, item.catalog_num)
         if catalog is None:
             continue
-        await consider(resolve_price_target(item, catalog))
+        await consider(resolve_price_target(item, catalog), catalog, True, item.created_at)
 
     wish_stmt = select(WishlistItem).where(WishlistItem.user_id == user_id)
     if only is not None:
@@ -139,24 +176,40 @@ async def collect_targets(
             continue
         # Aj figúrka zo série je pre zdroj cien set, rovnako ako v
         # resolve_price_target. /minifig s číslom 71046-1 vráti chybu.
-        await consider(PriceTarget(catalog.catalog_num, PriceKind.SET, PriceCondition.NEW))
+        target = PriceTarget(catalog.catalog_num, PriceKind.SET, PriceCondition.NEW)
+        await consider(target, catalog, False, wish.created_at)
 
-    stale = [
-        (t, a)
-        for t, a in candidates.values()
-        if force or a is None or a >= settings.price_max_age_hours
-    ]
-    plan.skipped_fresh = len(candidates) - len(stale)
+    attempts = await last_attempts(session, fingerprint)
+    now = datetime.now(UTC)
+    unknown: list[_Candidate] = []
+    stale: list[tuple[_Candidate, float]] = []
+    for cand in candidates.values():
+        num = cand.target.catalog_num
+        tried = _latest(attempts.get(num), price_misses.missed_at(num))
+        tried_age = None if tried is None else (now - tried).total_seconds() / 3600
+        # Posledné volanie pokrylo všetky stavy, aj ten, pre ktorý zdroj cenu
+        # nemal (použitý kus setu v predaji). Novšia ručná cena tiež platí.
+        age = _fresher(cand.snapshot_age, tried_age)
+        if age is None:
+            unknown.append(cand)
+        elif force or age >= settings.price_max_age_hours:
+            stale.append((cand, age))
+    plan.skipped_fresh = len(candidates) - len(unknown) - len(stale)
 
-    # Najstaršie najskôr, aby sa dávka rovnomerne prestriedala.
-    stale.sort(key=lambda pair: -1e9 if pair[1] is None else -pair[1])
+    # Neznáme: hodnota zbierky ráta len vlastnené kusy a čerstvo pridaný set
+    # je ten, na ktorého cenu používateľ po kliknutí čaká. Ostatné od
+    # najstaršieho volania, aby sa dávka rovnomerne prestriedala.
+    unknown.sort(key=lambda c: (not c.owned, -c.added_at.timestamp(), c.target.call_key()))
+    stale.sort(key=lambda pair: (-pair[1], pair[0].target.call_key()))
+    ordered = [c.target for c in unknown] + [c.target for c, _ in stale]
+
     cap = settings.price_refresh_budget
     if budget is not None:
         cap = min(cap, budget)
-    if len(stale) > cap:
-        plan.over_budget = len(stale) - cap
-        stale = stale[:cap]
-    plan.targets = [t for t, _ in stale]
+    if len(ordered) > cap:
+        plan.over_budget = len(ordered) - cap
+        ordered = ordered[:cap]
+    plan.targets = ordered
     return plan
 
 
@@ -172,6 +225,24 @@ def _older(left: float | None, right: float | None) -> float | None:
     if left is None or right is None:
         return None
     return max(left, right)
+
+
+def _fresher(left: float | None, right: float | None) -> float | None:
+    """Mladší z dvoch vekov; chýbajúci údaj sa nepočíta."""
+    if left is None:
+        return right
+    if right is None:
+        return left
+    return min(left, right)
+
+
+def _latest(*moments: datetime | None) -> datetime | None:
+    known = [_aware(m) for m in moments if m is not None]
+    return max(known) if known else None
+
+
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 async def refresh_prices(
@@ -228,7 +299,13 @@ async def refresh_prices(
                 state.last_error = "reserve"
                 return state
             plan = await collect_targets(
-                session, user_id, settings, budget=budget, only=only, force=force
+                session,
+                user_id,
+                settings,
+                budget=budget,
+                only=only,
+                force=force,
+                fingerprint=provider.fingerprint,
             )
         state.skipped_fresh = plan.skipped_fresh
 
@@ -296,8 +373,15 @@ async def _refresh_one(
     """Jedno volanie na položku. Pokryje nový aj použitý stav a históriu."""
     async with _provider_lock:
         data = await provider.get_market(target.catalog_num, target.price_kind, cap=cap)
+        answered = provider.last_answered
 
     if data is None or not data.has_price:
+        if answered:
+            # Zdroj cenu nemá. Bez stopy by bola položka pri každej obnove
+            # neznáma a prvá na rade; výpadok sa naopak skúsi hneď nabudúce.
+            async with sessionmaker() as session:
+                await store_miss(session, target.catalog_num, provider.fingerprint)
+                await session.commit()
         return None
 
     async with sessionmaker() as session:

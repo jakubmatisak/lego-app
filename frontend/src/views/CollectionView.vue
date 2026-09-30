@@ -220,13 +220,27 @@
     collection.grouping === 'item' ? collection.items.length === 0 : collection.grouped.length === 0,
   )
 
+  /** Figúrky zo sérií, ktoré by filter či hľadanie našlo, ale sú vo Figúrkach. */
+  const hiddenFigures = computed(() => filterStore.facets?.hidden_figures ?? 0)
+
   /**
-   * Figúrky zo sérií, ktoré by filter či hľadanie našlo, ale sú vo Figúrkach.
-   * Pri celej zbierke bez filtra len vtedy, keď by inak bola prázdna.
+   * Riadok o figúrkach nad výsledkom len pri hľadaní, ktoré ich trafilo:
+   * inak by sa zdalo, že appka hľadanú figúrku nepozná. Bežný filter (stav,
+   * umiestnenie…), ktorý niečo ukazuje, nehlási nič; prázdny výsledok to
+   * povie v prázdnom stave. Počty musia patriť tomuto hľadaniu, nie filtru
+   * spred písania, inak by chvíľu svietil cudzí počet.
+   *
+   * `pending`: hľadanie sa spresňuje („shrek“ → „shrek 2“) a predošlé tiež
+   * trafilo figúrky. Riadok drží miesto bez starého počtu, kým neprídu nové
+   * počty; inak by pri každej pauze v písaní zmizol a vrátil sa a výsledky
+   * pod ním by poskočili. Bez hľadania nie je čo držať.
    */
-  const hiddenFigures = computed(() => {
-    const count = filterStore.facets?.hidden_figures ?? 0
-    return isEmpty.value || filterStore.activeCount > 0 ? count : 0
+  const figuresLine = computed<'shown' | 'pending' | null>(() => {
+    const search = filterStore.facetsSearch
+    if (isEmpty.value || hiddenFigures.value <= 0 || search === '') return null
+    const typed = filterStore.filters.q.trim()
+    if (search === typed) return 'shown'
+    return typed === '' ? null : 'pending'
   })
 
   /** Hodnota kusu. Bez známej ceny pomlčka, nie nula. */
@@ -444,7 +458,8 @@
       <!-- Súčty toho, čo filter ukazuje, aj s reálnym ziskom po inflácii. -->
       <SelectionTotals :totals="filterStore.facets?.totals" />
 
-      <FiguresElsewhere :count="hiddenFigures" />
+      <!-- Hľadanie trafilo aj figúrky zo sérií, tie sú vo Figúrkach. -->
+      <FiguresElsewhere v-if="figuresLine" :count="hiddenFigures" :pending="figuresLine === 'pending'" />
 
       <!-- Hromadná úprava: len vlastnené kusy. -->
       <div v-if="collection.statusFilter !== 'sold'" class="d-flex">
@@ -466,7 +481,12 @@
           icon="mdi-magnify"
           :text="t('collection.emptyHint')"
           :title="t('collection.empty')"
-        />
+        >
+          <!-- Nič medzi setmi, ale filter by trafil figúrky zo sérií. -->
+          <template v-if="hiddenFigures > 0" #default>
+            <FiguresElsewhere class="justify-center" :count="hiddenFigures" />
+          </template>
+        </v-empty-state>
 
         <CollectionTable v-else-if="tableView" :fill="wide" :selection="selection" :sold="showSold" />
 
@@ -616,6 +636,16 @@
 
 .collection-layout--wide .collection-main {
   min-height: 0;
+}
+
+/*
+ * Do výšky rastú len výsledky, riadky nad nimi majú svoju výšku. Vuetify
+ * dáva niektorým komponentom `flex: 1 1` (v-alert, v-banner) a v stĺpci
+ * s výškou okna by si s výsledkami rozdelili voľné miesto napoly: upozornenie
+ * o figúrkach tak kedysi zabralo pol obrazovky.
+ */
+.collection-layout--wide .collection-main > :not(.collection-results) {
+  flex: 0 0 auto;
 }
 
 .collection-layout--wide .collection-results {

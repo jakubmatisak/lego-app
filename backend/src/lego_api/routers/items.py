@@ -27,9 +27,11 @@ from lego_api.schemas import (
     GroupedItemOut,
     IdentifyRequest,
     ItemBulkCreateRequest,
+    ItemCreatedOut,
     ItemCreateRequest,
     ItemOut,
     ItemUpdateRequest,
+    RemovedWishOut,
     SelectionTotalsOut,
     SellRequest,
     SuggestionsOut,
@@ -61,6 +63,7 @@ from lego_api.services.portfolio import (
 )
 from lego_api.services.purchase import split_total
 from lego_api.services.sorting import SORT_KEYS, Group, sort_groups, sort_items
+from lego_api.services.wishlist import DroppedWish, drop_bought
 
 router = APIRouter(tags=["items"])
 
@@ -322,14 +325,28 @@ async def list_suggestions(user: CurrentUser, session: SessionDep) -> Suggestion
     return SuggestionsOut(**await known_suggestions(session, user.id))
 
 
-@router.post("/items", response_model=list[ItemOut], status_code=status.HTTP_201_CREATED)
+def _created(items: list[CollectionItem], dropped: dict[str, DroppedWish]) -> list[ItemCreatedOut]:
+    """Kusy pre odpoveď; vyradenú položku Chcem nesie prvý kus jej setu."""
+    left = dict(dropped)
+    rows: list[ItemCreatedOut] = []
+    for item in items:
+        row = ItemCreatedOut.model_validate(item)
+        wish = left.pop(item.catalog_num, None)
+        if wish is not None:
+            row.removed_from_wishlist = RemovedWishOut.model_validate(wish)
+        rows.append(row)
+    return rows
+
+
+@router.post("/items", response_model=list[ItemCreatedOut], status_code=status.HTTP_201_CREATED)
 async def create_items(
     payload: ItemCreateRequest,
     user: CurrentUser,
     session: SessionDep,
     settings: SettingsDep,
     keys: CurrentKeys,
-) -> list[CollectionItem]:
+) -> list[ItemCreatedOut]:
+    """Pridá kusy; set, ktorý bol v Chcem, odtiaľ v tej istej transakcii vyradí."""
     catalog = await _ensure_catalog(session, settings, keys, payload.catalog_num)
     try:
         flags = validate_flags(payload.flags)
@@ -365,21 +382,27 @@ async def create_items(
         )
         session.add(item)
         created.append(item)
+    dropped = await drop_bought(session, user.id, created)
     await session.commit()
     for item in created:
         await session.refresh(item, ["catalog"])
-    return created
+    return _created(created, dropped)
 
 
-@router.post("/items/bulk", response_model=list[ItemOut], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/items/bulk", response_model=list[ItemCreatedOut], status_code=status.HTTP_201_CREATED
+)
 async def create_series_items(
     payload: ItemBulkCreateRequest,
     user: CurrentUser,
     session: SessionDep,
     settings: SettingsDep,
     keys: CurrentKeys,
-) -> list[CollectionItem]:
-    """Naraz pridá vybraných členov zberateľskej série, aj s cenou za celú sériu."""
+) -> list[ItemCreatedOut]:
+    """Naraz pridá vybraných členov zberateľskej série, aj s cenou za celú sériu.
+
+    Figúrky, ktoré boli v Chcem, odtiaľ vyradí, rovnako ako `POST /items`.
+    """
     try:
         flags = validate_flags(payload.flags)
     except ValueError as exc:
@@ -412,10 +435,11 @@ async def create_series_items(
             )
             session.add(item)
             created.append(item)
+    dropped = await drop_bought(session, user.id, created)
     await session.commit()
     for item in created:
         await session.refresh(item, ["catalog"])
-    return created
+    return _created(created, dropped)
 
 
 async def _owned_item(session, user_id: int, item_id: int) -> CollectionItem:

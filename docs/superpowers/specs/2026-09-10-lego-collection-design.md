@@ -309,7 +309,8 @@ Dva kusy toho istého setu sa môžu líšiť stavom, cenou aj umiestnením.
   `price_kind` (SET / MINIFIG), `condition` (N / U), `avg_price`,
   `min_price`, `max_price`, `qty`, `currency`, `captured_at`.
 - **`wishlist_items`**: Chcem, jeden set najviac raz na účet, s
-  `target_price_eur` a `note`.
+  `target_price_eur`, `note` a `created_at`. Kúpený set z neho vyradí
+  server pri každom pridaní kusu (`services/wishlist.py::drop_bought`).
 - **`categories`**: vlastné kategórie (`name`, `color`, `rules` JSON,
   `sort_order`).
 - **`category_items`**: ručné zaradenie alebo vylúčenie setu (`mode`
@@ -436,6 +437,13 @@ nevstupuje, len sa spočíta.
 Holá figúrka bez `minifig_no` spadne na set. Volanie s katalógovým číslom
 by skončilo chybou a zbytočne ukrojilo z kvóty.
 
+Figúrka z Rebrickable mimo série (`fig-…`, `pricing.is_bare_figure`) set
+nie je a zdroj ju pod týmto číslom nepozná. O volaní von rozhoduje
+`pricing.source_prices`: cieľ „set pod fig-…“ sa nevolá nikdy, Overiť cenu
+vráti `unsupported` a dávka ho do plánu nedá (ani z Chcem). Pod vlastným
+`minifig_no` sa cení ako figúrka. Ručná cena pod katalógovým číslom platí
+ďalej, snímky číta `resolve_price_target`.
+
 **Jedno volanie na položku.** Odpoveď nesie cenu novej aj použitej
 položky a históriu. Dávka sa preto delí podľa `PriceTarget.call_key()`
 (číslo a druh), nie podľa stavu. Tri kusy toho istého setu v rôznom stave
@@ -455,17 +463,35 @@ stoja jedno volanie. Predané kusy sa neobnovujú.
 (`POST /prices/refresh-all`), ďalej to beží cez `BackgroundTasks`. Nemá to
 plánovač a nespúšťa to ani prihlásenie. Poistky v `services/refresh.py`:
 
-- **vek snímky:** obnoví sa, len čo je staršie ako 168 h;
+- **vek posledného volania:** obnoví sa, len čo je staršie ako 168 h;
 - **strop dávky:** 40 položiek;
 - **zvyšok dennej kvóty:** počítadlo je v `providers/brickeconomy.py`,
   pri 429 sa dávka zastaví;
 - **jedno volanie na (číslo, druh);**
 - **zámok proti súbehu** a množina položiek, ktoré sa práve obnovujú.
 
-Zoradené je to od najstaršej snímky, takže pri veľkej zbierke vzniká
-rotácia. Pri ~1500 rôznych setoch a 90 volaniach denne trvá jedno kolo
-zhruba 17 dní. História tým netrpí, lebo každá odpoveď nesie ceny za
-posledné mesiace.
+**Vek** je čas od posledného volania vlastného kľúča, či cena prišla, alebo
+nie (`source_access` čísla, pri neúspechu `miss:{číslo}`, a neúspech
+z Overiť cenu v pamäti procesu), prípadne od novšej ručnej ceny. Keď zdroj
+odpovie, že set nepozná alebo preň cenu nemá, `pricing.store_miss` to
+zapíše pod `miss:{číslo}`; prístup pod samotným číslom by účtu odomkol
+ceny iného kľúča. Overiť cenu zapisuje neúspech tou istou funkciou.
+Výpadok siete či chyba servera (`provider.last_answered` je False) sa
+nezapíše nikde, ani v Overiť cenu, a skúsi sa pri ďalšej obnove.
+
+**Poradie dávky.** Najprv neznáme ceny: kľúč sa na položku ešte nepýtal
+a niektorý jej stav nemá snímku. Medzi nimi Zbierka pred Chcem (hodnota
+zbierky ráta len vlastnené kusy) a naposledy pridané prvé (čerstvo pridaný
+set je ten, na ktorého cenu používateľ čaká). Potom ostatné od najstaršieho
+volania, takže pri veľkej zbierke vzniká rotácia. Pri ~1500 rôznych setoch
+a 90 volaniach denne trvá jedno kolo zhruba 17 dní. História tým netrpí,
+lebo každá odpoveď nesie ceny za posledné mesiace.
+
+Kým sa neúspech nezapisoval, položka bez ceny bola pri každej obnove
+neznáma, prvá na rade a stála volanie pri každom kliknutí. To isté
+postavený kus setu v predaji: zdroj mu použitú cenu nepošle, kým sa set
+nestiahne z predaja. Teraz stojí každá taká položka jedno volanie za
+168 h, ako položka s cenou.
 
 **Ručná obnova z detailu** (`refresh-all?num=`) vek snímky nepozerá, strop
 dávky a zvyšok kvóty platia aj pre ňu. **Ručná cena**
@@ -584,8 +610,28 @@ Podrobnosti:
 - Zoznam tém a rokov je z Brickset zadarmo. Vlna (téma + rok) je jedno
   `getSets` a uloží sa; čerstvé roky sa po 30 dňoch stiahnu znova.
 - Do úplnosti patria len kategórie Normal a Extended, nie kolekcie.
-- Brickset tému pomenúva inak než Rebrickable. Kým vlna nie je stiahnutá,
-  počet pri roku je odhad podľa názvu, potom je presný.
+- Brickset tému pomenúva inak než Rebrickable a sety zaraďuje inak
+  (staršie Botanicals sú v Brickset pod Icons, figúrky série Shrek sú
+  v Rebrickable pod témou Shrek). Set sa ráta v jedinej téme (`assign`):
+  stiahnutá vlna, ktorú účet vidí; potom téma a rok z údajov Brickset
+  o sete (`bs_theme`, `bs_year`, len s prístupom kľúča); až keď Brickset
+  set nepozná, téma a rok z katalógu. Nie-set je, čo Brickset vedie
+  v inej kategórii než Normal či Extended (`brickset_facts.category`).
+  Staršie údaje kategóriu nemajú: set vtedy vyradí len vlna jeho témy
+  a roka stiahnutá neskôr, než o ňom Brickset odpovedal. Vlna staršia než
+  údaj setu je stará (Brickset set pridal potom): set sa ráta, rok je
+  odhad a otvorenie roka vlnu stiahne znova. Set bez údajov Brickset sa
+  podľa roka z Rebrickable nezahadzuje.
+- Rátajú sa len sety (`counts_as_set`): figúrky zo sérií (minifigúrky aj
+  blind-box), zatvorený sáčok pod číslom série ani holá figúrka nie.
+  Platí to pre témy, roky, vlnu aj počet pri Sériách v ponuke
+  (`theme_names`). Ten ráta len témy zo zoznamu Brickset, rovnako ako
+  zoznam Sérií; kým zoznam nie je v pamäti, len témy od Brickset.
+- „V zbierke“ nikdy neprekročí počet setov témy ani roka. Téma je
+  kompletná (`complete`, zelený pruh), len keď sa počty naozaj zhodujú a vo
+  stiahnutých vlnách nič nechýba; orezaný počet je plný pruh, ale žltý.
+- Kým vlna nie je stiahnutá, počet pri roku je odhad, potom je presný
+  (odhad ostane, keď v nej chýba môj set).
 
 **Vlastné kategórie** (`services/categories.py`):
 
@@ -638,7 +684,12 @@ Podrobnosti:
   - trhová hodnota, s počtom kusov bez ceny;
   - nerealizovaný zisk, s percentom a CAGR;
   - realizovaný zisk;
-  - zbierka (sety, kusy, dieliky, figúrky, retired).
+  - zbierka: hlavné číslo sú sety sekcie Zbierka, podnadpis „41 figúrok ·
+    3 sáčky · 189 kusov · 39 188 dielikov“ (nulové počty vynechá). Čísla sú
+    tie isté ako pre ponuku, len s rozsahom Prehľadu: `collection_set_count`,
+    `series_figures` (rôzne figúrky zo sérií, aj blind-box) a
+    `sealed_bag_count` (každý nerozbalený sáčok, ako vo Figúrkach; figúrkou
+    je až po rozbalení). Bez rozsahu dlaždica sedí s ponukou aj s Figúrkami.
 - **Graf portfólia:**
   - tri krivky;
   - rýchle voľby (mesiac až všetko), vlastné od–do, ťahanie a zoom;
@@ -683,6 +734,7 @@ Podrobnosti:
 - Filter je v adrese pod rovnakými menami, aké berie API. Posledný stav
   si pamätá účet: príchod z ponuky ho vráti, odkaz s filtrom má prednosť.
 - Na širokej obrazovke sa posúvajú len karty a panel, nie celá stránka.
+  Do výšky rastú len výsledky, riadky nad nimi majú vlastnú výšku.
 - **Karty alebo tabuľka** (pamätá sa pri účte). Tabuľka
   (`CollectionTable.vue`, `v-data-table-virtual`) má stĺpce číslo, názov,
   téma, rok, kusy, stav, umiestnenie, kúpené, hodnota, zisk, %, ročne;
@@ -694,9 +746,14 @@ Podrobnosti:
   zoznamom kusov alebo číslami setov; najprv `dry_run` na potvrdenie
   „Kde uložené → Povala: 143 kusov“. Menia sa len vlastnené kusy účtu.
   Figúrky zo sérií sa hromadne upravujú v detaile série (rozsah `series`).
-- **Figúrky inde:** keď filter či hľadanie trafí figúrky zo sérií, nad
-  výsledkom je „N figúrok zo sérií je v sekcii Figúrky“ s odkazom
-  (`FacetsOut.hidden_figures`). Starý odkaz s filtrom série vedie do
+- **Figúrky inde:** keď hľadanie trafí figúrky zo sérií, pod riadkom
+  súčtov je nenápadný riadok „N figúrok zo sérií je vo Figúrkach“
+  s odkazom Otvoriť Figúrky (`FacetsOut.hidden_figures`); keď Zbierka
+  nenašla nič a filter by trafil figúrky, ten istý riadok je v prázdnom
+  stave. Bežný filter (stav, umiestnenie…), ktorý niečo ukazuje, figúrky
+  nehlási. Kým sa hľadanie spresňuje a nové počty ešte neprišli, riadok
+  drží miesto bez starého počtu, aby výsledky neposkakovali. Písmo 14 px
+  (`text-body-medium`). Starý odkaz s filtrom série vedie do
   Figúrok, uložený pohľad s filtrom figúrok je označený a po kliknutí to
   oznámi.
 - **Karta setu:** fotka, názov, číslo, téma, dieliky, čipy stavu
@@ -709,6 +766,16 @@ Podrobnosti:
 - Jedno pole na číslo alebo EAN a jedno tlačidlo hľadania; čítačka
   čiarového kódu kamerou alebo z fotky.
 - Výrazný pás „už ho máš“ s počtom kusov a umiestnením.
+- **Z Chcem** set pri uložení vyradí server; odpoveď `POST /items`
+  (`/items/bulk`) nesie pôvodnú položku v `removed_from_wishlist` na prvom
+  kuse setu. Po uložení tlačidlom je vedľa „Pridané do zbierky“ oznámenie
+  „Odstránené z Chcem“ so Späť, ktoré ju vráti s cieľovou cenou, poznámkou
+  aj dátumom pridania; kusy ostanú. Automatické uloženie po skene má jedno
+  oznámenie a jedno Späť: zmaže kusy a vráti Chcem (druhé Späť by pri
+  rýchlom skenovaní zapratalo obrazovku). Chcem vracia až po zmazaní kusov
+  a s `?unless_owned=true`: set, ktorý ešte mám, lebo pri skenoch X, Y, X
+  druhý kus X uložil ďalší sken, server do Chcem nevráti (204) a oznámenie
+  to povie. Kúpený set v Chcem nie je.
 - Pri sérii mriežka figúrok so stepperom, „všetky“ a „nerozbalený sáčok“.
 - Formulár: počet, stav, príznaky, cena, dátum, kde kúpené, kde uložené,
   zoznam a kategórie.
@@ -733,6 +800,10 @@ Podrobnosti:
 - Graf ceny s kúpnou cenou.
 - Tabuľka kusov: úprava, fotky, predaj, vrátenie predaja, zmazanie,
   identifikácia sáčku, návrh inzerátu (cena a text pre Aukro a Bazoš).
+- Kusy aj súčty (vlastnené, predané) sú jedna mriežka: Kúpené, Hodnota
+  a Zisk stoja v každom riadku aj v súčte pod sebou, nech má kus
+  koľkokoľvek štítkov. Na užšej karte sú štítky nad sumami, na telefóne
+  sumy v troch rovnakých stĺpcoch a akcie pod nimi.
 - Kusy sa načítavajú so `status=all`, aby predaný kus nezmizol aj
   s históriou.
 - „Ďalší kus“ pridá kus bez hľadania; na stránke série (podľa
@@ -759,7 +830,8 @@ Podrobnosti:
 **Série** (`/temy`, v rozhraní „Série“, v dátach téma): moje série a hľadanie vo všetkých. Tému bez setu sa dá
 uložiť hviezdičkou. Moje témy sa radia podľa počtu mojich setov, úplnosti
 alebo názvu a filtrujú na sledované, s mojimi setmi a nekompletné
-(`utils/themeList.ts`, v prehliadači). **Téma** (`/temy/:theme`) ukazuje roky „mám X z Y“
+(`utils/themeList.ts`, v prehliadači; nekompletná je téma bez `complete`,
+pri rovnakej úplnosti idú kompletné prvé). **Téma** (`/temy/:theme`) ukazuje roky „mám X z Y“
 a sety zvoleného roku.
 
 **Chcem** (`/chcem`): cieľová cena a poznámka sa dajú upraviť
@@ -768,6 +840,12 @@ cieľová a trhová cena a vzdialenosť od cieľa
 (`distance_pct`). Radí a filtruje server (`GET /wishlist?sort=distance|
 market|target|name|theme|added&dir=&q=&reached=&retired=&no_price=`),
 predvolene najbližšie k cieľu navrch, prázdne hodnoty na konci. „Kúpil som“ presunie položku do zbierky, bez hľadania.
+Z Chcem ju vyradí server, rovnako ako každé iné pridanie kusu (Pridať set
+číslom aj skenom, Mám ju, Mám všetky, Ďalší kus, import): porovnáva sa
+katalógové číslo, vyraďuje vlastnený aj rezervovaný kus, predaný nie
+(dodatočne zapísaný predaj neznamená, že set už nechcem). `POST /wishlist`
+berie `created_at`, aby Späť vrátil položku na jej pôvodné miesto;
+rovnako ju s pôvodným dátumom obnoví vrátenie importu.
 
 **Nastavenia** (`/nastavenia`):
 
@@ -841,7 +919,7 @@ prihlásenie. Úplná schéma je v OpenAPI (`openapi_export`).
 | štatistiky | `GET stats/summary`, `breakdown`, `sales`, `timeline` (všetky s `real`), `movers?window=30/90/365`, `series` |
 | figúrky | `GET minifigs/series`, `minifigs/series/{num}`; `GET/POST minifigs/sync` |
 | témy | `GET themes`, `themes/years?theme=`, `themes/wave?theme=&year=&force=` |
-| Chcem | `GET/POST wishlist`; `DELETE wishlist/{id}` |
+| Chcem | `GET/POST wishlist` (`?unless_owned=true` pri Späť po skene); `PATCH/DELETE wishlist/{id}` |
 | zdieľanie | `GET/POST share`; `PATCH/DELETE share/{id}`; `GET public/{token}` |
 | import | `GET imports/template.xlsx`, `imports/template.csv`; `GET/POST imports`; `GET/DELETE imports/{id}`; `POST imports/{id}/commit`, `imports/{id}/undo` |
 | iné | `GET export/items.csv`; `GET usage`; `GET providers/status`; `GET health` (stav a verzia appky) |

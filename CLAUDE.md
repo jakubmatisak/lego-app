@@ -150,8 +150,10 @@ Zdroj pozná dve podoby: set (`/api/v1/set/{num}`) a samotnú figúrku
 (`/api/v1/minifig/{num}`). Zatvorený sáčok ani komplet so stojanom vlastné
 číslo nemajú, cenia sa pod katalógovým číslom ako set. Holá figúrka sa cení
 pod `minifig_no`, a keď ho nepoznáme, spadne to na set: volanie s katalógovým
-číslom by skončilo chybou a zbytočne ukrojilo z kvóty. Nič z toho nepatrí do
-routera ani do komponentu.
+číslom by skončilo chybou a zbytočne ukrojilo z kvóty. Či sa na cieľ vôbec
+volá, rozhoduje `pricing.source_prices`: figúrka z Rebrickable mimo série
+(`fig-…`, `is_bare_figure`) ako set nie, Overiť cenu ju necení a dávka ju
+do plánu nedá. Nič z toho nepatrí do routera ani do komponentu.
 
 **Jedno volanie na položku, nikdy viac.** Denná kvóta je 100 volaní.
 Odpoveď nesie cenu novej aj použitej položky a k tomu históriu, takže sa
@@ -175,6 +177,16 @@ cez `_decimal`, ktoré zahadzuje nulu a mínus ako neplatnú cenu.
 **Hromadná obnova raz za týždeň, ručná hneď.** `price_max_age_hours` je 168.
 `POST /prices/refresh-all?num=` je ručná obnova z detailu a vek snímky
 nepozerá (`force`); strop dávky a zvyšok kvóty platia aj pre ňu.
+Vek je čas od posledného volania vlastného kľúča, s cenou aj bez nej
+(`pricing.last_attempts`: `source_access` čísla a `miss:{číslo}`, k tomu
+`price_misses`), alebo od novšej ručnej ceny. Poradie v `collect_targets`:
+najprv neznáme, teda kľúč sa ešte nepýtal a cena chýba (Zbierka pred Chcem,
+naposledy pridané prvé), potom ostatné od najstaršieho volania. Keď zdroj
+odpovie, že cenu nemá (400/404 alebo odpoveď bez ceny), `store_miss` zapíše
+`miss:{číslo}`, nie číslo samo, lebo to by odomklo cudzie ceny. Bez tejto
+stopy by bola položka pri každom kliknutí neznáma, prvá a stála by volanie;
+rovnako postavený kus setu v predaji, ktorému použitá cena nepríde nikdy.
+Výpadok (`provider.last_answered` je False) sa nezapíše, skúsi sa nabudúce.
 
 **Zberateľské série majú na Rebrickable nečakanú štruktúru.** Séria nie je
 jeden set s dvanástimi figúrkami. Každá figúrka je samostatný set
@@ -211,9 +223,24 @@ názvu, nielen podľa nula dielikov: kompletná sada má niekedy dieliky všetk�
 kusov. Ukladajú sa do `blind_series` s kategóriou; členovia sú `kind=set`,
 cenia sa ako sety. Minifigúrky ostávajú v `cmf_series`, oddelene.
 
-**„Kúpil som“ je jeden dialóg pre všetko.** `components/PurchaseDialog.vue`
-pridá do zbierky vec, ktorú katalóg už pozná, z Chcem aj z chýbajúcej
-figúrky. Po uložení ju vždy vyhodí z Chcem, nech sa kupovalo odkiaľkoľvek.
+**„Kúpil som“ je jeden dialóg pre všetko, z Chcem vyraďuje server.**
+`components/PurchaseDialog.vue` pridá do zbierky vec, ktorú katalóg už
+pozná, z Chcem aj z chýbajúcej figúrky; Chcem sám nemaže. Kúpené vyradí
+server pri každom pridaní: `services/wishlist.py::drop_bought` v tej istej
+transakcii volajú `POST /items`, `/items/bulk` aj import (Pridať set
+číslom aj skenom, Mám ju, Mám všetky, ďalší kus). Porovnáva katalógové
+číslo: figúrka vyradí seba, sáčok pod holým číslom sériu; vlastnený aj
+rezervovaný kus áno, predaný nie. Pôvodnú položku nesie
+`removed_from_wishlist` na prvom kuse setu (viac kusov vyradí raz) a Späť
+ju vráti cez `POST /wishlist` aj s `created_at`
+(`composables/useWishlistReturn.ts`). Pridať set ukáže po tlačidle
+samostatné „Odstránené z Chcem“ so Späť len pre Chcem, po automatickom
+uložení zo skenu jedno oznámenie a jedno Späť pre kusy aj Chcem. To vracia
+Chcem až po zmazaní kusov a s `?unless_owned=true`: set, ktorý účet ešte
+má (pri skenoch X, Y, X druhý kus X), server nevráti a odpovie 204
+(`still_bought`, to isté pravidlo ako `drop_bought`). Import Chcem
+z importov nechá (`keep_imported`) a vyradené si pamätá na vrátenie, aj
+s dátumom pridania (`added_at`).
 
 **Katalógové vzťahy sa načítavajú výslovným dotazom.** `CatalogItem` zámerne
 nemá ORM vzťah na členov série. Lenivé načítanie v asynchrónnej session padne
@@ -246,10 +273,26 @@ Figúrok (`utils/series.ts::figuresRoute`, jedna séria na jej stránku) a
 uložený pohľad s nimi je označený a po kliknutí to oznámi
 (`hasFigureFilters`). Aby hľadanie figúrky neskončilo tichým „Nič sa
 nenašlo“, `FacetsOut.hidden_figures` povie, koľko figúrok zo sérií by filter
-našiel, a `FiguresElsewhere.vue` odkáže do Figúrok. Ponuka a hlavička
+našiel, a `FiguresElsewhere.vue` odkáže do Figúrok. Je to nenápadný riadok
+pod súčtami, nie `v-alert`, a len keď na tom záleží: hľadanie (`q`) ich
+trafilo, alebo Zbierka nenašla nič (vtedy je riadok v prázdnom stave).
+Bežný filter s výsledkom nehlási nič. Počty musia patriť tomu istému
+hľadaniu (`filterStore.facetsSearch`), inak by po napísaní chvíľu svietil
+počet zo starého filtra. Pri spresňovaní hľadania, ktoré tiež trafilo
+figúrky, riadok drží miesto (`pending`, `visibility: hidden`), kým neprídu
+nové počty, inak by výsledky pri každej pauze v písaní poskočili. Písmo je
+`text-body-medium`: Vuetify 4 má typografiu MD3 a staré triedy
+(`text-body-2`, `text-caption`, `text-subtitle-1`…) v jeho CSS nie sú.
+Ponuka a hlavička
 Zbierky berú `collection_*_count` zo súhrnu, `set_count` a spol. počítajú
-všetko. Odkazy z Figúrok na detail nesú `?from=minifigs`, ponuka potom
-svieti na Figúrkach (`utils/navigation.ts::sectionRoute`). Kus pod holým
+všetko. Dlaždica Zbierka na Prehľade nemá vlastné počty, berie tie isté
+z `dashboardSummary` (s rozsahom): hlavné číslo `collection_set_count`,
+v podnadpise `series_figures` (rôzne figúrky, aj blind-box) a
+`sealed_bag_count` (každý nerozbalený sáčok, ako `sealed_bags` vo
+Figúrkach). Sáčok nie je figúrka, kým sa nerozbalí, takže bez rozsahu
+dlaždica sedí s ponukou aj s Figúrkami. Odkazy z Figúrok na detail nesú
+`?from=minifigs`, ponuka potom svieti na Figúrkach
+(`utils/navigation.ts::sectionRoute`). Kus pod holým
 číslom série je vždy nerozbalený sáčok (`POST /items` ho tak uloží, ako
 import), detail série sa pozná podľa `series_size`, nielen podľa kusov
 (`utils/series.ts::isSeriesPage`).
@@ -340,6 +383,15 @@ obrazovky protirečia.
 **Detail setu si kusy načítava sám so `status=all`.** Zoznam v Zbierke je
 filtrovaný a po predaji by predaný kus z detailu zmizol aj s históriou.
 
+**Moje kusy v detaile setu sú jedna mriežka.** Stĺpce (štítky, Kúpené,
+Hodnota, Zisk, akcie) určuje len `.pieces-grid` v `SetDetailView.vue`;
+riadok kusu aj oba súčty sú `subgrid` s tými istými piatimi bunkami
+`piece-cell--…` v tom istom poradí (stráži `SetDetailView.spec.ts`).
+Vlastné šírky riadku ani flex s medzerami podľa obsahu nie: pri inom
+počte štítkov by sumy odskočili a súčet by nestál pod nimi. Rozloženie
+mení šírka karty (`@container`), nie okna: nad 840 px jeden riadok, do
+840 štítky nad sumami, do 640 tri rovnaké stĺpce súm a akcie pod nimi.
+
 **Každé volanie cudzej služby má schopnosť a prejde bránou.** Register je
 `capabilities.py` (`Cap`, `CAPABILITIES`, `PROVIDERS`). Zdroj pred požiadavkou
 zavolá `fetch_policy.ensure_allowed(policy, cap)`: vypnutá schopnosť alebo
@@ -369,17 +421,20 @@ nepozná nikto, odpoveď BrickEconomy o cene poslúži aj ako metadáta (názov,
 séria, rok, dieliky; `MarketData.name` a spol.), takže jedno volanie dá
 set aj cenu. Holé číslo skúša len variant `-1`. Cena mladšia než 24 h sa
 neťahá (`price="cached"`). Neúspech (zdroj set nepozná alebo nemá
-cenu) si `services/price_misses.py` pamätá 24 h v procese, holá figúrka
-(`fig-…`) sa neceni vôbec: inak by každý opakovaný sken stál volanie. `outcome` a `price` sú kódy, texty robí
+cenu) zapíše `pricing.store_miss` ako v obnove cien: 24 h v procese
+(`services/price_misses.py`) a `miss:` pri kľúči, takže set vynechá aj
+dávka. Výpadok siete, 5xx či 429 (`provider.last_answered` je False) sa
+nezapíše nikde. Holá figúrka (`fig-…`) sa neceni vôbec: inak by každý
+opakovaný sken stál volanie. `outcome` a `price` sú kódy, texty robí
 frontend; `no_sources` = neznámy set a nie je kto ho dohľadať. Overené
 sety sú v `price_checks` pri účte; `/prices/checks` je v routeri pred
 `/prices/{num}`, inak by ho zhltol. Klik na riadok tabuľky nevolá von.
 
 **Obnova cien nemá plánovač a nespúšťa ju prihlásenie.** Spúšťa ju výhradne
 používateľ tlačidlom v hornej lište (`POST /prices/refresh-all`), ďalej to
-beží cez `BackgroundTasks`. Poistky sú v `services/refresh.py`: vek snímky,
-strop na dávku, zvyšok dennej kvóty, jedno volanie na položku a zámok proti
-súbehu.
+beží cez `BackgroundTasks`. Poistky sú v `services/refresh.py`: vek
+posledného volania, strop na dávku, zvyšok dennej kvóty, jedno volanie na
+položku a zámok proti súbehu. Do stropu idú najprv neznáme ceny.
 
 **Registráciu otvára správca v appke, nie `.env`.** Stav je v tabuľke
 `app_settings` (`services/app_settings.py`); `ALLOW_REGISTRATION` platí,
@@ -418,9 +473,30 @@ po doplnení z Brickset, inak by išli dve getSets naraz.
 nerátajú, vlna (téma + rok) je jedno `getSets` a ukladá sa do `theme_waves`
 a `theme_wave_sets`; čerstvé roky sa po 30 dňoch stiahnu znova. Kolekcie
 a iné nie-sety (`category` mimo Normal/Extended) do úplnosti nepatria.
-Témy pomenúva Brickset, katalóg má tému z Rebrickable: kým vlna nie je
-stiahnutá, počet pri roku je odhad podľa názvu, potom presný. Existujúcim
-setom Brickset nič neprepisuje, len dopĺňa chýbajúce.
+Témy pomenúva Brickset, katalóg má tému z Rebrickable a nezhodujú sa
+(staršie Botanicals má Brickset pod Icons, figúrky série Shrek Rebrickable
+pod Shrek). Set sa preto ráta v jedinej téme podľa `themes.py::assign`:
+stiahnutá vlna, ktorú účet vidí, potom `bs_theme`/`bs_year` (brickset_facts,
+len s prístupom kľúča), až keď Brickset set nepozná, téma a rok z katalógu.
+Nie-set je, čo má v `brickset_facts.category` inú kategóriu než
+Normal/Extended; staršie údaje ju nemajú a vtedy set vyradí len vlna jeho
+témy a roka stiahnutá neskôr, než Brickset o sete odpovedal (`fetched_at`).
+Vlna staršia než údaj setu je stará: set sa ráta, rok je odhad (≈)
+a otvorenie roka ju stiahne znova hneď (`_outdated`, jedno getSets, potom
+je vlna novšia a znova nie). Set bez údajov Brickset sa podľa roka
+z Rebrickable nezahadzuje, v stiahnutej vlne je len odhad.
+Rátajú sa len sety (`counts_as_set`: nie figúrky zo sérií podľa
+`filters.series_num`, sáčok pod číslom série ani holá figúrka), aj vo vlne
+a v počte Sérií v ponuke (`theme_names`). Ten ráta len témy zo zoznamu
+Brickset ako `overview` (`known_themes`, zoznam v pamäti procesu); kým
+zoznam nie je načítaný, len témy od Brickset, nie mená z Rebrickable
+(podtéma Modular Buildings v Brickset nie je). „V zbierke“ je najviac počet
+setov témy či roka; či je téma naozaj celá, povie `ThemeOut.complete`
+(úplná zhoda a vo vlnách nič nechýba) a len vtedy je `SeriesBar` zelený,
+aj filter Nekompletné ide podľa neho. Prop `complete` má predvolené
+`undefined`, chýbajúci boolean by Vue zmenilo na false. Kým vlna nie je
+stiahnutá, počet pri roku je odhad, potom presný. Existujúcim setom
+Brickset nič neprepisuje, len dopĺňa chýbajúce.
 
 **UPCitemdb je posledná možnosť.** Rebrickable kódy
 nemá a BrickEconomy podľa kódu hľadať nevie (kód len posiela v odpovedi
@@ -517,6 +593,11 @@ Zoradenie je v adrese ako `sort`, len keď nie je predvolené.
 **Zbierka na širokej obrazovke nesmie byť vyššia než okno.** Trasa má
 `meta.fitScreen`, rozloženie potom vynechá dolnú rezervu a posúva sa len
 panel filtrov a výsledky, nie stránka. Na telefóne sa posúva normálne.
+Do výšky rastie len `.collection-results`, ostatné riadky `.collection-main`
+majú `flex: 0 0 auto`: `v-alert` a `v-banner` majú vo Vuetify `flex: 1 1`
+a v stĺpci na výšku okna by si s výsledkami rozdelili miesto napoly
+(upozornenie o figúrkach tak raz zabralo pol obrazovky). Overiť cenu to má
+rovnako (`.check-page--fit > *`).
 
 **V dnešných peniazoch je prepočet na serveri, nie vo frontende.**
 `services/inflation.py` ťahá mesačný HICP Slovenska z Eurostatu
@@ -570,7 +651,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 545 testov, frontend 194. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 593 testov, frontend 229. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá
@@ -584,3 +665,9 @@ Frontend testuje aj komponenty so skutočným Vuetify
 (`components/PieceDialog.spec.ts`): komponenty Vuetify sa registrujú
 v teste, jsdom potrebuje náhradu `ResizeObserver` a `visualViewport`
 a `vitest.config.ts` spracúva Vuetify cez Vite (`server.deps.inline`).
+
+Stránka so storom v teste (`views/CollectionView.spec.ts`) dostane piniu
+výslovne (`plugins: [pinia]`, `useFilterStore(pinia)`) a `enableAutoUnmount`.
+Akcia pinie prepne aktívnu piniu na svoju, takže oneskorené načítanie
+stránky z predošlého testu by `useFilterStore()` bez parametra podstrčilo
+cudzie úložisko a test by občas padal.

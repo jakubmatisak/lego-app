@@ -705,138 +705,145 @@
 
           <v-divider />
 
-          <div v-for="item in pieces" :key="item.id">
-            <div class="pa-3" :class="{ 'bg-surface-variant': item.status === 'sold' }">
-              <div class="d-flex ga-3 flex-wrap align-center">
-                <v-btn
-                  v-if="selection.active.value && item.status === 'owned'"
-                  :color="selection.hasItem(item.id) ? 'primary' : undefined"
-                  :icon="selection.hasItem(item.id) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'"
-                  size="small"
-                  :title="t('bulk.select')"
-                  variant="text"
-                  @click="selection.toggleItem(item.id)"
-                />
+          <!--
+            Kusy aj súčty sú jedna mriežka. Stĺpce určuje len .pieces-grid,
+            riadky ich preberajú (subgrid): sumy stoja pod sebou, nech má
+            riadok štítkov koľkokoľvek, a súčet je presne pod nimi. Na úzkej
+            obrazovke sú štítky nad sumami, sumy v troch rovnakých stĺpcoch.
+          -->
+          <div class="pieces">
+            <div class="pieces-grid">
+              <div
+                v-for="item in pieces"
+                :key="item.id"
+                class="piece-row"
+                :class="{ 'bg-surface-variant': item.status === 'sold' }"
+              >
+                <div class="piece-cell piece-cell--main">
+                  <v-btn
+                    v-if="selection.active.value && item.status === 'owned'"
+                    :color="selection.hasItem(item.id) ? 'primary' : undefined"
+                    :icon="selection.hasItem(item.id) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'"
+                    size="small"
+                    :title="t('bulk.select')"
+                    variant="text"
+                    @click="selection.toggleItem(item.id)"
+                  />
 
-                <div class="flex-grow-1" style="min-width: 200px">
-                  <!--
-                    Stav je hlavná informácia o kuse, preto stojí sám na
-                    vlastnom riadku. Medzi ostatnými čipmi sa strácal.
-                  -->
-                  <div
-                    v-if="item.catalog_num !== num"
-                    class="text-body-2 font-weight-medium"
-                  >
-                    {{ item.catalog.name }}
-                    <span class="text-caption text-medium-emphasis">{{ item.catalog_num }}</span>
-                  </div>
-
-                  <div class="d-flex ga-2 align-center mb-1">
-                    <v-chip
-                      :color="item.status === 'sold' ? undefined : conditionColor(item.condition)"
-                      label
-                      :prepend-icon="conditionIcon(item.condition)"
-                      size="small"
-                      variant="flat"
-                    >{{ t(`condition.${item.condition}`) }}</v-chip>
-
-                    <v-chip
-                      v-if="item.status === 'sold'"
-                      label
-                      prepend-icon="mdi-check"
-                      size="small"
-                      variant="tonal"
-                    >{{ t('collection.status.sold') }}</v-chip>
-
-                    <v-chip
-                      v-if="item.unidentified"
-                      color="secondary"
-                      label
-                      size="small"
-                      variant="tonal"
-                    >{{ t('detail.unidentified') }}</v-chip>
-                  </div>
-
-                  <div class="d-flex flex-wrap ga-1">
-                    <v-chip
-                      v-if="item.purpose"
-                      color="primary"
-                      label
-                      prepend-icon="mdi-tag-outline"
-                      size="small"
-                      variant="outlined"
-                    >{{ t(`purpose.${item.purpose}`) }}</v-chip>
-
-                    <ConditionChips
-                      :condition="null"
-                      :flags="item.flags"
-                      :location="placeLabel(item.location, item.box)"
-                      :variant="item.price_variant"
-                    />
-                  </div>
-
-                  <div class="text-caption text-medium-emphasis mt-1">
-                    <template v-if="item.status === 'sold'">
-                      {{ shortDate(item.sold_date) }}
-                      <span v-if="item.sold_via"> · {{ item.sold_via }}</span>
-                    </template>
-
-                    <template v-else>
-                      {{ shortDate(item.purchase_date) }}
-                      <span v-if="item.purchase_place"> · {{ item.purchase_place }}</span>
-                    </template>
-                  </div>
-                </div>
-
-                <!--
-                  Tri sumy držia pokope v jednom bloku. Keby sa lámali každá
-                  zvlášť, na úzkej obrazovke sa rozsypú a nedá sa čítať,
-                  ktoré číslo patrí ku ktorému popisu.
-                -->
-                <div class="d-flex ga-4 justify-space-between flex-grow-1" style="min-width: 240px">
-                  <div class="text-end">
-                    <div class="text-caption text-medium-emphasis">{{ t('detail.columnPurchased') }}</div>
-
-                    <div class="text-body-2">
-                      <v-icon
-                        v-if="item.purchase_price_auto"
-                        class="me-1"
-                        icon="mdi-auto-fix"
-                        size="x-small"
-                        :title="t('purchaseAuto.title')"
-                      />{{ exactMoney(paid(item)) }}
-                    </div>
-
-                    <div v-if="item.purchase_real_eur" class="text-caption text-medium-emphasis">
-                      {{ t('inflation.paid', { amount: exactMoney(item.purchase_price_eur) }) }}
-                    </div>
-                  </div>
-
-                  <div class="text-end">
-                    <div class="text-caption text-medium-emphasis">
-                      {{ item.status === 'sold' ? t('collection.soldFor') : t('detail.columnValue') }}
-                    </div>
-
-                    <div class="text-body-1 font-weight-medium">{{ pieceValue(item) }}</div>
-                  </div>
-
-                  <div class="text-end">
-                    <div class="text-caption text-medium-emphasis">{{ t('detail.columnProfit') }}</div>
-
-                    <div class="text-body-2 font-weight-medium" :class="pieceProfitClass(item)">
-                      {{ pieceProfit(item) }}
-                    </div>
-
-                    <!-- Pod rok držania server ročný výnos nepošle, riadok potom chýba. -->
+                  <div class="piece-info">
+                    <!--
+                      Stav je hlavná informácia o kuse, preto stojí sám na
+                      vlastnom riadku. Medzi ostatnými čipmi sa strácal.
+                    -->
                     <div
-                      v-if="item.status === 'owned' && item.cagr_pct !== null && item.cagr_pct !== undefined"
-                      class="text-caption"
-                      :class="item.cagr_pct >= 0 ? 'text-positive' : 'text-negative'"
-                    >{{ t('detail.yearly', { value: percent(item.cagr_pct, { decimals: 1 }) }) }}</div>
+                      v-if="item.catalog_num !== num"
+                      class="text-body-2 font-weight-medium"
+                    >
+                      {{ item.catalog.name }}
+                      <span class="text-caption text-medium-emphasis">{{ item.catalog_num }}</span>
+                    </div>
+
+                    <div class="d-flex flex-wrap ga-2 align-center mb-1">
+                      <v-chip
+                        :color="item.status === 'sold' ? undefined : conditionColor(item.condition)"
+                        label
+                        :prepend-icon="conditionIcon(item.condition)"
+                        size="small"
+                        variant="flat"
+                      >{{ t(`condition.${item.condition}`) }}</v-chip>
+
+                      <v-chip
+                        v-if="item.status === 'sold'"
+                        label
+                        prepend-icon="mdi-check"
+                        size="small"
+                        variant="tonal"
+                      >{{ t('collection.status.sold') }}</v-chip>
+
+                      <v-chip
+                        v-if="item.unidentified"
+                        color="secondary"
+                        label
+                        size="small"
+                        variant="tonal"
+                      >{{ t('detail.unidentified') }}</v-chip>
+                    </div>
+
+                    <div class="d-flex flex-wrap ga-1">
+                      <v-chip
+                        v-if="item.purpose"
+                        color="primary"
+                        label
+                        prepend-icon="mdi-tag-outline"
+                        size="small"
+                        variant="outlined"
+                      >{{ t(`purpose.${item.purpose}`) }}</v-chip>
+
+                      <ConditionChips
+                        :condition="null"
+                        :flags="item.flags"
+                        :location="placeLabel(item.location, item.box)"
+                        :variant="item.price_variant"
+                      />
+                    </div>
+
+                    <div class="text-caption text-medium-emphasis mt-1">
+                      <template v-if="item.status === 'sold'">
+                        {{ shortDate(item.sold_date) }}
+                        <span v-if="item.sold_via"> · {{ item.sold_via }}</span>
+                      </template>
+
+                      <template v-else>
+                        {{ shortDate(item.purchase_date) }}
+                        <span v-if="item.purchase_place"> · {{ item.purchase_place }}</span>
+                      </template>
+                    </div>
                   </div>
                 </div>
 
-                <div class="d-flex ga-1 align-center">
+                <!-- Popis nad sumou má každá bunka sama, na telefóne sa inak nedá čítať, čo je čo. -->
+                <div class="piece-cell piece-cell--purchased piece-amount">
+                  <div class="text-caption text-medium-emphasis">{{ t('detail.columnPurchased') }}</div>
+
+                  <div class="text-body-2">
+                    <v-icon
+                      v-if="item.purchase_price_auto"
+                      class="me-1"
+                      icon="mdi-auto-fix"
+                      size="x-small"
+                      :title="t('purchaseAuto.title')"
+                    />{{ exactMoney(paid(item)) }}
+                  </div>
+
+                  <div v-if="item.purchase_real_eur" class="text-caption text-medium-emphasis">
+                    {{ t('inflation.paid', { amount: exactMoney(item.purchase_price_eur) }) }}
+                  </div>
+                </div>
+
+                <div class="piece-cell piece-cell--value piece-amount">
+                  <div class="text-caption text-medium-emphasis">
+                    {{ item.status === 'sold' ? t('collection.soldFor') : t('detail.columnValue') }}
+                  </div>
+
+                  <div class="text-body-1 font-weight-medium">{{ pieceValue(item) }}</div>
+                </div>
+
+                <div class="piece-cell piece-cell--profit piece-amount">
+                  <div class="text-caption text-medium-emphasis">{{ t('detail.columnProfit') }}</div>
+
+                  <div class="text-body-2 font-weight-medium" :class="pieceProfitClass(item)">
+                    {{ pieceProfit(item) }}
+                  </div>
+
+                  <!-- Pod rok držania server ročný výnos nepošle, riadok potom chýba. -->
+                  <div
+                    v-if="item.status === 'owned' && item.cagr_pct !== null && item.cagr_pct !== undefined"
+                    class="text-caption"
+                    :class="item.cagr_pct >= 0 ? 'text-positive' : 'text-negative'"
+                  >{{ t('detail.yearly', { value: percent(item.cagr_pct, { decimals: 1 }) }) }}</div>
+                </div>
+
+                <div class="piece-cell piece-cell--actions">
                   <v-btn
                     icon="mdi-pencil-outline"
                     size="small"
@@ -889,39 +896,47 @@
                   >{{ t('detail.unsell') }}</v-btn>
                 </div>
               </div>
-            </div>
 
-            <v-divider />
-          </div>
+              <!-- Súčty majú tie isté bunky ako kus, akcie ostanú prázdne. -->
+              <div class="piece-row piece-row--total text-body-2">
+                <div class="piece-cell piece-cell--main text-medium-emphasis">
+                  {{ t('detail.totalOwned', { count: owned.length }) }}
+                </div>
 
-          <div class="pa-3 d-flex flex-column ga-1">
-            <div class="d-flex text-body-2">
-              <span class="text-medium-emphasis">{{ t('detail.totalOwned', { count: owned.length }) }}</span>
-              <span class="ms-auto">{{ money(totals.purchase) }}</span>
+                <div class="piece-cell piece-cell--purchased piece-amount">{{ money(totals.purchase) }}</div>
 
-              <span class="ms-4 font-weight-medium">
-                {{ priceUnknown ? '—' : money(totals.market) }}
-              </span>
+                <div class="piece-cell piece-cell--value piece-amount font-weight-medium">
+                  {{ priceUnknown ? '—' : money(totals.market) }}
+                </div>
 
-              <span
-                class="ms-4 font-weight-medium"
-                :class="priceUnknown
-                  ? 'text-medium-emphasis'
-                  : totals.unrealized >= 0 ? 'text-positive' : 'text-negative'"
-                style="min-width: 90px; text-align: right"
-              >{{ priceUnknown ? '—' : money(totals.unrealized, { sign: true }) }}</span>
-            </div>
+                <div
+                  class="piece-cell piece-cell--profit piece-amount font-weight-medium"
+                  :class="priceUnknown
+                    ? 'text-medium-emphasis'
+                    : totals.unrealized >= 0 ? 'text-positive' : 'text-negative'"
+                >{{ priceUnknown ? '—' : money(totals.unrealized, { sign: true }) }}</div>
 
-            <div v-if="sold.length > 0" class="d-flex text-body-2">
-              <span class="text-medium-emphasis">{{ t('detail.totalSold', { count: sold.length }) }}</span>
-              <span class="ms-auto">{{ money(totals.soldPurchase) }}</span>
-              <span class="ms-4 font-weight-medium">{{ money(totals.soldProceeds) }}</span>
+                <div class="piece-cell piece-cell--actions" />
+              </div>
 
-              <span
-                class="ms-4 font-weight-medium"
-                :class="totals.realized >= 0 ? 'text-positive' : 'text-negative'"
-                style="min-width: 90px; text-align: right"
-              >{{ money(totals.realized, { sign: true }) }}</span>
+              <div v-if="sold.length > 0" class="piece-row piece-row--total text-body-2">
+                <div class="piece-cell piece-cell--main text-medium-emphasis">
+                  {{ t('detail.totalSold', { count: sold.length }) }}
+                </div>
+
+                <div class="piece-cell piece-cell--purchased piece-amount">{{ money(totals.soldPurchase) }}</div>
+
+                <div class="piece-cell piece-cell--value piece-amount font-weight-medium">
+                  {{ money(totals.soldProceeds) }}
+                </div>
+
+                <div
+                  class="piece-cell piece-cell--profit piece-amount font-weight-medium"
+                  :class="totals.realized >= 0 ? 'text-positive' : 'text-negative'"
+                >{{ money(totals.realized, { sign: true }) }}</div>
+
+                <div class="piece-cell piece-cell--actions" />
+              </div>
             </div>
           </div>
 
@@ -1203,6 +1218,141 @@
   -webkit-line-clamp: 3;
   line-clamp: 3;
   overflow: hidden;
+}
+
+/*
+ * Moje kusy: jedna mriežka pre kusy aj súčty. Šírky stĺpcov sú len tu,
+ * riadok je subgrid a preberá ich. Stĺpec sumy má šírku najširšej bunky
+ * zo všetkých riadkov, takže Kúpené, Hodnota a Zisk stoja pod sebou aj
+ * pod súčtom, nech má riadok štítkov koľkokoľvek. Štítky sa zalomia vo
+ * svojej bunke, sumy sa nepohnú.
+ */
+.pieces {
+  container-type: inline-size;
+}
+
+.pieces-grid {
+  column-gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(6.5rem, max-content)) max-content;
+}
+
+/*
+ * Bunky začínajú hore: popisy súm sú v jednom riadku a sumy v druhom,
+ * aj keď má jedna bunka pod sumou ešte ročný výnos.
+ */
+.piece-row {
+  align-items: start;
+  border-bottom: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  padding: 12px;
+  row-gap: 8px;
+}
+
+.piece-row--total {
+  border-bottom: 0;
+  padding-block: 2px;
+  row-gap: 0;
+}
+
+.piece-row:not(.piece-row--total) + .piece-row--total {
+  padding-top: 12px;
+}
+
+.piece-row--total:last-child {
+  padding-bottom: 12px;
+}
+
+.piece-cell {
+  min-width: 0;
+}
+
+.piece-cell--main {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.piece-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.piece-amount {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* Úprava a fotky sú v každom riadku prvé, tak stoja pod sebou aj pri predanom kuse. */
+.piece-cell--actions {
+  align-items: center;
+  align-self: center;
+  display: flex;
+  gap: 4px;
+}
+
+/*
+ * Stredná karta (tablet, užšie okno): štítky aj popis súčtu na celú
+ * šírku, pod nimi sumy a akcie v tých istých stĺpcoch ako na širokej.
+ */
+@container (max-width: 840px) {
+  .piece-cell--main {
+    grid-column: 1 / -1;
+  }
+
+  .piece-cell--purchased {
+    grid-column: 2;
+  }
+
+  .piece-cell--value {
+    grid-column: 3;
+  }
+
+  .piece-cell--profit {
+    grid-column: 4;
+  }
+
+  .piece-cell--actions {
+    grid-column: 5;
+  }
+}
+
+/*
+ * Úzka karta (telefón): štítky na celú šírku, pod nimi tri sumy
+ * v rovnakých stĺpcoch a akcie vpravo. Súčet má popis nad sumami.
+ */
+@container (max-width: 640px) {
+  .pieces-grid {
+    column-gap: 4px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .piece-cell--main,
+  .piece-cell--actions {
+    grid-column: 1 / -1;
+  }
+
+  .piece-cell--purchased {
+    grid-column: 1;
+  }
+
+  .piece-cell--value {
+    grid-column: 2;
+  }
+
+  .piece-cell--profit {
+    grid-column: 3;
+  }
+
+  .piece-cell--actions {
+    justify-content: flex-end;
+  }
+
+  .piece-row--total .piece-cell--actions {
+    display: none;
+  }
 }
 
 /* Čísla a graf vedľa seba, kým je miesto; na úzkej obrazovke pod sebou. */

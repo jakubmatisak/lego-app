@@ -25,6 +25,8 @@ export type ShareLink = S['ShareOut']
 export type PublicCollection = S['PublicCollectionOut']
 export type PublicItem = S['PublicItemOut']
 export type WishlistItem = S['WishlistOut']
+/** Položka Chcem, ktorú pridanie kusu vyradilo (na Späť). */
+export type RemovedWish = S['RemovedWishOut']
 export type ProviderStatus = S['ProviderStatusOut']
 export type ApiKeys = S['ApiKeysOut']
 export type Source = S['SourceOut']

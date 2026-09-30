@@ -285,6 +285,7 @@ def apply_brickset(item: CatalogItem, meta: CatalogMetadata) -> None:
     facts.name = meta.name or facts.name
     facts.year = meta.year or facts.year
     facts.theme = meta.theme or facts.theme
+    facts.category = meta.category or facts.category
     facts.num_parts = meta.num_parts if meta.num_parts is not None else facts.num_parts
     facts.num_minifigs = meta.num_minifigs if meta.num_minifigs is not None else facts.num_minifigs
     facts.image_url = meta.image_url or facts.image_url

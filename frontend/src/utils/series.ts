@@ -11,8 +11,11 @@ export interface SeriesBar {
   complete: boolean
 }
 
-export function seriesBar (owned: number, total: number): SeriesBar {
-  const complete = total > 0 && owned >= total
+/**
+ * `complete` povie séria sama, keď je počet orezaný: Série (témy) ho
+ * dostanú zo servera a plný pruh bez úplnej zhody tam zelený nie je.
+ */
+export function seriesBar (owned: number, total: number, complete = total > 0 && owned >= total): SeriesBar {
   return {
     color: complete ? 'positive' : 'warning',
     pct: total > 0 ? Math.min(100, (owned / total) * 100) : 0,

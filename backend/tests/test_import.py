@@ -240,6 +240,51 @@ async def test_preview_commit_and_undo(auth_client: AsyncClient) -> None:
     assert [(h["id"], h["state"]) for h in history] == [(preview["id"], "undone")]
 
 
+async def test_sold_row_and_wish_from_the_same_file_stay_in_wishlist(
+    auth_client: AsyncClient,
+) -> None:
+    """Predaný riadok z Chcem nevyraďuje; Chcem z toho istého súboru ostane."""
+    for num, name in (("10294-1", "Titanic"), ("75192-1", "Falcon"), ("21318-1", "Tree House")):
+        await _catalog(auth_client, num, name)
+    await auth_client.post("/wishlist", json={"catalog_num": "75192-1", "target_price_eur": "650"})
+    text = CSV + "21318-1;1;;;;;;;;;;\n"
+
+    preview = await _upload(auth_client, text)
+    done = await auth_client.post(f"/imports/{preview['id']}/commit", json={})
+    assert done.status_code == 200, done.text
+
+    wishes = {w["catalog_num"] for w in (await auth_client.get("/wishlist")).json()}
+    assert wishes == {"75192-1", "21318-1"}
+
+    await auth_client.post(f"/imports/{preview['id']}/undo")
+    wishes = {w["catalog_num"] for w in (await auth_client.get("/wishlist")).json()}
+    assert wishes == {"75192-1"}
+
+
+async def test_undo_puts_the_wish_back_with_its_original_date(auth_client: AsyncClient) -> None:
+    """Vrátená položka Chcem ostane na svojom mieste, nie navrchu ako nová."""
+    for num, name in (("10294-1", "Titanic"), ("75192-1", "Falcon"), ("21318-1", "Tree House")):
+        await _catalog(auth_client, num, name)
+    await auth_client.post(
+        "/wishlist",
+        json={"catalog_num": "10294-1", "note": "Na Vianoce", "created_at": "2026-01-02T10:00:00"},
+    )
+    await auth_client.post(
+        "/wishlist", json={"catalog_num": "75192-1", "created_at": "2026-03-01T08:00:00"}
+    )
+    before = {w["catalog_num"]: w for w in (await auth_client.get("/wishlist")).json()}
+
+    preview = await _upload(auth_client, CSV)
+    await auth_client.post(f"/imports/{preview['id']}/commit", json={})
+    undone = await auth_client.post(f"/imports/{preview['id']}/undo")
+    assert undone.status_code == 200, undone.text
+
+    rows = (await auth_client.get("/wishlist", params={"sort": "added"})).json()
+    back = next(r for r in rows if r["catalog_num"] == "10294-1")
+    assert (back["note"], back["created_at"]) == ("Na Vianoce", before["10294-1"]["created_at"])
+    assert [r["catalog_num"] for r in rows] == ["75192-1", "10294-1"]
+
+
 async def test_same_file_twice_is_flagged_as_duplicate(auth_client: AsyncClient) -> None:
     for num, name in (("10294-1", "Titanic"), ("75192-1", "Falcon"), ("21318-1", "Tree House")):
         await _catalog(auth_client, num, name)

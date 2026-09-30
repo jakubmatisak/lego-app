@@ -13,7 +13,6 @@ from lego_api.config import Settings, get_settings
 from lego_api.db import get_sessionmaker
 from lego_api.models import (
     CatalogItem,
-    CatalogKind,
     PriceCheck,
     PriceCondition,
     PriceKind,
@@ -37,10 +36,12 @@ from lego_api.services.fetch_policy import CallBlocked
 from lego_api.services.pricing import (
     PriceTarget,
     apply_catalog_extras,
+    is_bare_figure,
     latest_snapshot,
     snapshot_age_hours,
     store_manual,
     store_market,
+    store_miss,
 )
 from lego_api.services.purchase_fill import fill_purchase_prices
 from lego_api.services.refresh import RefreshState, get_state, refresh_prices
@@ -212,7 +213,10 @@ async def lookup_price(
         except CallBlocked:
             return PriceLookupOut(outcome="not_found", price="blocked")
         if data is None or not data.name:
-            price_misses.remember(candidate)
+            if provider.last_answered:
+                # Zdroj číslo nepozná. Výpadok siete či chyba servera sa
+                # naopak nepamätá: ďalší pokus by mohol uspieť.
+                await store_miss(session, candidate, provider.fingerprint)
             await session.commit()
             return PriceLookupOut(outcome="not_found", calls_left=provider.remaining_calls())
         # V spoločnom katalógu len číslo; názov, séria a rok sú vo facts
@@ -229,7 +233,7 @@ async def lookup_price(
             catalog=await catalog_detail(session, settings, keys, user.id, item),
             price="series",
         )
-    elif item.kind == CatalogKind.MINIFIG and item.parent_num is None:
+    elif is_bare_figure(item):
         # Holá figúrka (fig-…) nie je set; BrickEconomy ju pod týmto číslom
         # nepozná a volanie by len ukrojilo z kvóty.
         price = "unsupported"
@@ -255,7 +259,13 @@ async def lookup_price(
 
 
 async def _fetch_for_check(session, provider: BrickEconomyProvider, item: CatalogItem) -> str:
-    """Jedno volanie BrickEconomy pre známy set; vráti, ako to dopadlo."""
+    """Jedno volanie BrickEconomy pre známy set; vráti, ako to dopadlo.
+
+    Neúspech sa zapíše rovnako ako v obnove cien (``store_miss``), takže
+    dávka sa na set s tým istým kľúčom nepýta skôr než o týždeň. Len keď
+    zdroj naozaj odpovedal: po výpadku siete či chybe 5xx by inak set
+    24 h nedostal cenu ani z tlačidla v hornej lište.
+    """
     if price_misses.is_recent(item.catalog_num):
         return "missing"
     try:
@@ -267,7 +277,8 @@ async def _fetch_for_check(session, provider: BrickEconomyProvider, item: Catalo
     except CallBlocked:
         return "blocked"
     if data is None or not data.has_price:
-        price_misses.remember(item.catalog_num)
+        if provider.last_answered:
+            await store_miss(session, item.catalog_num, provider.fingerprint)
         return "missing"
     await store_market(session, data, provider.fingerprint)
     apply_catalog_extras(item, data)

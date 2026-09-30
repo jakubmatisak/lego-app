@@ -50,6 +50,8 @@
     "soldSummary": "{sold} for {total}",
     "setsCount": "{count} sets",
     "piecesAndParts": "{pieces} · {parts} parts",
+    "figuresPlural": "{count} minifigure | {count} minifigures",
+    "bagsPlural": "{count} sealed bag | {count} sealed bags",
     "priceSource": "BrickEconomy market value",
     "manualPrices": "manually entered prices",
     "chartTitle": "Portfolio value",
@@ -118,7 +120,7 @@
     "pieces": "{count} pcs",
     "empty": "Nothing found",
     "emptyHint": "Try changing the filters or add a new set.",
-    "figuresElsewherePlural": "{count} series figure is in the Minifigures section; the collection shows sets only. | {count} series figures are in the Minifigures section; the collection shows sets only.",
+    "figuresElsewherePlural": "{count} series minifigure is in Minifigures | {count} series minifigures are in Minifigures",
     "openMinifigs": "Open Minifigures",
     "addSet": "Add set",
     "exportCsv": "Export CSV",
@@ -306,7 +308,8 @@
     "edited": "Saved: {name}",
     "setTarget": "Set",
     "targetHint": "You get a notice when the market price drops to this amount or below. Empty = no target.",
-    "note": "Note"
+    "note": "Note",
+    "itemsPlural": "{count} item | {count} items"
   },
   "settings": {
     "title": "Settings",
@@ -906,7 +909,7 @@
     "reserve": "Call reserve",
     "reserveHint": "Background work stops when this many calls remain; the rest is kept for adding and scanning.",
     "batch": "Most sets per price refresh",
-    "batchHint": "With a large collection prices refresh step by step, oldest first.",
+    "batchHint": "With a large collection prices refresh step by step: sets with no known price first (most recently added first), then the ones refreshed longest ago.",
     "loadFailed": "Could not load services",
     "saveFailed": "Could not save the setting",
     "rebrickable": {
@@ -1043,6 +1046,11 @@
     "undo": "Undo",
     "undone": "Undone, pieces removed from the collection",
     "undoFailed": "Undo failed",
+    "autoSavedWish": "Saved: {num} {name} ×{count}, removed from wishlist",
+    "undoneWish": "Undone, pieces removed from the collection and the wishlist is as it was",
+    "undoneStillOwned": "Undone, pieces removed from the collection. Still in your collection, so not back in the wishlist: {what}",
+    "wishDropped": "Removed from wishlist: {what}",
+    "wishRestored": "Back in the wishlist: {what}",
     "seriesNotSaved": "Series {name} was not saved, no minifigure selected",
     "catalogSaved": "Set {num} saved to the catalog",
     "saved": "Saved",

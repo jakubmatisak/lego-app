@@ -7,11 +7,13 @@
  * uložil druhý raz.
  */
 
-export async function saveWithFollowups (
-  create: () => Promise<number[]>,
+import type { RemovedWish } from '@/api/types'
+
+export async function saveWithFollowups<T> (
+  create: () => Promise<T>,
   followups: Array<() => Promise<void>>,
   onFollowupError: (error: unknown) => void,
-): Promise<number[]> {
+): Promise<T> {
   const ids = await create()
   for (const step of followups) {
     try {
@@ -32,4 +34,12 @@ export async function undoCreated (ids: number[], remove: (id: number) => Promis
     }
   }
   return failed
+}
+
+/**
+ * Položky Chcem, ktoré uloženie vyradilo. Server ich vyraďuje pri každom
+ * pridaní kusu a pôvodný záznam nesie prvý kus každého setu.
+ */
+export function droppedWishes (items: Array<{ removed_from_wishlist?: RemovedWish | null }>): RemovedWish[] {
+  return items.flatMap(item => (item.removed_from_wishlist ? [item.removed_from_wishlist] : []))
 }

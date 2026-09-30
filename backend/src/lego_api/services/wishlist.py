@@ -1,17 +1,20 @@
 """Chcem: posledná známa cena, či už klesla na cieľovú, a zoradenie a filtre.
 
 Radí a filtruje server, rovnako ako v Zbierke. Prázdna hodnota (bez ceny,
-bez cieľa) je na konci v oboch smeroch.
+bez cieľa) je na konci v oboch smeroch. Kúpený set z Chcem vyradí
+`drop_bought`, pri každom pridaní kusu aj pri importe.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lego_api.models import PriceCondition, PriceKind, WishlistItem
+from lego_api.models import CollectionItem, ItemStatus, PriceCondition, PriceKind, WishlistItem
 from lego_api.schemas import WishlistOut
 from lego_api.services.filters import fold
 from lego_api.services.portfolio import load_snapshots
@@ -59,6 +62,96 @@ async def wishlist_prices(session: AsyncSession, user_id: int) -> list[WishlistO
             )
         )
     return rows
+
+
+@dataclass(frozen=True, slots=True)
+class DroppedWish:
+    """Položka Chcem, ktorú vyradila kúpa; stačí na jej vrátenie tak, ako bola."""
+
+    catalog_num: str
+    name: str
+    target_price_eur: Decimal | None
+    note: str | None
+    created_at: datetime
+
+    def as_json(self) -> dict[str, Any]:
+        """Tvar, v ktorom si vyradené pamätá import (`ImportBatch.removed_wishes`)."""
+        return {
+            "catalog_num": self.catalog_num,
+            "target_price_eur": str(self.target_price_eur)
+            if self.target_price_eur is not None
+            else None,
+            "note": self.note,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+def added_at(value: datetime) -> datetime:
+    """Pôvodný dátum pridania vrátenej položky Chcem (Späť po kúpe, vrátenie importu).
+
+    Vrátená položka tak v Chcem ostane na svojom mieste, nie navrchu. Dátum
+    bez pásma je UTC, tak ho appka ukladá aj vracia.
+    """
+    return value.astimezone(UTC) if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+async def drop_bought(
+    session: AsyncSession,
+    user_id: int,
+    pieces: Iterable[CollectionItem],
+    *,
+    keep_imported: bool = False,
+) -> dict[str, DroppedWish]:
+    """Kúpené vyradí z Chcem účtu; vráti vyradené podľa čísla setu.
+
+    Jedno pravidlo pre každé pridanie kusu (`POST /items`, `/items/bulk`)
+    aj import. Vyraďuje vlastnený aj rezervovaný kus, predaný nie: dodatočne
+    zapísaný predaj neznamená, že set už nechcem. Figúrka zo série vyradí
+    seba, sáčok pod holým číslom sériu, lebo porovnáva sa katalógové číslo.
+    Viac kusov toho istého setu vyradí jednu položku, raz.
+
+    Mazanie ide do rozrobenej transakcie volajúceho, commit je jeho.
+    `keep_imported` nechá položky Chcem z importov (import tak nezmaže
+    to, čo sám práve vytvoril).
+    """
+    # Predvolený stav (vlastnený) sa do nového kusu zapíše až pri flush.
+    nums = {p.catalog_num for p in pieces if p.status != ItemStatus.SOLD}
+    if not nums:
+        return {}
+    stmt = select(WishlistItem).where(
+        WishlistItem.user_id == user_id, WishlistItem.catalog_num.in_(nums)
+    )
+    if keep_imported:
+        stmt = stmt.where(WishlistItem.import_batch_id.is_(None))
+    dropped: dict[str, DroppedWish] = {}
+    for wish in (await session.execute(stmt)).scalars().unique():
+        dropped[wish.catalog_num] = DroppedWish(
+            catalog_num=wish.catalog_num,
+            name=wish.catalog.name,
+            target_price_eur=wish.target_price_eur,
+            note=wish.note,
+            created_at=wish.created_at,
+        )
+        await session.delete(wish)
+    return dropped
+
+
+async def still_bought(session: AsyncSession, user_id: int, catalog_num: str) -> bool:
+    """Má účet kus, pre ktorý by set z Chcem vyradil `drop_bought`?
+
+    Vlastnený aj rezervovaný kus áno, predaný nie. Späť po automatickom
+    uložení podľa toho nevráti do Chcem set, ktorý medzitým uložil ďalší sken.
+    """
+    found = await session.scalar(
+        select(CollectionItem.id)
+        .where(
+            CollectionItem.user_id == user_id,
+            CollectionItem.catalog_num == catalog_num,
+            CollectionItem.status != ItemStatus.SOLD,
+        )
+        .limit(1)
+    )
+    return found is not None
 
 
 WishSort = Literal["distance", "market", "target", "name", "theme", "added"]

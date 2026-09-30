@@ -22,7 +22,11 @@ Aktuálna verzia je **1.0.0**.
 
 ![Prehľad: hodnota portfólia, zisk a rozdelenie podľa sérií](docs/screenshots/prehlad.png)
 
-*Snímka je z ukážkového účtu, sumy sú len na ilustráciu.*
+| Zbierka | Figúrky |
+| --- | --- |
+| ![Zbierka: karty setov s kúpnou cenou, hodnotou a ziskom](docs/screenshots/zbierka.png) | ![Figúrky: zberateľská séria, ktoré figúrky máš a ktoré chýbajú](docs/screenshots/figurky.png) |
+
+*Snímky sú z ukážkovej zbierky s vymyslenými, ručne zadanými cenami.*
 
 ## Čo to vie
 
@@ -32,10 +36,12 @@ Aktuálna verzia je **1.0.0**.
   (v krabici, postavený, rozobratý…), cenou, dátumom a umiestnením.
 - **Umiestnenie v dvoch úrovniach**: miestnosť a číslo krabice, s našepkávačom.
 - **Mám to už?** Pri zadaní čísla sa ukáže výrazný pás, keď set v zbierke je.
-- **Zbierka sú sety, figúrky majú vlastnú sekciu.** Figúrky zo zberateľských
-  sérií sú len v sekcii Figúrky, kde sa dajú aj hromadne upraviť; Zbierka
-  ukáže, koľko ich tam je, a odkaz na ne. Prehľad, export CSV a súpis pre
-  poistku počítajú všetko, sety aj figúrky.
+- **Zbierka sú sety, figúrky majú vlastnú sekciu.** Figúrky zo sérií
+  (zberateľské minifigúrky aj blind-boxy ako Mighty Machines) sú len
+  v sekcii Figúrky a hromadne sa upravujú v detaile série. Keď hľadanie
+  alebo filter v Zbierke trafí figúrku, Zbierka povie, koľko ich je vo
+  Figúrkach, a odkáže tam. Prehľad, export CSV a súpis pre poistku počítajú
+  všetko, sety aj figúrky.
 - **Zberateľské minifigúrky.** Séria sa pridáva výberom z mriežky figúrok,
   nerozbalený sáčok sa po rozbalení priradí ku konkrétnej figúrke. Sekcia
   Figúrky pozná všetky série, aj nezačaté, a ukáže, čo chýba („Ukázať
@@ -71,9 +77,11 @@ Aktuálna verzia je **1.0.0**.
 - **Ročný výnos** kusu, série, zoznamu aj celej zbierky, od roka držania.
 - **Bez ceny pomlčka, nie 0 €.** Kým kus nemá trhovú cenu, appka ukáže
   pomlčku alebo „cena neznáma“, nie 0 € a −100 %. Keď v skupine nemá cenu
-  ani jeden kus, pomlčku ukáže aj Prehľad a súčty; pri čiastočnej cene je
-  hodnota z ocenených kusov a vedľa nej „bez ceny: N“. Cena odvodená
-  z druhého stavu (postavený kus setu, ktorý sa ešte predáva) má znak ≈.
+  ani jeden kus, pomlčku ukáže aj Prehľad, Výkonnosť a súčty; pri čiastočnej
+  cene je hodnota z ocenených kusov a vedľa nej „bez ceny: N“. Rovnako súpis
+  a odkaz na pozretie; export CSV nechá bunku prázdnu a predaj pole ceny
+  nevyplní. Cena odvodená z druhého stavu (postavený kus setu, ktorý sa ešte
+  predáva) má znak ≈.
 - **V dnešných peniazoch**: prepočet kúpnych cien infláciou (HICP Slovensko).
 - **Odhad hodnoty** kusov v krabici o 2 a 5 rokov.
 - **Kto sa hýbe**: zmena trhovej ceny za 30, 90 a 365 dní.
@@ -142,10 +150,11 @@ napríklad `{"status": "ok", "version": "1.0.0"}`.
 (aktualizácia aj návrat na staršiu), aj keď sa schéma nemení, sa databáza
 najprv skopíruje do `data/backups/`, napríklad
 `lego-20261015-083000-v1.0.0-<revízia>.db`. Verzia v mene je tá, ktorá nad
-databázou bežala naposledy, teda tá, na ktorú sa dá vrátiť. Kópia ide cez
-zálohovacie API SQLite, takže je celá aj pri otvorenom spojení. Keď sa záloha
-nepodarí (plný disk, práva), migrácia sa nespustí a databáza ostane bez
-zmeny.
+databázou bežala naposledy, teda tá, na ktorú sa dá vrátiť; staršia
+inštalácia, ktorá verziu ešte nezapisovala, má v mene len revíziu. Kópia ide
+cez zálohovacie API SQLite, takže je celá aj pri otvorenom spojení. Keď sa
+záloha nepodarí (plný disk, práva), migrácia sa nespustí a databáza ostane
+bez zmeny.
 
 - Po úspešnom štarte ostane posledných **5 záloh**, staršie sa zmažú. Iné
   súbory v priečinku appka nechá tak.
@@ -159,14 +168,20 @@ zmeny.
 **Obnova zo zálohy.** Keby sa po aktualizácii niečo pokazilo:
 
 1. Zastav appku: `docker compose stop`. Kde je záloha spred aktualizácie,
-   napíše aj log: `docker compose logs app`.
+   napíše aj log: `docker compose logs app` (cesta `/app/data/backups/`
+   v kontajneri je na disku `data/backups/`).
 2. Zmaž `data/lego.db-journal`, `data/lego.db-wal` a `data/lego.db-shm`, ak
    tam sú. Bez toho by SQLite zvyšok žurnálu pri ďalšom otvorení vrátil do
    obnoveného súboru a pokazil ho.
 3. Skopíruj zálohu na miesto databázy, napríklad
    `cp data/backups/lego-20261015-083000-v1.0.0-<revízia>.db data/lego.db`.
 4. Vráť kód na verziu z mena zálohy a spusti `docker compose up --build -d`.
-   Novšia verzia by databázu pri štarte znova zmigrovala.
+   Každé vydanie má tag: `git fetch --tags` a `git tag` vypíšu vydania,
+   potom napríklad `git checkout v1.0.0`. Záloha, ktorá má v mene len
+   revíziu, je z inštalácie spred verzie 1.0.0; vtedy vráť commit tesne pred
+   „Moje kocky 1.0.0“ (nájdeš ho v `git log --oneline`). Novšia verzia by
+   databázu pri štarte znova zmigrovala. K najnovšej sa neskôr vrátiš cez
+   `git checkout main` a `git pull`.
 
 **Ručná záloha** všetkého, databázy aj fotiek, je kópia priečinka `data/`,
 najistejšie pri zastavenej appke:
@@ -204,8 +219,10 @@ Nič sa nedeje samo od seba, nie je tu plánovač. Obnovu cien spúšťa tlačid
 v hornej lište a beží na pozadí. Denná kvóta BrickEconomy je 100 volaní,
 preto:
 
-1. Hromadná obnova neťahá ceny mladšie než týždeň (`PRICE_MAX_AGE_HOURS`).
-2. Na jedno spustenie najviac 40 položiek (`PRICE_REFRESH_BUDGET`), od
+1. Hromadná obnova sa nepýta na položku, na ktorú sa pýtala pred menej než
+   týždňom (`PRICE_MAX_AGE_HOURS`), ani keď vtedy zdroj cenu nemal.
+2. Na jedno spustenie najviac 40 položiek (`PRICE_REFRESH_BUDGET`). Najprv
+   tie, ktorých cenu ešte nepoznáme (naposledy pridané prvé), potom od
    najstaršej; zvyšok pri ďalšom.
 3. Platí zvyšok dennej kvóty (appka ráta s 90 zo 100,
    `BRICKECONOMY_DAILY_LIMIT`), po odpovedi 429 sa dávka zastaví.
@@ -253,9 +270,12 @@ cd frontend && npm run type-check && npm run lint && npm test
 
 Testy poskytovateľov bežia proti uloženým odpovediam, bez siete a bez kľúčov;
 ceny BrickEconomy v nich sú vymyslené. Verzia appky má jeden zdroj, `version`
-v `backend/pyproject.toml`; pri vydaní sa zvýši aj v `uv.lock`
-a `frontend/package.json`, zhodu stráži `tests/test_version.py`. Podrobný
-popis návrhu, dát, API a rozhodnutí je v
+v `backend/pyproject.toml`; pri vydaní sa zvýši aj v `uv.lock`,
+`frontend/package.json` a `frontend/package-lock.json`, zhodu stráži
+`tests/test_version.py`. README test nekontroluje, riadok „Aktuálna verzia“
+(aj „The current version“ v anglickej časti) sa prepíše ručne. Vydanie
+dostane tag `vX.Y.Z`, na ktorý sa dá pri obnove zo zálohy vrátiť.
+Podrobný popis návrhu, dát, API a rozhodnutí je v
 [docs/superpowers/specs/2026-09-10-lego-collection-design.md](docs/superpowers/specs/2026-09-10-lego-collection-design.md).
 
 ```
@@ -263,7 +283,7 @@ backend/     FastAPI, SQLAlchemy 2, SQLite, migrácie Alembic
 frontend/    Vue 3, Vuetify 4, TypeScript, Pinia, vue-i18n, Chart.js
 data/        databáza, zálohy a fotky, pripojené ako zväzok do kontajnera
 design/      návrhy obrazoviek
-docs/        specy, plány a snímka obrazovky
+docs/        specy, plány a snímky obrazovky
 ```
 
 ## Zdroje dát a poďakovanie
@@ -312,7 +332,8 @@ Frontend: [Vue](https://vuejs.org), [Vuetify](https://vuetifyjs.com),
 [Chart.js](https://www.chartjs.org) s [vue-chartjs](https://vue-chartjs.org)
 a chartjs-plugin-zoom, [openapi-fetch](https://openapi-ts.dev) (MIT);
 čítanie kódov [ZXing-C++](https://github.com/zxing-cpp/zxing-cpp) cez
-[zxing-wasm](https://github.com/Sec-ant/zxing-wasm) (Apache-2.0, MIT, BSD-3-Clause);
+[zxing-wasm](https://github.com/Sec-ant/zxing-wasm) a [barcode-detector](https://github.com/Sec-ant/barcode-detector)
+(Apache-2.0, MIT, BSD-3-Clause);
 ikony [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache-2.0);
 písmo [Roboto](https://github.com/googlefonts/roboto-classic) (SIL Open Font License 1.1).
 
@@ -345,7 +366,8 @@ Nie je to právna rada, len to, ako appka rieši podmienky služieb (k septembru
 - **GDPR:** stránka Zásady ochrany súkromia (prevádzkovateľa vyplní
   správca v Nastaveniach → Aplikácia), potvrdenie pri registrácii, export
   všetkých údajov a zmazanie účtu v Nastaveniach → Účet. Fotky sa ukladajú
-  zmenšené a bez polohy GPS. Zásady spomínajú aj zálohy pri aktualizácii.
+  zmenšené a bez polohy GPS. Zásady spomínajú aj zálohy pri aktualizácii;
+  po zmene ich textu appka každému účtu ukáže oznámenie, kým ho nepotvrdí.
   Appka používa len nevyhnutné cookie na prihlásenie, bez analytiky
   a reklamy, takže lišta so súhlasom netreba.
 
@@ -392,8 +414,12 @@ is **1.0.0**.
 
 ![Overview: portfolio value, profit and breakdown by theme](docs/screenshots/prehlad.png)
 
-*The screenshot comes from a demo account; the amounts are for illustration only.
-The interface in it is in Slovak, the app also runs in English.*
+| Collection | Minifigures |
+| --- | --- |
+| ![Collection: set cards with purchase price, value and profit](docs/screenshots/zbierka.png) | ![Minifigures: a collectible series, which figures you have and which are missing](docs/screenshots/figurky.png) |
+
+*The screenshots show a sample collection with made-up, hand-entered prices.
+The app's interface is available in Slovak and English.*
 
 ## Features
 
@@ -406,10 +432,12 @@ The interface in it is in Slovak, the app also runs in English.*
 - **Do I already have it?** A prominent banner appears when the number you
   enter is already in the collection.
 - **The Collection holds sets, minifigures have their own section.**
-  Figures from collectible series live only in the Minifigures section, where
-  they can also be edited in bulk; the Collection tells you how many are there
-  and links to them. The Overview, the CSV export and the insurance inventory
-  count everything, sets and figures alike.
+  Figures from series (collectible minifigures as well as blind boxes such as
+  Mighty Machines) live only in the Minifigures section and are edited in
+  bulk on the series page. When a search or filter in the Collection hits a
+  figure, the Collection tells you how many are in Minifigures and links
+  there. The Overview, the CSV export and the insurance inventory count
+  everything, sets and figures alike.
 - **Collectible minifigures.** You add a series by picking figures from a
   grid; a sealed bag can be matched to a specific figure once you open it.
   The Minifigures section knows every series, including ones you have not
@@ -453,10 +481,12 @@ The interface in it is in Slovak, the app also runs in English.*
   once it has been held for a year.
 - **No price means a dash, not €0.** Until a piece has a market price, the
   app shows a dash or “price unknown” rather than €0 and −100 %. When no piece
-  in a group has a price, the Overview and the totals show a dash too; with
-  partial prices you get the value of the priced pieces and “no price: N”
-  next to it. A price borrowed from the other condition (a built copy of a set
-  that is still on sale) is marked with ≈.
+  in a group has a price, the Overview, Performance and the totals show a dash
+  too; with partial prices you get the value of the priced pieces and “no
+  price: N” next to it. The same goes for the inventory and the view-only
+  link; the CSV export leaves the cell empty and the sale dialog leaves the
+  price blank. A price borrowed from the other condition (a built copy of a
+  set that is still on sale) is marked with ≈.
 - **In today's money**: purchase prices adjusted for inflation (Slovak HICP).
 - **Value forecast** for sealed pieces 2 and 5 years ahead.
 - **Biggest movers**: change in market price over 30, 90 and 365 days.
@@ -529,10 +559,11 @@ is shown in Settings → Application (visible to the administrator) and at
 (an update or a downgrade), even when the schema does not change, the database
 is first copied to `data/backups/`, for example
 `lego-20261015-083000-v1.0.0-<revision>.db`. The version in the name is the
-one that last ran on the database, so it is the one you can go back to. The
-copy is made through SQLite's backup API, so it is complete even while a
-connection is open. If the backup fails (full disk, permissions), the
-migration does not run and the database is left untouched.
+one that last ran on the database, so it is the one you can go back to; an
+older installation that did not record its version yet gets only the
+revision in the name. The copy is made through SQLite's backup API, so it is
+complete even while a connection is open. If the backup fails (full disk,
+permissions), the migration does not run and the database is left untouched.
 
 - After a successful start the **5 most recent backups** are kept and older
   ones are deleted. Other files in the folder are left alone.
@@ -547,15 +578,21 @@ migration does not run and the database is left untouched.
 **Restoring a backup.** If something goes wrong after an update:
 
 1. Stop the app: `docker compose stop`. The log also tells you where the
-   pre-update backup is: `docker compose logs app`.
+   pre-update backup is: `docker compose logs app` (`/app/data/backups/`
+   inside the container is `data/backups/` on disk).
 2. Delete `data/lego.db-journal`, `data/lego.db-wal` and `data/lego.db-shm`
    if they exist. Otherwise SQLite would replay the leftover journal into the
    restored file the next time it opens it and corrupt it.
 3. Copy the backup over the database, for example
    `cp data/backups/lego-20261015-083000-v1.0.0-<revision>.db data/lego.db`.
 4. Check out the app version named in the backup and run
-   `docker compose up --build -d`. A newer version would simply migrate the
-   database again on startup.
+   `docker compose up --build -d`. Every release has a tag:
+   `git fetch --tags` and `git tag` list the releases, then for example
+   `git checkout v1.0.0`. A backup with only the revision in its name comes
+   from an installation older than 1.0.0; in that case check out the commit
+   just before “Moje kocky 1.0.0” (you will find it in `git log --oneline`).
+   A newer version would simply migrate the database again on startup. Later
+   you get back to the latest version with `git checkout main` and `git pull`.
 
 **A manual backup** of everything, database and photos, is a copy of the
 `data/` folder, safest with the app stopped:
@@ -595,8 +632,10 @@ Nothing happens on its own; there is no scheduler. A price refresh is started
 with the button in the top bar and runs in the background. BrickEconomy
 allows 100 calls a day, so:
 
-1. A bulk refresh skips prices younger than a week (`PRICE_MAX_AGE_HOURS`).
-2. At most 40 items per run (`PRICE_REFRESH_BUDGET`), oldest first; the rest
+1. A bulk refresh skips items it asked about less than a week ago
+   (`PRICE_MAX_AGE_HOURS`), even when the source had no price then.
+2. At most 40 items per run (`PRICE_REFRESH_BUDGET`). Items with no known
+   price go first (most recently added first), then the oldest; the rest
    wait for the next run.
 3. The remaining daily quota is respected (the app counts on 90 out of 100,
    `BRICKECONOMY_DAILY_LIMIT`), and a 429 response stops the batch.
@@ -646,9 +685,12 @@ cd frontend && npm run type-check && npm run lint && npm test
 Provider tests run against stored responses, with no network and no keys;
 the BrickEconomy prices in them are made up. The app version has a single
 source, `version` in `backend/pyproject.toml`; a release bumps it in
-`uv.lock` and `frontend/package.json` as well, and `tests/test_version.py`
-checks that they match. The design, data model, API and decisions are
-described in detail (in Slovak) in
+`uv.lock`, `frontend/package.json` and `frontend/package-lock.json` as well,
+and `tests/test_version.py` checks that they match. The tests do not check
+the README: the “Aktuálna verzia” line (and “The current version” in the
+English part) is updated by hand. A release gets the tag `vX.Y.Z`, which you
+can go back to when restoring a backup. The design, data model,
+API and decisions are described in detail (in Slovak) in
 [docs/superpowers/specs/2026-09-10-lego-collection-design.md](docs/superpowers/specs/2026-09-10-lego-collection-design.md).
 
 ```
@@ -656,7 +698,7 @@ backend/     FastAPI, SQLAlchemy 2, SQLite, Alembic migrations
 frontend/    Vue 3, Vuetify 4, TypeScript, Pinia, vue-i18n, Chart.js
 data/        database, backups and photos, mounted into the container as a volume
 design/      screen designs
-docs/        specs, plans and the screenshot
+docs/        specs, plans and screenshots
 ```
 
 ## Data sources and credits
@@ -707,7 +749,8 @@ Frontend: [Vue](https://vuejs.org), [Vuetify](https://vuetifyjs.com),
 [Chart.js](https://www.chartjs.org) with [vue-chartjs](https://vue-chartjs.org)
 and chartjs-plugin-zoom, [openapi-fetch](https://openapi-ts.dev) (MIT);
 barcode reading by [ZXing-C++](https://github.com/zxing-cpp/zxing-cpp) via
-[zxing-wasm](https://github.com/Sec-ant/zxing-wasm) (Apache-2.0, MIT, BSD-3-Clause);
+[zxing-wasm](https://github.com/Sec-ant/zxing-wasm) and [barcode-detector](https://github.com/Sec-ant/barcode-detector)
+(Apache-2.0, MIT, BSD-3-Clause);
 icons from [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache-2.0);
 the [Roboto](https://github.com/googlefonts/roboto-classic) typeface (SIL Open Font License 1.1).
 
@@ -742,7 +785,8 @@ of the services it uses (as of September 2026). The details are in the
 - **GDPR:** a privacy policy page (the administrator fills in the operator in
   Settings → Application), consent at registration, export of all data and
   account deletion in Settings → Account. Photos are stored shrunk and without
-  GPS location. The policy also mentions the update backups. The app only
+  GPS location. The policy also mentions the update backups; when its text
+  changes, every account sees a notice until it confirms it. The app only
   uses the cookie strictly needed for signing in, with no analytics or ads,
   so no consent banner is required.
 

@@ -200,6 +200,55 @@ async def test_dashboard_scope_still_counts_figures(
     assert (scoped["set_count"], scoped["invested"]) == (1, "8.00")
 
 
+def _tile(summary: dict) -> tuple[int, int, int]:
+    """Dlaždica Zbierka: sety, figúrky zo sérií a nerozbalené sáčky."""
+    return (
+        summary["collection_set_count"],
+        summary["series_figures"],
+        summary["sealed_bag_count"],
+    )
+
+
+async def test_dashboard_tile_splits_sets_figures_and_bags(
+    auth_client: AsyncClient, sessionmaker_
+) -> None:
+    """Dlaždica Zbierka: sety, figúrky zo sérií a sáčky zvlášť, ako ponuka a Figúrky.
+
+    Figúrku spozná príslušnosť k sérii, nie ``catalog.kind``: Mighty Machines
+    sa cení ako set, a predsa je to figúrka. Rôzne figúrky sa rátajú raz,
+    ako v ponuke Figúrky. Sáčok figúrkou nie je, kým sa nerozbalí; ráta sa
+    každý kus, ako v sekcii Figúrky. Dlaždica nemá vlastné kópie počtov.
+    """
+    await _seed(auth_client, sessionmaker_)
+    await _add(auth_client, "71051-1", purchase_price_eur="5")
+    await _add(auth_client, "71051", quantity=2, unidentified=True, price_variant="sealed")
+
+    summary = (await auth_client.get("/stats/summary")).json()
+
+    # Titanic; figúrka (dvakrát) a Mighty Machines; tri sáčky jednej série.
+    assert _tile(summary) == (1, 2, 3)
+    assert summary["item_count"] == 7
+    for gone in ("standalone_set_count", "figure_count"):
+        assert gone not in summary
+
+
+async def test_dashboard_tile_split_follows_the_scope(
+    auth_client: AsyncClient, sessionmaker_
+) -> None:
+    await _seed(auth_client, sessionmaker_)
+    await _add(auth_client, "71051", quantity=2, unidentified=True, price_variant="sealed")
+
+    async def tile(**params: str) -> tuple[int, int, int]:
+        return _tile((await auth_client.get("/stats/summary", params=params)).json())
+
+    # Blind-box Mighty Machines je v téme Technic figúrka, nie set.
+    assert await tile(theme="Technic") == (0, 1, 0)
+    assert await tile(theme="Icons") == (1, 0, 0)
+    assert await tile(q="peacock") == (0, 1, 0)
+    # Séria: vlastnená figúrka a tri sáčky, predaná figúrka nie.
+    assert await tile(series="71051") == (0, 1, 3)
+
+
 async def test_piece_under_the_series_number_is_a_sealed_bag(
     auth_client: AsyncClient, sessionmaker_
 ) -> None:

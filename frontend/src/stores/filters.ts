@@ -166,6 +166,11 @@ export const useFilterStore = defineStore('filters', () => {
   const filters = reactive<Filters>(empty())
 
   const facets = ref<Facets | null>(null)
+  /**
+   * Hľadaný text, s ktorým sa počty načítali. Hľadanie sa v poli zmení hneď,
+   * počty až po chvíli; dovtedy `facets` patria predošlému filtru.
+   */
+  const facetsSearch = ref('')
   const categories = ref<Category[]>([])
   const views = ref<SavedView[]>([])
 
@@ -300,10 +305,12 @@ export const useFilterStore = defineStore('filters', () => {
   }
 
   async function loadFacets (status: string): Promise<void> {
+    const search = filters.q.trim()
     const { data } = await api.GET('/items/facets', {
       params: { query: { status, ...sectionQuery() } as never },
     })
     facets.value = data ?? null
+    facetsSearch.value = search
   }
 
   async function loadCategories (): Promise<void> {
@@ -354,6 +361,7 @@ export const useFilterStore = defineStore('filters', () => {
   return {
     filters,
     facets,
+    facetsSearch,
     categories,
     views,
     categoryById,

@@ -6,7 +6,8 @@
    * Otvára sa z Chcem aj z chýbajúcej figúrky. Pýta sa len na to, čo sa pri
    * kúpe naozaj vie (počet, stav, cena, dátum, kde); zvyšok sa dá doplniť
    * v detaile. Keď vec bola v Chcem, po uložení odtiaľ zmizne, aj keď sa
-   * kupovala z inej obrazovky.
+   * kupovala z inej obrazovky: vyradí ju server pri každom pridaní kusu
+   * (`POST /items`), dialóg ju nemaže.
    */
   import { computed, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -24,7 +25,7 @@
   const open = defineModel<boolean>({ required: true })
   const props = defineProps<{
     catalog: Pick<Catalog, 'catalog_num' | 'name' | 'image_url' | 'kind'> | null
-    /** Položka v Chcem, ktorá sa po kúpe vymaže. */
+    /** Kupuje sa z Chcem: nápoveda povie, že odtiaľ po uložení zmizne. */
     wishlistId?: number | null
   }>()
   const emit = defineEmits<{ saved: [] }>()
@@ -63,21 +64,6 @@
     if (collection.locations.length === 0) collection.loadLocations()
   })
 
-  /**
-   * Kúpená vec v Chcem nemá čo robiť, nech sa kúpilo odkiaľkoľvek. Keď id
-   * poznáme, netreba sa pýtať na celý zoznam.
-   */
-  async function removeFromWishlist (num: string): Promise<void> {
-    let id = props.wishlistId ?? null
-    if (id === null) {
-      const { data } = await api.GET('/wishlist', {})
-      id = data?.find(w => w.catalog_num === num)?.id ?? null
-    }
-    if (id !== null) {
-      await api.DELETE('/wishlist/{item_id}', { params: { path: { item_id: id } } })
-    }
-  }
-
   async function save (): Promise<void> {
     if (!props.catalog || quantity.value < 1) return
     saving.value = true
@@ -105,7 +91,6 @@
       error.value = errorMessage(err, t('purchase.failed'))
       return
     }
-    await removeFromWishlist(props.catalog.catalog_num)
     memory.remember({
       condition: condition.value,
       date: purchaseDate.value,

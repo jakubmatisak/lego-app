@@ -11,13 +11,16 @@ export interface ThemeFilter {
   followed?: boolean
   /** Len témy, z ktorých mám aspoň jeden set. */
   withSets?: boolean
-  /** Len nekompletné (mám menej, než téma má setov). */
+  /** Len nekompletné: nemám naozaj všetky sety témy (`complete` zo servera). */
   incomplete?: boolean
 }
 
-type Row = Pick<ThemeRow, 'theme' | 'owned' | 'set_count' | 'followed'>
+type Row = Pick<ThemeRow, 'theme' | 'owned' | 'set_count' | 'followed' | 'complete'>
 
-/** Podiel mojich setov v téme; bez známeho počtu setov nič. */
+/**
+ * Podiel mojich setov v téme; bez známeho počtu setov nič. Server počet
+ * oreže na počet setov témy, preto pri rovnosti rozhodne `complete`.
+ */
 export function completeness (row: Row): number | null {
   return row.set_count > 0 ? Math.min(1, row.owned / row.set_count) : null
 }
@@ -27,7 +30,7 @@ export function arrangeThemes<T extends Row> (rows: T[], sort: ThemeSort, filter
   return rows
     .filter(r => !filter.followed || r.followed)
     .filter(r => !filter.withSets || r.owned > 0)
-    .filter(r => !filter.incomplete || r.owned < r.set_count)
+    .filter(r => !filter.incomplete || (r.set_count > 0 && !r.complete))
     .toSorted((a, b) => {
       switch (sort) {
         case 'name': { return byName(a, b) }
@@ -37,7 +40,7 @@ export function arrangeThemes<T extends Row> (rows: T[], sort: ThemeSort, filter
           if (ca === null || cb === null) {
             return (ca === null ? 1 : 0) - (cb === null ? 1 : 0) || byName(a, b)
           }
-          return cb - ca || b.owned - a.owned || byName(a, b)
+          return cb - ca || Number(b.complete) - Number(a.complete) || b.owned - a.owned || byName(a, b)
         }
         default: { return b.owned - a.owned || byName(a, b) }
       }

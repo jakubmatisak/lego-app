@@ -323,6 +323,22 @@ class ItemOut(ORMModel):
     catalog: CatalogOut
 
 
+class RemovedWishOut(ORMModel):
+    """Položka Chcem, ktorú kúpa vyradila, s tým, čo treba na Späť."""
+
+    catalog_num: str
+    name: str
+    target_price_eur: Money | None
+    note: str | None
+    created_at: datetime
+
+
+class ItemCreatedOut(ItemOut):
+    #: Set tohto kusu bol v Chcem a pridanie ho odtiaľ vyradilo. Pri viacerých
+    #: kusoch toho istého setu to nesie len prvý, vyradilo sa raz.
+    removed_from_wishlist: RemovedWishOut | None = None
+
+
 class ValuedItemOut(ItemOut):
     market_value: Money
     price_source: str
@@ -501,13 +517,19 @@ class SummaryOut(BaseModel):
     wishlist_hits: int = 0
     #: Pre čísla v ponuke: položky v Chcem, figúrky zo sérií, témy.
     wishlist_count: int = 0
+    #: Rôzne vlastnené figúrky zo sérií (aj blind-box ako Mighty Machines),
+    #: sáčok nie. Bez rozsahu ponuka Figúrky, s rozsahom dlaždica Zbierka.
     series_figures: int = 0
     theme_count: int = 0
     #: Sekcia Zbierka (ponuka a jej hlavička): rôzne sety, vlastnené a predané
     #: kusy bez figúrok zo sérií. ``set_count`` a spol. počítajú všetko.
+    #: S rozsahom Prehľadu hlavné číslo dlaždice Zbierka.
     collection_set_count: int = 0
     collection_item_count: int = 0
     collection_sold_count: int = 0
+    #: Vlastnené nerozbalené sáčky sérií, každý kus (dlaždica Zbierka, ako
+    #: ``sealed_bags`` vo Figúrkach). Figúrka v nich ešte nie je známa.
+    sealed_bag_count: int = 0
     themes: list[ThemeSliceOut]
     top_profit: list[TopProfitOut]
     #: Pri ``real=true`` posledný mesiac indexu inflácie, ku ktorému sú sumy
@@ -579,6 +601,8 @@ class WishlistCreateRequest(BaseModel):
     catalog_num: str
     target_price_eur: Money | None = None
     note: str | None = Field(default=None, max_length=500)
+    #: Pôvodný dátum pridania pri vrátení (Späť po kúpe); inak teraz.
+    created_at: datetime | None = None
 
 
 class WishlistUpdateRequest(BaseModel):
@@ -1019,10 +1043,13 @@ class ThemeOut(BaseModel):
     set_count: int
     year_from: int | None
     year_to: int | None
-    #: Koľko rôznych setov z témy mám.
+    #: Koľko rôznych setov z témy mám, najviac ``set_count``. Figúrky zo sérií
+    #: a sáčky sa nerátajú, set sa ráta v téme, kam ho dáva Brickset.
     owned: int
     #: Uložená medzi moje témy, aj bez setu.
     followed: bool = False
+    #: Mám naozaj všetky sety témy. Orezaný ``owned`` rovný ``set_count`` ešte nie.
+    complete: bool = False
 
 
 class ThemesOut(BaseModel):
@@ -1035,8 +1062,9 @@ class ThemesOut(BaseModel):
 class ThemeYearOut(BaseModel):
     year: int
     set_count: int
+    #: Najviac ``set_count``; len sety, v roku, kam ich dáva Brickset.
     owned: int
-    #: Presné (vlna je stiahnutá), alebo odhad podľa názvu témy.
+    #: Presné (vlna je stiahnutá), alebo odhad podľa údajov setov.
     exact: bool
 
 

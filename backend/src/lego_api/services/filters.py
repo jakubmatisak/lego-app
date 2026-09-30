@@ -101,13 +101,18 @@ class FilterContext:
         return self.parents.get(num) if num else None
 
 
-def series_of(v: ValuedItem) -> str | None:
-    """Séria kusu: rodič figúrky, alebo séria sama pri nerozbalenom sáčku."""
-    if v.catalog.parent_num:
-        return v.catalog.parent_num
-    if v.item.unidentified and v.catalog.is_series:
-        return v.catalog.catalog_num
+def series_num(catalog: CatalogItem, unidentified: bool) -> str | None:
+    """Séria položky: rodič figúrky, alebo séria sama pri nerozbalenom sáčku."""
+    if catalog.parent_num:
+        return catalog.parent_num
+    if unidentified and catalog.is_series:
+        return catalog.catalog_num
     return None
+
+
+def series_of(v: ValuedItem) -> str | None:
+    """Séria kusu (``series_num``); Série (``services/themes.py``) ju berú tiež."""
+    return series_num(v.catalog, v.item.unidentified)
 
 
 def kind_of(v: ValuedItem) -> str:

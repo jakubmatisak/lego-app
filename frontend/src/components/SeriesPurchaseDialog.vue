@@ -6,7 +6,8 @@
    * Suma sa rozpočíta na figúrky na strane servera, na centy presne, takže
    * zisk každej figúrky sedí a súčet je presne to, čo sa zaplatilo. Bežne sa
    * pridajú len chýbajúce figúrky; keď bola kúpená celá sada navyše, dajú sa
-   * pridať aj tie, ktoré už mám, ako duplikáty.
+   * pridať aj tie, ktoré už mám, ako duplikáty. Kúpené figúrky z Chcem
+   * vyradí server (`POST /items/bulk`).
    */
   import { computed, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -86,16 +87,6 @@
       saving.value = false
       error.value = errorMessage(err, t('purchase.failed'))
       return
-    }
-    // Kúpené figúrky v Chcem nemajú čo robiť.
-    const bought = new Set(targets.value.filter(m => m.wanted).map(m => m.catalog.catalog_num))
-    if (bought.size > 0) {
-      const { data } = await api.GET('/wishlist', {})
-      for (const wish of data ?? []) {
-        if (bought.has(wish.catalog_num)) {
-          await api.DELETE('/wishlist/{item_id}', { params: { path: { item_id: wish.id } } })
-        }
-      }
     }
     memory.remember({
       condition: condition.value,

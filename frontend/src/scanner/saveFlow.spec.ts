@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { saveWithFollowups, undoCreated } from './saveFlow'
+import { droppedWishes, saveWithFollowups, undoCreated } from './saveFlow'
 
 describe('uloženie po skene a Späť', () => {
   it('zlyhaný doplnok po uložení (kategória, kód) nevráti chybu uloženia', async () => {
@@ -34,5 +34,22 @@ describe('uloženie po skene a Späť', () => {
     })
     expect(removed).toEqual([3, 4, 5])
     expect(failed).toBe(1)
+  })
+
+  it('z odpovede vyberie položky Chcem, ktoré uloženie vyradilo', () => {
+    const wish = (num: string) => ({
+      catalog_num: num,
+      name: num,
+      target_price_eur: null,
+      note: null,
+      created_at: '2026-01-02T10:00:00',
+    })
+    const found = droppedWishes([
+      { removed_from_wishlist: wish('71046-1') },
+      { removed_from_wishlist: null },
+      {},
+      { removed_from_wishlist: wish('71046-3') },
+    ])
+    expect(found.map(w => w.catalog_num)).toEqual(['71046-1', '71046-3'])
   })
 })

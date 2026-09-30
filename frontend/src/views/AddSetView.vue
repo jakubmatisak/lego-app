@@ -20,8 +20,13 @@
    * v oznámení. Skeny sa spracúvajú po jednom, v poradí príchodu, aby sa
    * pri rýchlom skenovaní nič neuložilo dvakrát. Sken z inej obrazovky sem
    * príde cez `?code=` (AppLayout).
+   *
+   * Set, ktorý bol v Chcem, odtiaľ pri uložení vyradí server. Po uložení
+   * tlačidlom to povie samostatné oznámenie so Späť, ktoré vráti len Chcem.
+   * Pri automatickom uložení je to jedno oznámenie a jedno Späť: vráti kusy
+   * aj Chcem, stav pred skenom.
    */
-  import type { CatalogDetail, ItemCondition, ItemPurpose } from '@/api/types'
+  import type { CatalogDetail, ItemCondition, ItemPurpose, RemovedWish } from '@/api/types'
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRoute, useRouter } from 'vue-router'
@@ -35,7 +40,8 @@
   import SetImage from '@/components/SetImage.vue'
   import { useCategoryPicker } from '@/composables/useCategoryPicker'
   import { useFormMemory } from '@/composables/useFormMemory'
-  import { saveWithFollowups, undoCreated } from '@/scanner/saveFlow'
+  import { useWishlistReturn } from '@/composables/useWishlistReturn'
+  import { droppedWishes, saveWithFollowups, undoCreated } from '@/scanner/saveFlow'
   import { decideScan } from '@/scanner/scanFlow'
   import { createScanQueue } from '@/scanner/scanQueue'
   import { useScanCodes } from '@/scanner/useScanCodes'
@@ -56,6 +62,7 @@
   const auth = useAuthStore()
   const memory = useFormMemory()
   const scanner = useScannerStore()
+  const wishlist = useWishlistReturn()
   // Našepkávače (kde uložené, kde kúpené) môžu byť prázdne, keď sa sem prišlo priamo.
   if (collection.purchasePlaces.length === 0 && collection.locations.length === 0) collection.loadLocations()
 
@@ -310,13 +317,19 @@
     memberCounts.value[num] = Math.max(0, Math.min(99, next))
   }
 
+  /** Čo uloženie vytvorilo a čo vyradilo z Chcem, na Späť. */
+  interface Saved {
+    ids: number[]
+    wishes: RemovedWish[]
+  }
+
   /**
-   * Uloží, čo je vo formulári, a vráti id vytvorených kusov (na Späť).
-   * Kategórie, neznámy kód a pamäť formulára sa zapíšu tu, pri tlačidle
-   * aj pri automatickom uložení po skene.
+   * Uloží, čo je vo formulári, a vráti id vytvorených kusov a položky Chcem,
+   * ktoré server vyradil (na Späť). Kategórie, neznámy kód a pamäť formulára
+   * sa zapíšu tu, pri tlačidle aj pri automatickom uložení po skene.
    */
-  async function saveCurrent (): Promise<number[]> {
-    if (!found.value) return []
+  async function saveCurrent (): Promise<Saved> {
+    if (!found.value) return { ids: [], wishes: [] }
     const shared = {
       condition: condition.value,
       flags: flags.value,
@@ -328,7 +341,7 @@
       purpose: purpose.value,
     }
     const num = found.value.catalog_num
-    const create = async (): Promise<number[]> => {
+    const create = async (): Promise<Saved> => {
       const result = isSeries.value && !sealedBag.value
         ? await api.POST('/items/bulk', {
           body: { ...shared, members: selectedMembers.value, price_variant: 'sealed' } as never,
@@ -344,12 +357,13 @@
           } as never,
         })
       if (result.error) throw new Error(errorMessage(result.error, t('notice.saveFailed')))
-      return (result.data ?? []).map(item => item.id)
+      const items = result.data ?? []
+      return { ids: items.map(item => item.id), wishes: droppedWishes(items) }
     }
     const ean = pendingEan.value
     // Kusy vznikli: zlyhaná kategória alebo kód sa ohlási, ale uloženie
     // platí, inak by ďalší sken ten istý set uložil znova.
-    const ids = await saveWithFollowups(create, [
+    const saved = await saveWithFollowups(create, [
       // Pri sérii sa kategória lepí na sériu a prenesie sa na jej figúrky.
       // Zapíšu sa len rozdiely oproti tomu, čo by platilo samo od seba.
       async () => {
@@ -373,7 +387,7 @@
       place: place.value ?? '',
       date: purchaseDate.value,
     })
-    return ids
+    return saved
   }
 
   /**
@@ -392,10 +406,14 @@
     }
     saving.value = true
     try {
-      const ids = await saveCurrent()
-      notify.success(t('notice.autoSaved', { num, name, count: pieces }), {
+      const saved = await saveCurrent()
+      // Jedno Späť pre celé uloženie: pri rýchlom skenovaní by druhé
+      // oznámenie so Späť zapratalo obrazovku, a keby Späť vrátilo len
+      // kusy, set by z Chcem zmizol navždy.
+      const text = saved.wishes.length > 0 ? 'notice.autoSavedWish' : 'notice.autoSaved'
+      notify.success(t(text, { num, name, count: pieces }), {
         label: t('notice.undo'),
-        run: () => undoSave(ids),
+        run: () => undoSave(saved),
       })
     } catch (error_) {
       notify.error(error_, t('notice.saveFailed'))
@@ -411,14 +429,21 @@
     return true
   }
 
-  /** Späť po automatickom uložení: zmaže práve tie kusy, nič iné. */
-  async function undoSave (ids: number[]): Promise<void> {
-    const failed = await undoCreated(ids, async id => {
+  /**
+   * Späť po automatickom uložení: zmaže práve tie kusy, nič iné, a do Chcem
+   * vráti, čo z neho uloženie vyradilo. Až po zmazaní a len set, ktorý už
+   * nemám: pri skenoch X, Y, X uložil ďalší sken druhý kus X a kúpený set
+   * v Chcem nie je.
+   */
+  async function undoSave (saved: Saved): Promise<void> {
+    const failed = await undoCreated(saved.ids, async id => {
       const { error: err } = await api.DELETE('/items/{item_id}', { params: { path: { item_id: id } } })
       return !err
     })
-    if (failed > 0) notify.error(t('notice.undoFailed'))
-    else notify.success(t('notice.undone'))
+    const back = await wishlist.restore(saved.wishes, { unlessOwned: true })
+    if (failed + back.failed > 0) notify.error(t('notice.undoFailed'))
+    else if (back.kept.length > 0) notify.success(t('notice.undoneStillOwned', { what: wishlist.what(back.kept) }))
+    else notify.success(t(saved.wishes.length > 0 ? 'notice.undoneWish' : 'notice.undone'))
     collection.refreshAll()
   }
 
@@ -432,12 +457,13 @@
       saving.value = true
       error.value = null
       try {
-        await saveCurrent()
+        const saved = await saveCurrent()
         // Uložené: set už nie je rozpracovaný, sken čakajúci vo fronte ho
         // nesmie uložiť druhý raz.
         resetFound()
         setNumber.value = ''
         notify.success(t('notice.addedPieces', { name, count: pieces }))
+        wishlist.announce(saved.wishes)
         // Keď medzitým prišiel sken, ostáva sa tu a načíta sa; inak do Zbierky
         // (séria a jej figúrky do Figúrok).
         if (queue.waiting() === 0) {

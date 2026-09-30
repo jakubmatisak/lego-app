@@ -155,6 +155,11 @@ class BrickEconomyProvider:
         self._client = client
         #: Pravidlá sťahovania účtu; bez nich (testy) smie všetko.
         self._policy = policy or FetchPolicy()
+        #: Odpovedal zdroj na posledné volanie, hoci len „nepoznám“ (400, 404)?
+        #: Pri výpadku siete či chybe servera nie. Obnova cien podľa toho
+        #: rozlíši „zdroj cenu nemá“ (ďalší pokus až po veku snímky) od výpadku
+        #: (ďalší pokus pri najbližšej obnove).
+        self.last_answered = False
 
     @classmethod
     def for_user(cls, settings: Settings, keys: UserKeys) -> "BrickEconomyProvider":
@@ -190,6 +195,7 @@ class BrickEconomyProvider:
         Dávka (``brickeconomy.prices``) nechá v kvóte rezervu, obnova jedného
         setu z detailu (``brickeconomy.price_detail``) smie až po nulu.
         """
+        self.last_answered = False
         if not self.enabled:
             return None
         # Brána rieši vypnutie a rezervu; minutú kvótu hlási ďalej QuotaExhausted
@@ -229,6 +235,7 @@ class BrickEconomyProvider:
             log.warning("BrickEconomy zlyhal pre %s: %s", num, exc)
             return None
         finally:
+            self.last_answered = ok
             if owns_client:
                 await client.aclose()
             await api_log.record("brickeconomy", path, num, ok, status, cap=cap)

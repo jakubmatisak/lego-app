@@ -15,6 +15,7 @@
   import PurchaseDialog from '@/components/PurchaseDialog.vue'
   import SetImage from '@/components/SetImage.vue'
   import { useAuthStore } from '@/stores/auth'
+  import { useCollectionStore } from '@/stores/collection'
   import { useNotifyStore } from '@/stores/notify'
   import { count, exactMoney, percent, toNumber } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
@@ -24,6 +25,7 @@
   const { t } = useI18n()
   const auth = useAuthStore()
   const notify = useNotifyStore()
+  const collection = useCollectionStore()
 
   const items = ref<WishlistItem[]>([])
   const loading = ref(true)
@@ -105,6 +107,11 @@
 
   const reload = useDebounceFn(load, 250)
   watch(() => ({ ...view }), reload, { deep: true })
+  // Chcem mení aj pridanie kusu inde alebo Späť v oznámení; počet v súhrne
+  // (ponuka) sa po nich obnoví a prezradí to.
+  watch(() => collection.summary?.wishlist_count, (now, before) => {
+    if (before !== undefined && now !== before) reload()
+  })
 
   const filtered = (): boolean => hasWishFilter(view)
 

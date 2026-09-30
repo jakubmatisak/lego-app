@@ -22,6 +22,7 @@ from lego_api.services.pricing import (
     apply_catalog_extras,
     condition_for,
     resolve_price_target,
+    source_prices,
 )
 
 
@@ -104,6 +105,35 @@ def test_used_minifig_keeps_used_condition() -> None:
         price_variant=PriceVariant.FIGURE_ONLY,
     )
     assert resolve_price_target(item, _minifig()).condition == PriceCondition.USED
+
+
+def _bare_figure(minifig_no: str | None = None) -> CatalogItem:
+    """Figúrka z Rebrickable (fig-…), nie člen série."""
+    return CatalogItem(
+        catalog_num="fig-000123", name="Kapitán", kind=CatalogKind.MINIFIG, minifig_no=minifig_no
+    )
+
+
+@pytest.mark.parametrize("variant", [PriceVariant.COMPLETE, PriceVariant.FIGURE_ONLY, None])
+def test_bare_figure_is_not_asked_as_a_set(variant: PriceVariant | None) -> None:
+    """Zdroj cien fig-… ako set nepozná, volanie by skončilo neúspechom vždy."""
+    catalog = _bare_figure()
+    target = resolve_price_target(_item(catalog_num="fig-000123", price_variant=variant), catalog)
+    assert not source_prices(target, catalog)
+
+
+def test_bare_figure_with_its_own_number_is_asked_as_a_minifig() -> None:
+    catalog = _bare_figure(minifig_no="sw0001")
+    item = _item(catalog_num="fig-000123", price_variant=PriceVariant.FIGURE_ONLY)
+    target = resolve_price_target(item, catalog)
+    assert (target.catalog_num, target.price_kind) == ("sw0001", PriceKind.MINIFIG)
+    assert source_prices(target, catalog)
+
+
+def test_sets_and_series_figures_are_asked() -> None:
+    assert source_prices(resolve_price_target(_item(), _set()), _set())
+    figure = _item(catalog_num="71046-1")
+    assert source_prices(resolve_price_target(figure, _minifig()), _minifig())
 
 
 def test_call_key_ignores_condition() -> None:

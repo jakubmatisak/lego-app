@@ -28,6 +28,8 @@ class BricksetFacts(Base):
     name: Mapped[str | None] = mapped_column(String(255), default=None)
     year: Mapped[int | None] = mapped_column(default=None)
     theme: Mapped[str | None] = mapped_column(String(120), default=None)
+    #: Kategória Brickset (Normal, Extended, Collection…). Staršie riadky ju nemajú.
+    category: Mapped[str | None] = mapped_column(String(40), default=None)
     num_parts: Mapped[int | None] = mapped_column(default=None)
     num_minifigs: Mapped[int | None] = mapped_column(default=None)
     image_url: Mapped[str | None] = mapped_column(String(500), default=None)

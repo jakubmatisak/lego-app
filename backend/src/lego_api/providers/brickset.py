@@ -268,6 +268,7 @@ class BricksetProvider:
                 if isinstance(row.get("additionalImageCount"), int)
                 else None
             ),
+            category=row.get("category") if isinstance(row.get("category"), str) else None,
             source=self.name,
             extras={"owned": str(collections.get("owned", ""))},
         )

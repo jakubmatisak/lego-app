@@ -29,6 +29,7 @@ from lego_api.services.filters import (
     build_context,
     in_section,
     is_default_filter,
+    series_of,
 )
 from lego_api.services.inflation import Deflator, deflator_for
 from lego_api.services.portfolio import (
@@ -43,7 +44,7 @@ from lego_api.services.portfolio import (
     summarize,
     value_items,
 )
-from lego_api.services.themes import followed_of
+from lego_api.services.themes import followed_of, theme_names
 from lego_api.services.wishlist import wishlist_prices
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -81,13 +82,13 @@ async def get_summary(user: CurrentUser, session: SessionDep, f: FilterDep) -> S
     wishes = await wishlist_prices(session, user.id)
     hits = sum(1 for row in wishes if row.target_reached)
     owned = [v for v in valued if v.item.status == ItemStatus.OWNED]
-    # Figúrky zo sérií: rôzne členy sérií, ktoré mám (duplikát raz).
+    # Figúrky zo sérií: rôzne členy sérií, ktoré mám (duplikát raz). Sáčok
+    # figúrkou nie je, kým sa nerozbalí; ráta sa každý kus, ako vo Figúrkach.
     figures = {v.catalog.catalog_num for v in owned if v.catalog.parent_num}
-    # Témy: rôzne témy setov mimo sérií, k tomu uložené témy bez setu.
-    theme_names = {
-        v.catalog.theme.lower() for v in owned if v.catalog.theme and not v.catalog.parent_num
-    }
-    theme_names |= {t.lower() for t in followed_of(user.preferences)}
+    bags = sum(1 for v in owned if v.item.unidentified and series_of(v))
+    # Série: témy, kam sety dáva Brickset (figúrky a sáčky nie), k tomu uložené.
+    series = await theme_names(session, (v.item for v in owned))
+    series |= {t.lower() for t in followed_of(user.preferences)}
     # Sekcia Zbierka figúrky zo sérií neukazuje (``sets_only``), jej čísla tiež nie.
     section = [v for v in valued if in_section(v, ItemFilter(sets_only=True))]
     section_owned = [v for v in section if v.item.status == ItemStatus.OWNED]
@@ -96,10 +97,11 @@ async def get_summary(user: CurrentUser, session: SessionDep, f: FilterDep) -> S
         wishlist_hits=hits,
         wishlist_count=len(wishes),
         series_figures=len(figures),
-        theme_count=len(theme_names),
+        theme_count=len(series),
         collection_set_count=len({v.item.catalog_num for v in section_owned}),
         collection_item_count=len(section_owned),
         collection_sold_count=sum(1 for v in section if v.item.status == ItemStatus.SOLD),
+        sealed_bag_count=bags,
         real_month=deflator.latest_month if deflator else None,
     )
 

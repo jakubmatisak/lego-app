@@ -267,13 +267,14 @@ async def test_brickeconomy_uses_the_minifig_endpoint(full_settings: Settings) -
 
 async def test_brickeconomy_treats_400_as_unknown_item(full_settings: Settings) -> None:
     """Na nepoznané číslo odpovedá endpoint minifigúrok chybou 400."""
+    provider = BrickEconomyProvider(full_settings, BE_KEY)
     async with respx.mock(base_url="https://www.brickeconomy.com") as mock:
         mock.get("/api/v1/minifig/col26-1").mock(return_value=httpx.Response(400, json=NOT_FOUND))
-        data = await BrickEconomyProvider(full_settings, BE_KEY).get_market(
-            "col26-1", PriceKind.MINIFIG, cap=Cap.BRICKECONOMY_PRICES
-        )
+        data = await provider.get_market("col26-1", PriceKind.MINIFIG, cap=Cap.BRICKECONOMY_PRICES)
 
     assert data is None
+    # Zdroj odpovedal „nepoznám“: obnova cien sa naň do týždňa nepýta znova.
+    assert provider.last_answered is True
 
 
 async def test_brickeconomy_stops_after_429(full_settings: Settings) -> None:
@@ -313,13 +314,29 @@ async def test_brickeconomy_is_disabled_without_a_key() -> None:
 
 
 async def test_brickeconomy_survives_a_timeout(full_settings: Settings) -> None:
+    provider = BrickEconomyProvider(full_settings, BE_KEY)
     async with respx.mock(base_url="https://www.brickeconomy.com") as mock:
         mock.get("/api/v1/set/10294-1").mock(side_effect=httpx.ReadTimeout("pomaly"))
-        data = await BrickEconomyProvider(full_settings, BE_KEY).get_market(
-            "10294-1", PriceKind.SET, cap=Cap.BRICKECONOMY_PRICES
-        )
+        data = await provider.get_market("10294-1", PriceKind.SET, cap=Cap.BRICKECONOMY_PRICES)
 
     assert data is None
+    # Výpadok nie je odpoveď „cenu nemám“, ďalšia obnova to skúsi znova.
+    assert provider.last_answered is False
+
+
+async def test_brickeconomy_server_error_is_not_an_answer(full_settings: Settings) -> None:
+    provider = BrickEconomyProvider(full_settings, BE_KEY)
+    async with respx.mock(base_url="https://www.brickeconomy.com") as mock:
+        mock.get("/api/v1/set/10236-1").mock(
+            return_value=httpx.Response(200, json=SET_EWOK_VILLAGE)
+        )
+        mock.get("/api/v1/set/10294-1").mock(return_value=httpx.Response(503))
+        await provider.get_market("10236-1", PriceKind.SET, cap=Cap.BRICKECONOMY_PRICES)
+        assert provider.last_answered is True
+        data = await provider.get_market("10294-1", PriceKind.SET, cap=Cap.BRICKECONOMY_PRICES)
+
+    assert data is None
+    assert provider.last_answered is False
 
 
 async def test_brickeconomy_carries_forecast_and_growth(full_settings: Settings) -> None:

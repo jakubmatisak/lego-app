@@ -151,7 +151,13 @@
             <span v-else class="text-medium-emphasis">{{ t('themes.noSetYet') }}</span>
           </div>
 
-          <SeriesBar v-if="row.set_count > 0" class="mt-auto" :owned="row.owned" :total="row.set_count" />
+          <SeriesBar
+            v-if="row.set_count > 0"
+            class="mt-auto"
+            :complete="row.complete"
+            :owned="row.owned"
+            :total="row.set_count"
+          />
         </v-card>
       </CardGrid>
     </template>

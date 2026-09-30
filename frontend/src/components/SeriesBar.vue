@@ -3,9 +3,15 @@
   import { computed } from 'vue'
   import { seriesBar } from '@/utils/series'
 
-  const props = defineProps<{ owned: number, total: number }>()
+  /**
+   * `complete`: kompletnosť zo servera (Série), inak podľa počtov. Predvolené
+   * `undefined`, nie `false`: Vue by chýbajúci boolean zmenil na false.
+   */
+  const props = withDefaults(defineProps<{ owned: number, total: number, complete?: boolean }>(), {
+    complete: undefined,
+  })
 
-  const bar = computed(() => seriesBar(props.owned, props.total))
+  const bar = computed(() => seriesBar(props.owned, props.total, props.complete))
 </script>
 
 <template>
