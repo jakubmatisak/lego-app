@@ -1,5 +1,7 @@
 """Zbierka cez API: pridanie, umiestnenie, duplicita, predaj, štatistiky."""
 
+import csv
+import io
 from datetime import date, timedelta
 
 from httpx import AsyncClient
@@ -237,6 +239,25 @@ async def test_csv_export_contains_both_profit_columns(auth_client: AsyncClient)
     assert "nerealizovany_zisk_eur" in text
     assert "realizovany_zisk_eur" in text
     assert "Titanic" in text
+
+
+async def test_csv_export_leaves_value_and_profit_empty_without_price(
+    auth_client: AsyncClient,
+) -> None:
+    """Bez trhovej ceny nie „0,00“ a strata celej kúpnej ceny, ale prázdna bunka."""
+    await _catalog(auth_client)
+    await auth_client.post(
+        "/items", json={"catalog_num": "10294-1", "purchase_price_eur": "129.99"}
+    )
+
+    response = await auth_client.get("/export/items.csv")
+    rows = list(csv.DictReader(io.StringIO(response.text.lstrip("﻿")), delimiter=";"))
+
+    (row,) = rows
+    assert row["kupna_cena_eur"] == "129,99"
+    assert row["zdroj_ceny"] == "missing"
+    assert row["trhova_hodnota_eur"] == ""
+    assert row["nerealizovany_zisk_eur"] == ""
 
 
 async def test_items_of_other_users_are_invisible(client: AsyncClient) -> None:

@@ -246,7 +246,9 @@ async def test_public_link_never_shows_brickeconomy_prices(
 
     public = (await client.get(f"/public/{link['token']}")).json()
     assert public["invested"] == "10.00"
-    assert public["market_value"] == "0.00"
+    # Cenu BrickEconomy verejnosť nevidí: hodnota je neznáma, nie nula.
+    assert public["market_value"] is None
+    assert public["price_missing"] == 1
     assert public["items"][0]["name"] == "Motorcycle"
 
 

@@ -7,10 +7,14 @@
    *
    * Posledný stav (filtre, vlastnené/predané, zoskupenie, zoradenie) si
    * pamätá účet. Otvorenie Zbierky z ponuky ho vráti; odkaz s vlastným
-   * filtrom (uložený pohľad, „Ukázať chýbajúce“ z Prehľadu) má prednosť.
+   * filtrom (uložený pohľad, štítok z detailu setu) má prednosť.
+   *
+   * Zbierka sú len sety. Figúrky zo sérií majú sekciu Figúrky a sem nechodia
+   * ani v počtoch (`sets_only` v `filterQuery`); Prehľad a export ich počítajú.
    */
   import type { ValuedItem } from '@/api/types'
-  import type { Grouping, SortKey } from '@/stores/collection'
+  import type { SortKey } from '@/stores/collection'
+  import type { LocationQueryRaw } from 'vue-router'
   import { useDebounceFn } from '@vueuse/core'
   import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -24,17 +28,18 @@
   import CollectionTable from '@/components/CollectionTable.vue'
   import ConditionChips from '@/components/ConditionChips.vue'
   import ExportCsvButton from '@/components/ExportCsvButton.vue'
+  import FiguresElsewhere from '@/components/FiguresElsewhere.vue'
   import FilterPanel from '@/components/FilterPanel.vue'
-  import GhostCard from '@/components/GhostCard.vue'
   import SelectionTotals from '@/components/SelectionTotals.vue'
   import SetCard from '@/components/SetCard.vue'
   import { createSelection } from '@/composables/useSelection'
   import { useAuthStore } from '@/stores/auth'
-  import { defaultDir, SORT_KEYS, useCollectionStore } from '@/stores/collection'
-  import { useFilterStore } from '@/stores/filters'
+  import { defaultDir, groupingFrom, SORT_KEYS, useCollectionStore } from '@/stores/collection'
+  import { hasStaleKeys, useFilterStore } from '@/stores/filters'
   import { useProfileStore } from '@/stores/preferences'
   import { exactMoney, money } from '@/utils/format'
   import { placeLabel } from '@/utils/place'
+  import { figuresRoute } from '@/utils/series'
 
   const { t } = useI18n()
   const route = useRoute()
@@ -65,43 +70,30 @@
     // Predvolený smer sa nepamätá, nech adresa ostane krátka.
     collection.sortDir = next === defaultDir(collection.sort) ? null : next
   }
-  const GROUPINGS: Set<Grouping> = new Set(['set', 'series', 'item'])
-
-  /** Série, ktoré sú práve vo výsledku. Len z nich sa ukážu chýbajúce figúrky. */
-  const seriesInResult = computed(() => {
-    const nums = new Set<string>()
-    for (const item of collection.items) {
-      if (item.catalog.parent_num) nums.add(item.catalog.parent_num)
-    }
-    return [...nums]
-  })
-
-  const seriesNames = computed(() =>
-    new Map((filterStore.facets?.series ?? []).map(s => [s.value, s.label])),
-  )
-
   async function reloadData (): Promise<void> {
     await Promise.all([
       collection.loadItems(),
       collection.loadGrouped(),
       filterStore.loadFacets(collection.statusFilter),
     ])
-    // Série sa berú z vyfiltrovaných kusov, takže „nekompletné“ alebo téma
-    // obmedzia aj to, z ktorých sérií sa chýbajúce ukážu.
-    await filterStore.loadMissing(seriesInResult.value)
   }
 
   const reload = useDebounceFn(reloadData, 250)
 
-  /** Filter a zobrazenie do adresy, bez nového záznamu v histórii za každý klik. */
-  function syncRoute (): void {
-    const query = {
+  /** Adresa pre súčasný filter a zobrazenie; predvolené hodnoty sa vynechajú. */
+  function routeQuery (): LocationQueryRaw {
+    return {
       ...filterStore.toRoute(),
       ...(collection.statusFilter === 'owned' ? {} : { status: collection.statusFilter }),
       ...(collection.grouping === 'set' ? {} : { group: collection.grouping }),
       ...(collection.sort === DEFAULT_SORT ? {} : { sort: collection.sort }),
       ...(collection.sortDir === null ? {} : { dir: collection.sortDir }),
     }
+  }
+
+  /** Filter a zobrazenie do adresy, bez nového záznamu v histórii za každý klik. */
+  function syncRoute (): void {
+    const query = routeQuery()
     router.replace({ query })
     saveProfile(query)
   }
@@ -131,7 +123,6 @@
   /** Všetko je tak, ako po prvom otvorení: nie je čo resetovať. */
   const isDefault = computed(() =>
     filterStore.activeCount === 0
-    && !filterStore.showMissing
     && collection.statusFilter === 'owned'
     && collection.grouping === 'set'
     && collection.sort === DEFAULT_SORT
@@ -150,8 +141,7 @@
     filterStore.fromRoute(route.query)
     const status = route.query.status
     collection.statusFilter = status === 'sold' || status === 'all' ? status : 'owned'
-    const group = route.query.group
-    collection.grouping = GROUPINGS.has(group as Grouping) ? group as Grouping : 'set'
+    collection.grouping = groupingFrom(route.query.group) ?? 'set'
     const sort = route.query.sort
     collection.sort = SORTS.has(sort as string) ? sort as SortKey : DEFAULT_SORT
     const dir = route.query.dir
@@ -173,7 +163,6 @@
   watch(
     () => [
       JSON.stringify(filterStore.filters),
-      filterStore.showMissing,
       collection.statusFilter,
       collection.sort,
       collection.sortDir,
@@ -187,7 +176,7 @@
 
   // Iný filter alebo zoskupenie = iný výsledok; výber by ukazoval na niečo iné.
   watch(
-    () => [JSON.stringify(filterStore.filters), filterStore.showMissing, collection.statusFilter, collection.grouping],
+    () => [JSON.stringify(filterStore.filters), collection.statusFilter, collection.grouping],
     () => {
       // Predané sa hromadne nemenia: výber sa tam vypne celý, aj s lištou.
       if (collection.statusFilter === 'sold') selection.stop()
@@ -196,7 +185,8 @@
   )
 
   function onView (group: string | null): void {
-    if (group && GROUPINGS.has(group as Grouping)) collection.grouping = group as Grouping
+    const grouping = groupingFrom(group)
+    if (grouping) collection.grouping = grouping
   }
 
   const showSold = computed(() => collection.statusFilter === 'sold')
@@ -213,23 +203,31 @@
   })
 
   /** Koľko kariet filter ukáže, pre tlačidlo pod panelom na telefóne. */
-  const resultCount = computed(() =>
-    filterStore.showMissing ? filterStore.missing.length : (filterStore.facets?.total ?? 0),
-  )
+  const resultCount = computed(() => filterStore.facets?.total ?? 0)
 
+  /** Počty sekcie Zbierka, bez figúrok zo sérií (tie počíta Prehľad a Figúrky). */
   const summaryLine = computed(() => {
     const s = collection.summary
     if (!s) return ''
     return t('collection.summaryLine', {
-      sets: t('collection.setsPlural', s.set_count, { named: { count: s.set_count } }),
-      items: t('collection.piecesPlural', s.item_count, { named: { count: s.item_count } }),
-      sold: s.sold_count,
+      sets: t('collection.setsPlural', s.collection_set_count, { named: { count: s.collection_set_count } }),
+      items: t('collection.piecesPlural', s.collection_item_count, { named: { count: s.collection_item_count } }),
+      sold: s.collection_sold_count,
     })
   })
 
   const isEmpty = computed(() =>
     collection.grouping === 'item' ? collection.items.length === 0 : collection.grouped.length === 0,
   )
+
+  /**
+   * Figúrky zo sérií, ktoré by filter či hľadanie našlo, ale sú vo Figúrkach.
+   * Pri celej zbierke bez filtra len vtedy, keď by inak bola prázdna.
+   */
+  const hiddenFigures = computed(() => {
+    const count = filterStore.facets?.hidden_figures ?? 0
+    return isEmpty.value || filterStore.activeCount > 0 ? count : 0
+  })
 
   /** Hodnota kusu. Bez známej ceny pomlčka, nie nula. */
   function pieceValue (item: ValuedItem): string {
@@ -273,9 +271,20 @@
   })
 
   onMounted(async () => {
+    // Starý odkaz (záložka, história) s filtrom figúrok zo sérií, napríklad
+    // „chýbajúce figúrky série“, vedie tam, kde figúrky teraz sú. Len adresa;
+    // uložený stav účtu sa pri príchode z ponuky len vyčistí.
+    const elsewhere = figuresRoute(route.query)
+    if (elsewhere) {
+      await router.replace(elsewhere)
+      return
+    }
     backfillBrickset()
     await restoreSaved()
     readRoute()
+    // Starý filter figúrok či zoskupenie podľa série sa zahodilo; adresa
+    // a uložený stav účtu to majú zabudnúť tiež.
+    if (hasStaleKeys(route.query, routeQuery())) syncRoute()
     await Promise.all([filterStore.loadCategories(), filterStore.loadViews()])
     await reloadData()
     collection.loadLocations()
@@ -426,7 +435,6 @@
           variant="outlined"
         >
           <v-btn value="set">{{ t('collection.groupBy.set') }}</v-btn>
-          <v-btn value="series">{{ t('collection.groupBy.series') }}</v-btn>
           <v-btn value="item">{{ t('collection.groupBy.item') }}</v-btn>
         </v-btn-toggle>
       </div>
@@ -434,10 +442,12 @@
       <ActiveFilters :group="collection.grouping" @view="onView" />
 
       <!-- Súčty toho, čo filter ukazuje, aj s reálnym ziskom po inflácii. -->
-      <SelectionTotals v-if="!filterStore.showMissing" :totals="filterStore.facets?.totals" />
+      <SelectionTotals :totals="filterStore.facets?.totals" />
 
-      <!-- Hromadná úprava: len vlastnené kusy, nie chýbajúce figúrky. -->
-      <div v-if="!filterStore.showMissing && collection.statusFilter !== 'sold'" class="d-flex">
+      <FiguresElsewhere :count="hiddenFigures" />
+
+      <!-- Hromadná úprava: len vlastnené kusy. -->
+      <div v-if="collection.statusFilter !== 'sold'" class="d-flex">
         <v-btn
           v-if="!selection.active.value"
           prepend-icon="mdi-checkbox-multiple-outline"
@@ -448,28 +458,8 @@
       </div>
 
       <!-- Na širokej obrazovke sa posúva len táto časť, filtre a ovládanie stoja. -->
-      <div class="collection-results" :class="{ 'collection-results--table': tableView && wide && !filterStore.showMissing }">
+      <div class="collection-results" :class="{ 'collection-results--table': tableView && wide }">
         <v-progress-linear v-if="collection.loading" color="primary" indeterminate />
-
-        <!-- Len chýbajúce: vlastnené kusy tu nemajú čo robiť, sú v bežnom zobrazení. -->
-        <template v-else-if="filterStore.showMissing">
-          <v-empty-state
-            v-if="filterStore.missing.length === 0"
-            icon="mdi-check-all"
-            :text="t('filters.nothingMissingHint')"
-            :title="t('filters.nothingMissing')"
-          />
-
-          <CardGrid v-else>
-            <GhostCard
-              v-for="missing in filterStore.missing"
-              :key="`missing-${missing.catalog_num}`"
-              :catalog="missing"
-              :series-name="missing.parent_num ? seriesNames.get(missing.parent_num) : null"
-              @owned="reloadData"
-            />
-          </CardGrid>
-        </template>
 
         <v-empty-state
           v-else-if="isEmpty"

@@ -6,7 +6,6 @@
   import type { GroupedItem } from '@/api/types'
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import SeriesBar from '@/components/SeriesBar.vue'
   import SetImage from '@/components/SetImage.vue'
   import { useFilterStore } from '@/stores/filters'
   import { count, exactMoney, money, percent } from '@/utils/format'
@@ -26,7 +25,10 @@
   const meta = computed(() => {
     const parts: string[] = [props.row.catalog.catalog_num]
     if (props.row.catalog.theme) parts.push(props.row.catalog.theme)
-    if (props.row.catalog.num_parts) parts.push(`${count(props.row.catalog.num_parts)} dielikov`)
+    if (props.row.catalog.num_parts) {
+      const n = props.row.catalog.num_parts
+      parts.push(t('collection.partsPlural', n, { named: { count: count(n) } }))
+    }
     return parts.join(' · ')
   })
 
@@ -63,11 +65,6 @@
    * zdroj nemá. Označíme ju, nech sa nevydáva za presnú.
    */
   const priceApprox = computed(() => (props.row.price_approx ?? 0) > 0)
-
-  /** Karta série ukazuje, koľko figúrok z nej používateľ má. */
-  const seriesTotal = computed(() => props.row.member_total ?? 0)
-  const seriesOwned = computed(() => props.row.member_owned ?? 0)
-  const isSeries = computed(() => seriesTotal.value > 0)
 </script>
 
 <template>
@@ -121,26 +118,6 @@
       <div>
         <div class="text-body-1 font-weight-medium text-truncate">{{ row.catalog.name }}</div>
         <div class="text-caption text-medium-emphasis text-truncate">{{ meta }}</div>
-      </div>
-
-      <!-- Karta série namiesto dvanástich kariet figúrok. -->
-      <div v-if="isSeries">
-        <div class="d-flex align-center ga-2 mb-1">
-          <span class="text-caption font-weight-medium">
-            {{ t('collection.seriesProgress', { owned: seriesOwned, total: seriesTotal }) }}
-          </span>
-
-          <v-chip
-            v-if="seriesOwned >= seriesTotal"
-            class="ms-auto"
-            color="positive"
-            label
-            size="x-small"
-            variant="tonal"
-          >{{ t('collection.seriesComplete') }}</v-chip>
-        </div>
-
-        <SeriesBar :owned="seriesOwned" :total="seriesTotal" />
       </div>
 
       <div class="d-flex flex-wrap ga-1">

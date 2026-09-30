@@ -485,29 +485,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/items/missing": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Missing Members
-         * @description Figúrky zo sérií, z ktorých niečo mám, ale túto nie.
-         *
-         *     Všetci členovia série sú v katalógu od prvého vyhľadania, takže sa tu
-         *     nič nevolá, len porovná katalóg so zbierkou.
-         */
-        get: operations["missing_members_api_v1_items_missing_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/locations": {
         parameters: {
             query?: never;
@@ -597,9 +574,10 @@ export interface paths {
          * Bulk Update
          * @description Zmení naraz viac vlastnených kusov.
          *
-         *     Výber je zoznam kusov, čísla setov (karta setu alebo série) alebo, keď
-         *     nie je ani jedno, celý výsledok filtra z adresy. Vždy len kusy, ktoré
-         *     Zbierka s týmto filtrom ukazuje.
+         *     Výber je zoznam kusov, čísla setov (karta setu, pri sérii aj jej
+         *     členovia) alebo, keď nie je ani jedno, celý výsledok filtra z adresy.
+         *     Vždy len kusy, ktoré ten filter ukazuje: Zbierka posiela `sets_only`,
+         *     detail série `series` bez neho.
          *     Predané kusy a kusy iného účtu sa nemenia nikdy.
          */
         post: operations["bulk_update_api_v1_items_bulk_update_post"];
@@ -2156,12 +2134,13 @@ export interface components {
         FacetsOut: {
             /** Total */
             total: number;
+            /**
+             * Hidden Figures
+             * @default 0
+             */
+            hidden_figures: number;
             /** Category */
             category: components["schemas"]["FacetOption"][];
-            /** Kind */
-            kind: components["schemas"]["FacetOption"][];
-            /** Series */
-            series: components["schemas"]["FacetOption"][];
             /** Theme */
             theme: components["schemas"]["FacetOption"][];
             /** Subtheme */
@@ -2179,8 +2158,6 @@ export interface components {
              * @default []
              */
             tag: components["schemas"]["FacetOption"][];
-            /** Variant */
-            variant: components["schemas"]["FacetOption"][];
             /** Price */
             price: components["schemas"]["FacetOption"][];
             totals?: components["schemas"]["SelectionTotalsOut"] | null;
@@ -2251,8 +2228,6 @@ export interface components {
             year_max: number | null;
             /** Duplicates */
             duplicates: number;
-            /** Incomplete */
-            incomplete: number;
         };
         /** GroupedItemOut */
         GroupedItemOut: {
@@ -2293,10 +2268,6 @@ export interface components {
             purchase_auto: number;
             /** Cagr Pct */
             cagr_pct?: number | null;
-            /** Member Owned */
-            member_owned?: number | null;
-            /** Member Total */
-            member_total?: number | null;
             /** Categories */
             categories?: number[];
         };
@@ -2304,6 +2275,16 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HealthOut
+         * @description Stav appky pre Docker HEALTHCHECK a verzia, ktorú ukazujú Nastavenia.
+         */
+        HealthOut: {
+            /** Status */
+            status: string;
+            /** Version */
+            version: string;
         };
         /** IdentifyRequest */
         IdentifyRequest: {
@@ -2849,6 +2830,8 @@ export interface components {
             invested?: string | null;
             /** Market Value */
             market_value?: string | null;
+            /** Price Missing */
+            price_missing?: number | null;
             /** Items */
             items: components["schemas"]["PublicItemOut"][];
             /** Wishes */
@@ -2876,6 +2859,8 @@ export interface components {
             purchase_total?: string | null;
             /** Market Total */
             market_total?: string | null;
+            /** Price Missing */
+            price_missing?: number | null;
         };
         /**
          * PublicWishOut
@@ -3300,6 +3285,21 @@ export interface components {
              * @default 0
              */
             theme_count: number;
+            /**
+             * Collection Set Count
+             * @default 0
+             */
+            collection_set_count: number;
+            /**
+             * Collection Item Count
+             * @default 0
+             */
+            collection_item_count: number;
+            /**
+             * Collection Sold Count
+             * @default 0
+             */
+            collection_sold_count: number;
             /** Themes */
             themes: components["schemas"]["ThemeSliceOut"][];
             /** Top Profit */
@@ -4361,6 +4361,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -4464,6 +4466,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -4530,6 +4534,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -4544,38 +4550,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FacetsOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    missing_members_api_v1_items_missing_get: {
-        parameters: {
-            query?: {
-                series?: string[] | null;
-                q?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CatalogOut"][];
                 };
             };
             /** @description Validation Error */
@@ -4796,6 +4770,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -5645,6 +5621,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -5712,6 +5690,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -5778,6 +5758,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -5845,6 +5827,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -5912,6 +5896,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -5978,6 +5964,8 @@ export interface operations {
                 box?: string[] | null;
                 /** @description Sumy v dnešných peniazoch, prepočítané infláciou. */
                 real?: boolean;
+                /** @description Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú. */
+                sets_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -6943,9 +6931,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["HealthOut"];
                 };
             };
         };

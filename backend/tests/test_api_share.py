@@ -226,3 +226,55 @@ async def test_wishlist_link_can_share_chosen_wishes(auth_client: AsyncClient) -
 
 async def test_empty_choice_is_refused(auth_client: AsyncClient) -> None:
     assert (await auth_client.post("/share", json={"catalog_nums": []})).status_code == 422
+
+
+# --- bez trhovej ceny pomlčka, nie 0 € ----------------------------------------
+
+
+async def _unpriced(client: AsyncClient) -> None:
+    """Druhý set bez akejkoľvek ceny vedľa oceneného Titanicu."""
+    await client.post("/catalog", json={"catalog_num": "10300-1", "name": "Back to the Future"})
+    await client.post(
+        "/items",
+        json={"catalog_num": "10300-1", "quantity": 1, "purchase_price_eur": "170"},
+    )
+
+
+async def test_set_without_price_has_no_market_total(auth_client: AsyncClient) -> None:
+    await _collection(auth_client)
+    await _unpriced(auth_client)
+    link = (await auth_client.post("/share", json={"show_values": True})).json()
+
+    page = (await auth_client.get(f"/public/{link['token']}")).json()
+    rows = {row["catalog_num"]: row for row in page["items"]}
+
+    assert rows["10300-1"]["market_total"] is None
+    assert rows["10300-1"]["price_missing"] == 1
+    assert rows["10294-1"]["market_total"] == "1890.00"
+    assert rows["10294-1"]["price_missing"] == 0
+    # Súčet len z ocenených kusov a vedľa neho, koľko cenu nemá.
+    assert page["market_value"] == "1890.00"
+    assert page["price_missing"] == 1
+
+
+async def test_collection_without_any_price_has_no_market_value(
+    auth_client: AsyncClient,
+) -> None:
+    await _unpriced(auth_client)
+    link = (await auth_client.post("/share", json={"show_values": True})).json()
+
+    page = (await auth_client.get(f"/public/{link['token']}")).json()
+
+    assert page["invested"] == "170.00"
+    assert page["market_value"] is None
+    assert page["price_missing"] == 1
+
+
+async def test_hidden_values_hide_the_missing_count_too(auth_client: AsyncClient) -> None:
+    await _unpriced(auth_client)
+    link = (await auth_client.post("/share", json={"show_values": False})).json()
+
+    page = (await auth_client.get(f"/public/{link['token']}")).json()
+
+    assert page["price_missing"] is None
+    assert page["items"][0]["price_missing"] is None

@@ -25,7 +25,9 @@
   })
 
   function tone (value: string | null | undefined): string {
-    return Number(value ?? 0) >= 0 ? 'text-positive' : 'text-negative'
+    // Null: cenu nemá ani jeden kus, zisk nepoznáme. Pomlčka bez farby.
+    if (value === null || value === undefined) return 'text-medium-emphasis'
+    return Number(value) >= 0 ? 'text-positive' : 'text-negative'
   }
 
   function gain (value: string | null | undefined, pct: number | null | undefined): string {

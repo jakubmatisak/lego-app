@@ -113,9 +113,14 @@
               <div class="text-h6">{{ exactMoney(data.invested) }}</div>
             </div>
 
+            <!-- Bez jedinej ceny pomlčka, nie 0 €; pri čiastočnej počet kusov bez ceny. -->
             <div>
               <div class="text-caption text-medium-emphasis">{{ t('dashboard.marketValue') }}</div>
               <div class="text-h6">{{ exactMoney(data.market_value) }}</div>
+
+              <div v-if="(data.price_missing ?? 0) > 0" class="text-caption text-medium-emphasis">
+                {{ t('totals.noPrice', { count: data.price_missing }) }}
+              </div>
             </div>
           </div>
         </v-sheet>
@@ -203,9 +208,16 @@
                     {{ item.catalog_num }}<span v-if="item.year"> · {{ item.year }}</span>
                   </div>
 
-                  <div v-if="data.show_values && item.market_total" class="text-body-2 mt-1">
-                    {{ exactMoney(item.market_total) }}
-                  </div>
+                  <!-- Server pošle null, keď cenu nemá ani jeden kus; reťazec „0.00“ by prešiel. -->
+                  <template v-if="data.show_values">
+                    <div v-if="item.market_total !== null && item.market_total !== undefined" class="text-body-2 mt-1">
+                      {{ exactMoney(item.market_total) }}
+                    </div>
+
+                    <div v-else class="text-body-2 mt-1 text-medium-emphasis">
+                      {{ t('collection.unknownPrice') }}
+                    </div>
+                  </template>
                 </div>
               </v-card>
             </v-col>

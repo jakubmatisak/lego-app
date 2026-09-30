@@ -10,7 +10,15 @@ from sqlalchemy import select
 
 from lego_api.auth.deps import CurrentKeys, CurrentUser, SessionDep
 from lego_api.config import Settings, get_settings
-from lego_api.models import CatalogItem, Category, CollectionItem, ItemPhoto, ItemStatus, User
+from lego_api.models import (
+    CatalogItem,
+    Category,
+    CollectionItem,
+    ItemPhoto,
+    ItemStatus,
+    PriceVariant,
+    User,
+)
 from lego_api.schemas import (
     BulkUpdateOut,
     BulkUpdateRequest,
@@ -114,6 +122,15 @@ def item_filter(
         bool,
         Query(description="Sumy v dnešných peniazoch, prepočítané infláciou."),
     ] = False,
+    sets_only: Annotated[
+        bool,
+        Query(
+            description=(
+                "Rozsah sekcie Zbierka: bez figúrok zo sérií (tie sú vo Figúrkach), "
+                "ani v ponuke volieb panela. Prehľad a detail setu ho neposielajú."
+            )
+        ),
+    ] = False,
 ) -> ItemFilter:
     """Parametre filtra z adresy. Skupina sa dá zadať viackrát (?theme=a&theme=b)."""
     return ItemFilter(
@@ -152,6 +169,7 @@ def item_filter(
         purchase=list(purchase or []),
         box=box or [],
         real=real,
+        sets_only=sets_only,
     )
 
 
@@ -240,16 +258,13 @@ async def list_grouped(
         missing = sum(1 for i in owned if by_id[i.id].price_source == "missing")
         approx = sum(1 for i in owned if by_id[i.id].price_source == "market_approx")
         unrealized = market_total - purchase_total
-        # Pri zoskupení podľa série je hlavičkou karty séria, nie prvá figúrka.
+        # Pri zoskupení podľa série (výber setov do odkazu na pozretie) je
+        # hlavičkou séria, nie prvá figúrka.
         head = group[0].catalog
-        member_total: int | None = None
-        member_owned: int | None = None
         if by == "series" and head.parent_num is not None:
             series = await session.get(CatalogItem, key)
             if series is not None:
                 head = series
-                member_total = series.series_size
-                member_owned = len({i.catalog_num for i in owned})
 
         rows.append(
             (
@@ -275,8 +290,6 @@ async def list_grouped(
                     purchase_auto=sum(1 for i in owned if i.purchase_price_auto),
                     # Skupina ako jeden celok (doba držania vážená vkladom), nie priemer.
                     cagr_pct=collection_cagr([by_id[i.id] for i in owned])[0],
-                    member_total=member_total,
-                    member_owned=member_owned,
                     categories=ctx.categories_by_item.get(group[0].id, []),
                 ),
             )
@@ -296,42 +309,6 @@ async def item_facets(user: CurrentUser, session: SessionDep, f: FilterDep) -> F
         **facets(valued, f, ctx),
         totals=SelectionTotalsOut(**selection_totals(shown, deflator)),
     )
-
-
-@router.get("/items/missing", response_model=list[CatalogOut])
-async def missing_members(
-    user: CurrentUser,
-    session: SessionDep,
-    series: Annotated[list[str] | None, Query()] = None,
-    q: str | None = None,
-) -> list[CatalogItem]:
-    """Figúrky zo sérií, z ktorých niečo mám, ale túto nie.
-
-    Všetci členovia série sú v katalógu od prvého vyhľadania, takže sa tu
-    nič nevolá, len porovná katalóg so zbierkou.
-    """
-    valued = await _valued(session, user)
-    owned = {v.item.catalog_num for v in valued if v.item.status == ItemStatus.OWNED}
-    owned_series = {
-        v.catalog.parent_num
-        for v in valued
-        if v.catalog.parent_num and v.item.status == ItemStatus.OWNED
-    }
-    wanted = set(series) & owned_series if series else owned_series
-    if not wanted:
-        return []
-    rows = await session.execute(select(CatalogItem).where(CatalogItem.parent_num.in_(wanted)))
-    missing = [c for c in rows.scalars() if c.catalog_num not in owned]
-    if q and q.strip():
-        needle = q.strip().lower()
-        missing = [c for c in missing if needle in c.name.lower() or needle in c.catalog_num]
-    missing.sort(key=lambda c: (c.parent_num or "", _member_suffix(c.catalog_num)))
-    return missing
-
-
-def _member_suffix(num: str) -> int:
-    tail = num.rsplit("-", 1)[-1]
-    return int(tail) if tail.isdigit() else 10_000
 
 
 @router.get("/locations", response_model=list[str])
@@ -359,14 +336,23 @@ async def create_items(
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
 
+    unidentified = payload.unidentified
+    price_variant = payload.price_variant
+    if catalog.is_series and not unidentified:
+        # Pod číslom celej série je len nerozbalený sáčok (tak ho uloží aj
+        # import); konkrétna figúrka má číslo s pomlčkou. Ako set by kus
+        # skončil v Zbierke a Figúrky by ho nerátali.
+        unidentified = True
+        price_variant = price_variant or PriceVariant.SEALED
+
     created: list[CollectionItem] = []
     for _ in range(payload.quantity):
         item = CollectionItem(
             user_id=user.id,
             catalog_num=catalog.catalog_num,
             condition=payload.condition,
-            price_variant=payload.price_variant,
-            unidentified=payload.unidentified,
+            price_variant=price_variant,
+            unidentified=unidentified,
             flags=flags,
             purchase_price_eur=payload.purchase_price_eur,
             purchase_date=payload.purchase_date,
@@ -454,9 +440,10 @@ async def bulk_update(
 ) -> BulkUpdateOut:
     """Zmení naraz viac vlastnených kusov.
 
-    Výber je zoznam kusov, čísla setov (karta setu alebo série) alebo, keď
-    nie je ani jedno, celý výsledok filtra z adresy. Vždy len kusy, ktoré
-    Zbierka s týmto filtrom ukazuje.
+    Výber je zoznam kusov, čísla setov (karta setu, pri sérii aj jej
+    členovia) alebo, keď nie je ani jedno, celý výsledok filtra z adresy.
+    Vždy len kusy, ktoré ten filter ukazuje: Zbierka posiela `sets_only`,
+    detail série `series` bez neho.
     Predané kusy a kusy iného účtu sa nemenia nikdy.
     """
     _, shown, _ = await _filtered(session, user, f)

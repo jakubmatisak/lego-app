@@ -4,9 +4,13 @@
  * Stav filtra je jeden objekt a do adresy stránky sa zapisuje s rovnakými
  * menami parametrov, aké berie API. Záložka, uložený pohľad aj požiadavka
  * na server tak hovoria tou istou rečou.
+ *
+ * Figúrky zo sérií majú vlastnú sekciu Figúrky, Zbierka ich nevidí. Filtre
+ * len pre ne (typ, séria, podoba, nekompletné, chýbajúce) tu preto nie sú
+ * a z adresy či uloženého stavu sa zahodia.
  */
 
-import type { Catalog, Category, Facets, SavedView } from '@/api/types'
+import type { Category, Facets, SavedView } from '@/api/types'
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
@@ -20,8 +24,6 @@ export const NONE = '__none__'
 export interface Filters {
   q: string
   category: number[]
-  kind: string[]
-  series: string[]
   theme: string[]
   subtheme: string[]
   condition: string[]
@@ -30,7 +32,6 @@ export interface Filters {
   flag: string[]
   /** Štítky z Brickset (Multibuild, Functional Steering…). */
   tag: string[]
-  variant: string[]
   price: string[]
   /** Kde kúpené a kanál predaja. */
   place: string[]
@@ -60,14 +61,13 @@ export interface Filters {
   retired: boolean | null
   retired_recent: boolean
   duplicates: boolean
-  incomplete: boolean
 }
 
-export type ListKey = 'kind' | 'series' | 'theme' | 'subtheme' | 'condition' | 'purpose' | 'tag'
-  | 'location' | 'flag' | 'variant' | 'price' | 'place' | 'channel' | 'growth' | 'source' | 'purchase' | 'box'
+export type ListKey = 'theme' | 'subtheme' | 'condition' | 'purpose' | 'tag'
+  | 'location' | 'flag' | 'price' | 'place' | 'channel' | 'growth' | 'source' | 'purchase' | 'box'
 
 export const LIST_KEYS: ListKey[] = [
-  'kind', 'series', 'theme', 'subtheme', 'condition', 'purpose', 'location', 'flag', 'tag', 'variant', 'price',
+  'theme', 'subtheme', 'condition', 'purpose', 'location', 'flag', 'tag', 'price',
   'place', 'channel', 'growth', 'source', 'purchase', 'box',
 ]
 
@@ -82,10 +82,10 @@ const ID_LIST_KEYS: IdListKey[] = ['category', 'imported']
  */
 export type NumberKey = 'year_from' | 'year_to' | 'price_min' | 'price_max' | 'value_min' | 'value_max' | 'rating_min'
 export type DateKey = 'bought_from' | 'bought_to'
-type FlagKey = 'retired_recent' | 'duplicates' | 'incomplete'
+type FlagKey = 'retired_recent' | 'duplicates'
 const NUMBER_KEYS: NumberKey[] = ['year_from', 'year_to', 'price_min', 'price_max', 'value_min', 'value_max', 'rating_min']
 const DATE_KEYS: DateKey[] = ['bought_from', 'bought_to']
-const FLAG_KEYS: FlagKey[] = ['retired_recent', 'duplicates', 'incomplete']
+const FLAG_KEYS: FlagKey[] = ['retired_recent', 'duplicates']
 /** Od–do sa v počte aktívnych filtrov ráta ako jeden filter. */
 const RANGES: [keyof Filters, keyof Filters][] = [
   ['year_from', 'year_to'], ['bought_from', 'bought_to'], ['price_min', 'price_max'], ['value_min', 'value_max'],
@@ -95,8 +95,6 @@ function empty (): Filters {
   return {
     q: '',
     category: [],
-    kind: [],
-    series: [],
     theme: [],
     subtheme: [],
     condition: [],
@@ -104,7 +102,6 @@ function empty (): Filters {
     location: [],
     flag: [],
     tag: [],
-    variant: [],
     price: [],
     place: [],
     channel: [],
@@ -125,8 +122,23 @@ function empty (): Filters {
     retired: null,
     retired_recent: false,
     duplicates: false,
-    incomplete: false,
   }
+}
+
+/**
+ * Rozsah sekcie Zbierka pre server: bez figúrok zo sérií, ani v počtoch
+ * panela. Nie je to filter, do adresy ani do uloženého pohľadu nejde; Prehľad
+ * s rozsahom z pohľadu, export aj detail setu tak figúrky počítajú ďalej.
+ */
+export const COLLECTION_SECTION = { sets_only: true } as const
+
+/**
+ * Adresa má kľúč, ktorý súčasný stav nevytvorí: starý filter figúrok,
+ * zrušené zoskupenie, nezmyselná hodnota. Zbierka ju potom prepíše, aby si
+ * to nepamätal ani účet.
+ */
+export function hasStaleKeys (route: LocationQuery, fresh: LocationQueryRaw): boolean {
+  return Object.keys(route).some(key => !(key in fresh))
 }
 
 function asList (value: LocationQuery[string] | undefined): string[] {
@@ -152,13 +164,10 @@ function asDate (value: LocationQuery[string] | undefined): string | null {
 
 export const useFilterStore = defineStore('filters', () => {
   const filters = reactive<Filters>(empty())
-  /** Namiesto zbierky ukázať figúrky, ktoré zo zbieraných sérií chýbajú. */
-  const showMissing = ref(false)
 
   const facets = ref<Facets | null>(null)
   const categories = ref<Category[]>([])
   const views = ref<SavedView[]>([])
-  const missing = ref<Catalog[]>([])
 
   const categoryById = computed(() => new Map(categories.value.map(c => [c.id, c])))
 
@@ -195,14 +204,16 @@ export const useFilterStore = defineStore('filters', () => {
     return out
   }
 
-  /** Stav pre adresu stránky, aj s tým, či sa ukazujú chýbajúce figúrky. */
+  /** Parametre pre zoznam a počty Zbierky: filter a rozsah sekcie. */
+  function sectionQuery (): Record<string, string | number | boolean | string[] | number[]> {
+    return { ...query(), ...COLLECTION_SECTION }
+  }
+
+  /** Stav pre adresu stránky. */
   function toRoute (): LocationQueryRaw {
     const out: LocationQueryRaw = {}
     for (const [key, value] of Object.entries(query())) {
       out[key] = Array.isArray(value) ? value.map(String) : String(value)
-    }
-    if (showMissing.value) {
-      out.missing = '1'
     }
     return out
   }
@@ -227,7 +238,6 @@ export const useFilterStore = defineStore('filters', () => {
     for (const key of FLAG_KEYS) {
       filters[key] = asList(route[key])[0] === 'true'
     }
-    showMissing.value = asList(route.missing)[0] === '1'
   }
 
   /** Počet aktívnych volieb, pre tlačidlo „Filtre (3)“. Rozsah od–do je jeden filter. */
@@ -263,7 +273,6 @@ export const useFilterStore = defineStore('filters', () => {
 
   function clear (): void {
     Object.assign(filters, empty())
-    showMissing.value = false
   }
 
   function toggle (key: ListKey, value: string): void {
@@ -292,7 +301,7 @@ export const useFilterStore = defineStore('filters', () => {
 
   async function loadFacets (status: string): Promise<void> {
     const { data } = await api.GET('/items/facets', {
-      params: { query: { status, ...query() } as never },
+      params: { query: { status, ...sectionQuery() } as never },
     })
     facets.value = data ?? null
   }
@@ -307,20 +316,8 @@ export const useFilterStore = defineStore('filters', () => {
     views.value = data ?? []
   }
 
-  /** Chýbajúce figúrky len zo sérií, ktoré sú práve vo výsledku. */
-  async function loadMissing (series: string[]): Promise<void> {
-    if (!showMissing.value || series.length === 0) {
-      missing.value = []
-      return
-    }
-    const { data } = await api.GET('/items/missing', {
-      params: { query: { series, q: filters.q.trim() || undefined } },
-    })
-    missing.value = data ?? []
-  }
-
   async function saveView (name: string, extra: Record<string, string> = {}): Promise<boolean> {
-    const payload = { name, query: { ...query(), ...(showMissing.value ? { missing: '1' } : {}), ...extra } }
+    const payload = { name, query: { ...query(), ...extra } }
     const { data, error: err } = await api.POST('/views', { body: payload as never })
     const notify = useNotifyStore()
     if (err) {
@@ -356,14 +353,13 @@ export const useFilterStore = defineStore('filters', () => {
 
   return {
     filters,
-    showMissing,
     facets,
     categories,
     views,
-    missing,
     categoryById,
     activeCount,
     query,
+    sectionQuery,
     toRoute,
     fromRoute,
     clear,
@@ -373,7 +369,6 @@ export const useFilterStore = defineStore('filters', () => {
     loadFacets,
     loadCategories,
     loadViews,
-    loadMissing,
     saveView,
     deleteView,
     applyView,

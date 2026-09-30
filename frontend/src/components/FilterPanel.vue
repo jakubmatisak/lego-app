@@ -6,6 +6,9 @@
    *
    * Číslo pri voľbe hovorí, koľko kusov ostane, keď ju pridáš. Voľba s
    * nulou zošedne, ale dá sa zaškrtnúť, keď už vybraná je, dá sa aj odškrtnúť.
+   *
+   * Voľby len pre figúrky zo sérií (typ, séria, podoba, chýbajúce,
+   * nekompletné) tu nie sú: Zbierka ich neukazuje, majú sekciu Figúrky.
    */
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -24,7 +27,7 @@
   const f = store.filters
 
   /** Otvorené sekcie. Tie najpoužívanejšie sú otvorené hneď. */
-  const open = ref(['categories', 'kind', 'series', 'theme'])
+  const open = ref(['categories', 'theme', 'condition'])
 
   const facets = computed(() => store.facets)
 
@@ -122,81 +125,6 @@
             variant="text"
             @click="emit('manage')"
           >{{ t('filters.manage') }}</v-btn>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-
-      <!-- Typ --------------------------------------------------------------->
-      <v-expansion-panel value="kind">
-        <v-expansion-panel-title>{{ t('filters.kind') }}</v-expansion-panel-title>
-
-        <v-expansion-panel-text>
-          <FilterOption
-            v-for="option in facets?.kind ?? []"
-            :key="option.value"
-            :count="option.count"
-            :label="label('kind', option)"
-            :selected="selected('kind', option.value)"
-            @toggle="store.toggle('kind', option.value)"
-          />
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-
-      <!-- Série ------------------------------------------------------------->
-      <v-expansion-panel value="series">
-        <v-expansion-panel-title>{{ t('filters.series') }}</v-expansion-panel-title>
-
-        <v-expansion-panel-text>
-          <FilterOption
-            v-for="option in facets?.series ?? []"
-            :key="option.value"
-            :count="option.count"
-            :count-label="option.extra"
-            :label="option.label"
-            :selected="selected('series', option.value)"
-            @toggle="store.toggle('series', option.value)"
-          />
-
-          <v-divider class="my-2" />
-
-          <v-switch
-            v-model="store.showMissing"
-            class="filter-switch"
-            color="primary"
-            density="compact"
-            hide-details
-            :label="t('filters.showMissing')"
-          />
-
-          <v-switch
-            v-model="f.incomplete"
-            class="filter-switch"
-            color="primary"
-            density="compact"
-            hide-details
-            :label="`${t('filters.incomplete')} (${facets?.incomplete ?? 0})`"
-          />
-
-          <v-switch
-            v-model="f.duplicates"
-            class="filter-switch"
-            color="primary"
-            density="compact"
-            hide-details
-            :label="`${t('filters.duplicates')} (${facets?.duplicates ?? 0})`"
-          />
-
-          <template v-if="(facets?.variant ?? []).length > 0">
-            <div class="text-caption text-medium-emphasis mt-2 mb-1">{{ t('filters.variant') }}</div>
-
-            <FilterOption
-              v-for="option in facets?.variant ?? []"
-              :key="option.value"
-              :count="option.count"
-              :label="label('variant', option)"
-              :selected="selected('variant', option.value)"
-              @toggle="store.toggle('variant', option.value)"
-            />
-          </template>
         </v-expansion-panel-text>
       </v-expansion-panel>
 
@@ -344,6 +272,20 @@
             :selected="selected(section.key, option.value)"
             @toggle="store.toggle(section.key, option.value)"
           />
+
+          <!-- Duplikáty sú o tom, čo mám, rovnako ako stav kusu. -->
+          <template v-if="section.key === 'condition'">
+            <v-divider class="my-2" />
+
+            <v-switch
+              v-model="f.duplicates"
+              class="filter-switch"
+              color="primary"
+              density="compact"
+              hide-details
+              :label="`${t('filters.duplicates')} (${facets?.duplicates ?? 0})`"
+            />
+          </template>
         </v-expansion-panel-text>
       </v-expansion-panel>
 

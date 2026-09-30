@@ -1,9 +1,11 @@
 """Hromadná úprava kusov zbierky.
 
-Výber príde ako zoznam kusov, ako čísla setov (karta setu alebo série
-v Zbierke) alebo ako filter Zbierky (`ItemFilter`), vtedy presne to, čo
-Zbierka s tým filtrom ukazuje. Menia sa vždy len vlastnené kusy účtu;
-predaný kus je história a hromadne sa neupravuje.
+Výber príde ako zoznam kusov, ako čísla setov (karta setu v Zbierke,
+pri sérii aj jej členovia) alebo ako filter (`ItemFilter`), vtedy presne
+to, čo ten filter ukazuje. Zbierka posiela svoj filter so `sets_only`,
+detail série filter `series` bez neho, takže figúrky zo sérií sa hromadne
+upravujú tam. Menia sa vždy len vlastnené kusy účtu; predaný kus je
+história a hromadne sa neupravuje.
 
 Kategória visí na sete, nie na kuse: zaradenie a vyradenie ide cez
 `categories.set_membership`, ktoré ručný záznam uloží len vtedy, keď sa

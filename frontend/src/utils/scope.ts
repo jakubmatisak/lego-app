@@ -1,7 +1,8 @@
 /**
  * Rozsah Prehľadu: s ktorou časťou zbierky počítať. Je to obyčajný filter
  * Zbierky (query parametre), takže Prehľad a Zbierka s tým istým filtrom
- * ukážu tie isté súčty. Uložený pohľad je presne jeho uložený filter.
+ * ukážu tie isté súčty, až na figúrky zo sérií: tie Prehľad počíta, Zbierka
+ * nie (`sets_only`, do pohľadu nejde). Uložený pohľad je presne jeho uložený filter.
  */
 
 import type { Category, SavedView } from '@/api/types'

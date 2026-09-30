@@ -192,6 +192,21 @@ def test_kind_series_and_incomplete() -> None:
     assert _nums(apply(valued, ItemFilter(incomplete=True), ctx)) == ["71051-1", "71051-2"]
 
 
+def test_sets_only_leaves_out_series_figures_even_from_the_options() -> None:
+    """Zbierka: bez figúrok zo sérií, aj blind-box figúrky cenenej ako set."""
+    machine = _cat("42233-1", "Excavator", parent_num="42233", theme="Technic")
+    bag = _piece(SERIES, unidentified=True)
+    valued, ctx = _setup([_piece(SPEED), _piece(FIG1), bag, _piece(machine)])
+
+    assert _nums(apply(valued, ItemFilter(sets_only=True), ctx)) == ["77251-1"]
+
+    result = facets(valued, ItemFilter(sets_only=True), ctx)
+    assert result["total"] == 1
+    # Témy len figúrok by v paneli ostali s nulou, keby rozsah bol len filter.
+    assert [r["value"] for r in result["theme"]] == ["Speed Champions"]
+    assert result["hidden_figures"] == 3
+
+
 def test_duplicates() -> None:
     valued, ctx = _setup([_piece(FIG1), _piece(FIG1), _piece(FIG2)])
     rows = apply(valued, ItemFilter(duplicates=True), ctx)
@@ -259,13 +274,6 @@ def test_selected_option_stays_with_zero() -> None:
     result = facets(valued, ItemFilter(condition=["built"], theme=["Harry Potter"]), ctx)
     themes = {r["value"]: r["count"] for r in result["theme"]}
     assert themes["Harry Potter"] == 0
-
-
-def test_series_facet_shows_completeness() -> None:
-    valued, ctx = _setup([_piece(FIG1), _piece(FIG2)])
-    row = facets(valued, ItemFilter(), ctx)["series"][0]
-    assert row["label"] == "Series 28 Minifigures"
-    assert row["extra"] == "2/3"
 
 
 def test_empty_categories_are_listed() -> None:

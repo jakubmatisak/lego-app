@@ -58,6 +58,7 @@
     "legendProceeds": "z predajov",
     "themes": "Podľa sérií",
     "topProfit": "Najväčší zisk",
+    "topProfitEmpty": "Zisk ukážeme, keď budú známe trhové ceny. Stiahni ich tlačidlom obnovy cien v hornej lište alebo zadaj cenu ručne v detaile setu.",
     "wholeCollection": "Celá zbierka",
     "movers": "Kto sa hýbe",
     "moversEmpty": "Na porovnanie treba aspoň dve ceny v čase. Vráť sa o pár dní.",
@@ -68,7 +69,7 @@
     "seriesShowMissing": "Ukázať chýbajúce",
     "empty": "Zbierka je zatiaľ prázdna",
     "emptyHint": "Pridaj prvý set a čísla sa objavia samé.",
-    "priceMissing": "Pri {count} kusoch zatiaľ nepoznáme trhovú cenu.",
+    "priceMissingPlural": "Pri {count} kuse zatiaľ nepoznáme trhovú cenu. | Pri {count} kusoch zatiaľ nepoznáme trhovú cenu. | Pri {count} kusoch zatiaľ nepoznáme trhovú cenu.",
     "chartHint": "Ťahaním posunieš, Ctrl + koliesko priblíži",
     "range": {
       "1m": "1M",
@@ -78,7 +79,8 @@
       "ytd": "Tento rok",
       "all": "Všetko",
       "showAll": "Celá história"
-    }
+    },
+    "donutSetsPlural": "set | sety | setov"
   },
   "collection": {
     "title": "Zbierka",
@@ -98,7 +100,6 @@
     },
     "groupBy": {
       "set": "Podľa setu",
-      "series": "Podľa série figúrok",
       "item": "Každý kus"
     },
     "status": {
@@ -117,14 +118,14 @@
     "pieces": "{count} ks",
     "empty": "Nič sa nenašlo",
     "emptyHint": "Skús zmeniť filtre alebo pridaj nový set.",
+    "figuresElsewherePlural": "{count} figúrka zo sérií je v sekcii Figúrky, Zbierka ukazuje len sety. | {count} figúrky zo sérií sú v sekcii Figúrky, Zbierka ukazuje len sety. | {count} figúrok zo sérií je v sekcii Figúrky, Zbierka ukazuje len sety.",
+    "openMinifigs": "Otvoriť Figúrky",
     "addSet": "Pridať set",
     "exportCsv": "Export CSV",
     "exportFailed": "Export sa nepodaril",
     "summaryLine": "{sets} · {items} · {sold} predaných",
     "twoPlaces": "{count} miesta",
     "mixedConditions": "{items}",
-    "seriesProgress": "{owned} z {total} figúrok",
-    "seriesComplete": "kompletná",
     "approxPriceHint": "Odvodené z ceny nového kusu, pre tento stav ju zdroj zatiaľ nemá.",
     "unknownPrice": "cena neznáma",
     "setsPlural": "{count} set | {count} sety | {count} setov",
@@ -133,7 +134,8 @@
     "sortAsc": "Vzostupne (klikni na otočenie)",
     "sortDesc": "Zostupne (klikni na otočenie)",
     "viewCards": "Karty",
-    "viewTable": "Tabuľka"
+    "viewTable": "Tabuľka",
+    "partsPlural": "{count} dielik | {count} dieliky | {count} dielikov"
   },
   "add": {
     "categories": "Kategórie",
@@ -366,6 +368,7 @@
     "userActive": "Aktívny",
     "userRole": "Rola",
     "appTitle": "Nastavenia aplikácie",
+    "appVersion": "Verzia {version}",
     "allowRegistration": "Povoliť registráciu nových účtov",
     "registrationOpenHint": "Ktokoľvek s adresou appky si môže založiť účet. Keď si ho založia všetci, čo majú, registráciu zavri.",
     "registrationClosedHint": "Nové účty sa zakladať nedajú, na prihlasovacej stránke nie je „Nový účet“. Existujúce účty fungujú ďalej.",
@@ -408,7 +411,9 @@
     "removeConfirm": "Naozaj zmazať",
     "removeWarning": "Kus sa zmaže aj s históriou. Ak si ho len predal, použi radšej Predať.",
     "saveFailed": "Úpravu sa nepodarilo uložiť.",
-    "removeFailed": "Kus sa nepodarilo zmazať."
+    "removeFailed": "Kus sa nepodarilo zmazať.",
+    "categories": "Kategórie setu",
+    "categoriesHint": "Kategória patrí setu, nie kusu: zmena platí pre všetky jeho kusy. Zapíše sa pri uložení."
   },
   "condition": {
     "new_sealed": "Nové v krabici",
@@ -534,14 +539,7 @@
     "button": "Filtre",
     "categories": "Moje kategórie",
     "manage": "Spravovať",
-    "kind": "Typ",
-    "series": "Série figúrok",
-    "showMissing": "Len chýbajúce figúrky",
-    "nothingMissing": "Nič ti nechýba",
-    "nothingMissingHint": "Zo sérií vo výbere máš všetky figúrky.",
-    "incomplete": "Len nekompletné série figúrok",
     "duplicates": "Len duplikáty",
-    "variant": "Podoba figúrky",
     "theme": "Séria a podséria",
     "condition": "Stav",
     "purpose": "Zoznam",
@@ -558,7 +556,9 @@
     "clear": "Zrušiť filtre",
     "saveView": "Uložiť pohľad",
     "viewName": "Názov pohľadu",
-    "viewNameHint": "Napríklad „F1 v krabici“ alebo „Nekompletné série figúrok“.",
+    "viewFigures": "Pohľad „{name}“ má filter figúrok zo sérií. Zbierka ukazuje len sety, figúrky sú vo Figúrkach.",
+    "viewFiguresHint": "Filter figúrok zo sérií Zbierka nepoužije, figúrky sú vo Figúrkach. Pohľad platí ďalej ako rozsah Prehľadu.",
+    "viewNameHint": "Napríklad „F1 v krabici“ alebo „Na predaj z povaly“.",
     "views": "Uložené pohľady",
     "deleteView": "Zmazať pohľad",
     "noCategories": "Zatiaľ žiadne. Kategória pozbiera sety naprieč sériami, napríklad všetky F1.",
@@ -593,10 +593,6 @@
     "box": "Krabica",
     "noBox": "Bez krabice"
   },
-  "kind": {
-    "set": "Sety",
-    "minifig": "Figúrky zo sérií"
-  },
   "price": {
     "gain": "V zisku",
     "loss": "V strate",
@@ -622,6 +618,8 @@
     "save": "Uložiť",
     "edit": "Upraviť",
     "empty": "Zatiaľ žiadne kategórie.",
+    "loading": "Načítavam kategórie…",
+    "loadFailed": "Kategórie sa nepodarilo načítať.",
     "inDetail": "Kategórie",
     "editMembership": "Zaradiť do kategórií",
     "viaRule": "podľa pravidla",
@@ -661,6 +659,8 @@
     "notSynced": "Figúrky sa ešte sťahujú",
     "duplicatesPlural": "{count} duplikát | {count} duplikáty | {count} duplikátov",
     "bagsPlural": "{count} nerozbalený sáčok | {count} nerozbalené sáčky | {count} nerozbalených sáčkov",
+    "seriesPieces": "Kusy série",
+    "seriesPiecesHint": "Všetky kusy série aj s nerozbalenými sáčkami a predanými figúrkami, obnova cien série",
     "back": "Všetky série",
     "have": "Mám",
     "showAll": "Všetky",
@@ -1077,7 +1077,8 @@
     "userSaved": "Používateľ uložený",
     "registrationSaved": "Nastavenie registrácie uložené",
     "profileSaved": "Profil uložený",
-    "followupFailed": "Uložené, ale kategóriu alebo kód sa nepodarilo zapísať"
+    "followupFailed": "Uložené, ale kategóriu alebo kód sa nepodarilo zapísať",
+    "categoriesFailed": "Kategórie setu sa nepodarilo uložiť"
   },
   "formMemory": {
     "title": "Čo si pridávanie pamätá",

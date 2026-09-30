@@ -4,24 +4,39 @@
    * Úprava jedného kusu. Opraviť sa dá všetko, čo sa zadáva pri pridaní,
    * lebo pomýliť sa je ľahké a inak by nezostalo než kus zmazať a založiť
    * odznova, čím by sa stratila jeho história.
+   *
+   * Aj kategórie, hoci visia na sete, nie na kuse: výber je ten istý ako
+   * pri pridaní (CategoryPicker) a zapíše sa až pri uložení, takže Zrušiť
+   * nezanechá nič. Chyba kategórie sa ohlási, úprava kusu sa uloží aj tak.
+   *
+   * Uloženie čaká na kategórie, preto sa dialóg počas neho nedá zavrieť
+   * a udalosť nesie id kusu, pre ktorý sa začalo: rodič by inak mohol
+   * zapísať úpravu na kus, ktorý je v dialógu medzitým.
    */
   import { computed, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { CONDITIONS, FLAGS, PURPOSES, VARIANTS } from '@/api/types'
+  import CategoryPicker from '@/components/CategoryPicker.vue'
   import DateField from '@/components/DateField.vue'
   import PlaceFields from '@/components/PlaceFields.vue'
+  import { useCategoryPicker } from '@/composables/useCategoryPicker'
   import { useCollectionStore } from '@/stores/collection'
+  import { useNotifyStore } from '@/stores/notify'
   import { toNumber } from '@/utils/format'
   import { priceChange } from '@/utils/priceEdit'
 
   const open = defineModel<boolean>({ required: true })
   const props = defineProps<{ item: ValuedItem | null, locations?: string[] }>()
   const emit = defineEmits<{
-    save: [payload: Record<string, unknown>]
-    remove: [id: number]
+    'save': [id: number, payload: Record<string, unknown>]
+    'remove': [id: number]
+    /** Zmenili sa kategórie setu (výber alebo správca); rodič obnoví ich zobrazenie. */
+    'categories-changed': []
   }>()
 
   const { t } = useI18n()
+  const notify = useNotifyStore()
+  const categories = useCategoryPicker()
 
   const condition = ref<ItemCondition>('new_sealed')
   const variant = ref<string | null>(null)
@@ -57,15 +72,31 @@
     note.value = item.note ?? ''
     saving.value = false
     confirmRemove.value = false
+    categories.reset()
+    // Chybu načítania ukáže výber sám (so Skúsiť znova), úprava kusu ide ďalej.
+    categories.load(item.catalog_num)
   })
 
   function close (): void {
     open.value = false
   }
 
-  function save (): void {
+  /** Zapíše zmenený výber kategórií setu; bez zmeny nejde von nič. */
+  async function saveCategories (num: string): Promise<void> {
+    if (!categories.dirty.value) return
+    try {
+      await categories.apply(num)
+    } catch (error_) {
+      notify.error(error_, t('notice.categoriesFailed'))
+    }
+    emit('categories-changed')
+  }
+
+  async function save (): Promise<void> {
+    if (!props.item || saving.value) return
     saving.value = true
-    emit('save', {
+    const { id, catalog_num: num } = props.item
+    const payload = {
       condition: condition.value,
       price_variant: isMinifig.value ? variant.value : null,
       flags: flags.value,
@@ -78,18 +109,20 @@
       purchase_date: date.value || null,
       purchase_place: (place.value ?? '').trim() || null,
       note: note.value.trim() || null,
-    })
+    }
+    await saveCategories(num)
+    emit('save', id, payload)
   }
 
   function remove (): void {
-    if (!props.item) return
+    if (!props.item || saving.value) return
     saving.value = true
     emit('remove', props.item.id)
   }
 </script>
 
 <template>
-  <v-dialog v-model="open" max-width="680" scrollable>
+  <v-dialog v-model="open" max-width="680" :persistent="saving" scrollable>
     <v-card v-if="item">
       <v-card-title>{{ t('piece.title') }}</v-card-title>
       <v-card-subtitle>{{ item.catalog.name }} · {{ item.catalog_num }}</v-card-subtitle>
@@ -192,6 +225,14 @@
           variant="outlined"
         />
 
+        <CategoryPicker
+          :hint="t('piece.categoriesHint')"
+          :label="t('piece.categories')"
+          :picker="categories"
+          title-class="text-subtitle-2"
+          @managed="emit('categories-changed')"
+        />
+
         <v-alert
           v-if="confirmRemove"
           density="comfortable"
@@ -221,7 +262,7 @@
         >{{ t('piece.removeConfirm') }}</v-btn>
 
         <v-spacer />
-        <v-btn variant="text" @click="close">{{ t('common.cancel') }}</v-btn>
+        <v-btn :disabled="saving" variant="text" @click="close">{{ t('common.cancel') }}</v-btn>
 
         <v-btn
           color="primary"

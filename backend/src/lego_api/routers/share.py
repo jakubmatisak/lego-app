@@ -143,23 +143,32 @@ async def public_collection(token: str, session: SessionDep) -> PublicCollection
                 "is_retired": v.catalog.is_retired,
                 "quantity": 0,
                 "purchase_total": ZERO,
-                "market_total": ZERO,
+                "market_total": None,
+                "price_missing": 0,
             },
         )
         row["quantity"] += 1
         row["purchase_total"] += v.purchase
-        row["market_total"] += v.market_value
+        # Kus bez trhovej ceny do súčtu nejde: hodnota 0 by na stránke bola
+        # „0,00 €“. Set, ktorý cenu nemá ani pri jednom kuse, ostane bez sumy.
+        if v.price_source == "missing":
+            row["price_missing"] += 1
+        else:
+            row["market_total"] = (row["market_total"] or ZERO) + v.market_value
 
+    money_fields = {"purchase_total", "market_total", "price_missing"}
     rows: list[PublicItemOut] = []
     invested: Decimal = ZERO
-    market: Decimal = ZERO
+    market: Decimal | None = None
+    missing = 0
     for row in grouped.values():
         invested += row["purchase_total"]
-        market += row["market_total"]
-        payload = {k: v for k, v in row.items() if k not in {"purchase_total", "market_total"}}
+        missing += row["price_missing"]
+        if row["market_total"] is not None:
+            market = (market or ZERO) + row["market_total"]
+        payload = {k: v for k, v in row.items() if k not in money_fields}
         if link.show_values:
-            payload["purchase_total"] = row["purchase_total"]
-            payload["market_total"] = row["market_total"]
+            payload.update({k: row[k] for k in money_fields})
         rows.append(PublicItemOut(**payload))
     rows.sort(key=lambda r: r.year or 0, reverse=True)
 
@@ -176,6 +185,7 @@ async def public_collection(token: str, session: SessionDep) -> PublicCollection
     if link.show_values:
         result.invested = invested
         result.market_value = market
+        result.price_missing = missing
 
     await session.commit()
     return result

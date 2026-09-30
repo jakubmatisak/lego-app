@@ -15,7 +15,6 @@
 
   const props = defineProps<{
     catalog: Catalog
-    seriesName?: string | null
     /** Už je v Chcem. */
     wanted?: boolean
     /** Štítok chýbajúceho, predvolene „Chýba v sérii“. */
@@ -55,7 +54,7 @@
       <div class="text-body-1 font-weight-medium text-truncate">{{ catalog.name }}</div>
 
       <div class="text-caption text-medium-emphasis text-truncate">
-        {{ catalog.catalog_num }}<span v-if="seriesName"> · {{ seriesName }}</span>
+        {{ catalog.catalog_num }}
       </div>
 
       <v-chip class="align-self-start mt-1" label size="x-small" variant="outlined">

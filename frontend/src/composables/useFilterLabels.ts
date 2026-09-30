@@ -2,7 +2,7 @@
  * Popis voľby filtra, rovnaký v paneli aj v čipoch nad kartami.
  *
  * Kódy zo servera (new_sealed, up, stale…) sa prekladajú tu, voľné texty
- * (téma, umiestnenie, obchod) a id (séria, import) sa berú z počtov panelu.
+ * (téma, umiestnenie, obchod) a id (import) sa berú z počtov panelu.
  */
 
 import type { FacetOption } from '@/api/types'
@@ -14,11 +14,9 @@ export type LabelKey = ListKey | 'imported'
 
 /** Skupiny, ktorých hodnoty sú kódy s prekladom `<skupina>.<hodnota>`. */
 const TRANSLATED: Partial<Record<LabelKey, string>> = {
-  kind: 'kind',
   condition: 'condition',
   purpose: 'purpose',
   flag: 'flag',
-  variant: 'variant',
   price: 'price',
   growth: 'growth',
   source: 'priceSource',

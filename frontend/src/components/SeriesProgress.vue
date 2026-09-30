@@ -6,6 +6,7 @@
    * Nekompletné idú prvé a chýbajúce figúrky sú vidieť hneď, bez rozkliknutia.
    * Pruh pri 11 z 12 vyzerá skoro plný, takže samotný pruh nestačí: stav
    * hovorí aj text („chýba 1“) a kompletná séria má vlastný zelený znak.
+   * „Ukázať chýbajúce“ vedie do Figúrok, Zbierka figúrky zo sérií nemá.
    */
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -83,7 +84,7 @@
           <v-btn
             class="ms-auto"
             size="small"
-            :to="{ name: 'collection', query: { series: row.series_num, missing: '1' } }"
+            :to="{ name: 'minifig-series', params: { num: row.series_num }, query: { show: 'missing' } }"
             variant="text"
           >{{ t('dashboard.seriesShowMissing') }}</v-btn>
         </div>

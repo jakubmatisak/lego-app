@@ -36,7 +36,10 @@
   watch(open, isOpen => {
     if (isOpen && collection.saleChannels.length === 0) collection.loadLocations()
     if (isOpen) {
-      price.value = props.item ? String(toNumber(props.item.market_value) ?? '') : ''
+      // Bez trhovej ceny prázdne pole: nula by hneď hlásila stratu celej kúpnej ceny.
+      price.value = props.item && props.item.price_source !== 'missing'
+        ? String(toNumber(props.item.market_value) ?? '')
+        : ''
       date.value = isoDate()
       channel.value = ''
       fees.value = ''

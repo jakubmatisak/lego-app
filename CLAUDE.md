@@ -79,7 +79,8 @@ tabuľka s `user_id` = pridať ju do `_OWNED` a do exportu. Obrázky zo
 služieb idú cez `GET /img` (`routers/images.py`, len povolení hostitelia)
 a vo frontende cez `utils/imageSrc.ts`. Nové cookie alebo úložisko v
 prehliadači = riadok v tabuľke na `/sukromie`; analytika či sledovanie =
-najprv lišta so súhlasom.
+najprv lišta so súhlasom. Nová kópia údajov mimo databázy (zálohy pred
+aktualizáciou v `backups/`) = veta v zásadách aj s tým, ako dlho ostane.
 
 **Vlastná fotka sa ukladá zmenšená, najviac 1 MB.**
 `services/photo_processing.py::normalize`: Pillow ju prečíta (to je aj
@@ -95,9 +96,54 @@ mimo zväzku a nasadenie by ich zmazalo. Typ súboru sa overuje podľa obsahu,
 meno si vymýšľa server a so zmazaným kusom sa mažú aj súbory. `data/photos/`
 je v `.gitignore`, fotky sú osobné.
 
+**Každá aktualizácia appky dostane najprv zálohu.** Používateľ appku
+aktualizuje sám a databáza sa zmigruje pri štarte; pokazená migrácia alebo
+nová verzia kódu by bez kópie zobrala celú zbierku. `main.py::_migrate` ide
+cez `services/db_backup.py::upgrade_with_backup`: keď revízia v
+`alembic_version` nie je head, alebo nad databázou naposledy bežala iná
+verzia appky (aj staršia), zálohovacie API SQLite (konzistentné aj pri
+otvorenom spojení) skopíruje databázu do `backups/` vedľa nej
+(`lego-RRRRMMDD-HHMMSS-v<verzia>-<revízia>.db`, stav pred štartom;
+v kontajneri `/app/data/backups`). Verzia je `lego_api.__version__`
+(metadáta balíka, teda `pyproject.toml`, žiadna ručná kópia) a po úspešnej
+migrácii sa zapíše do `app_settings` → `app_version` (`record_version`).
+Pred migráciou ju `recorded_version` číta surovým SQL, lebo schéma môže
+byť hocijaká stará; chýbajúca tabuľka či nečitateľná hodnota = verzia
+neznáma = záloha (staršie inštalácie, v mene len revízia). Nová databáza,
+pamäť ani head s tou istou verziou sa nezálohujú. Keď záloha zlyhá,
+migrácia sa nespustí (`BackupFailed`). Staré zálohy maže `prune` (ostane 5,
+iné súbory v priečinku nie) až po úspešnej migrácii: SQLite potvrdzuje každú
+migráciu zvlášť, takže po páde je databáza napoly zmigrovaná a Docker
+(`restart`) či ďalšie spustenie desktopu by inak rotáciou vytlačili
+jedinú zálohu spred aktualizácie. Zlyhanie si pamätá
+`backups/lego-failed-migration.json` (záloha, revízia, odtlačok databázy);
+kým sa databáza odvtedy nezmenila, ďalší štart novú zálohu nerobí a hlási
+tú pôvodnú. Každý úspešný štart značku zmaže, aj bez zálohy (vrátená
+záloha a predchádzajúca verzia). Verzia sa pri páde nezapíše, takže to
+platí aj pre štart novej verzie bez migrácie. Nové vydanie = zvýšiť
+`version` v `pyproject.toml`, `uv lock` a verziu vo `frontend/package.json`
+aj `package-lock.json` (zhodu stráži `tests/test_version.py`), inak sa pri
+aktualizácii bez migrácie nezálohuje. Verziu hlási `/health`, OpenAPI a Nastavenia →
+Aplikácia (`components/AppVersion.vue`). Log pri páde povie, kde je záloha
+a že pred jej skopírovaním treba zmazať `lego.db-journal` (`-wal`, `-shm`), inak ho SQLite vráti do
+obnoveného súboru. Aby sa to do logu dostalo, `_migrate` nastaví
+`config.attributes["keep_logging"]` a `alembic/env.py` potom nevolá
+`fileConfig`, ktorý by vypol loggery appky aj uvicornu. Fotky záloha
+nenesie. Zálohy obsahujú aj údaje neskôr zmazaných účtov, preto to
+spomínajú zásady `/sukromie` (Ako dlho, Vymazanie); `data/backups/` je
+v `.gitignore`.
+
 **Bez trhovej ceny sa nezobrazuje nula.** Keď `price_source == "missing"`,
 rozhranie ukáže pomlčku alebo „cena neznáma“, nie `0 €` a `−100 %`.
-Platí to na karte setu, v detaile aj v zozname kusov.
+Platí to na karte setu, v detaile aj v zozname kusov. Aj súčty po skupinách:
+keď cenu nemá ani jeden vlastnený kus, `market_value` a `unrealized` sú
+null (Výkonnosť, `/stats/summary`, `FacetsOut.totals`), skupina bez ceny je
+vo Výkonnosti na konci a Najväčší zisk kusy bez ceny vynechá (prázdna
+karta to povie). Rovnako verejný odkaz (`market_total`/`market_value` null,
+`price_missing`; verejnosť ceny BrickEconomy nevidí, takže bez ručnej ceny
+je to bežné), súčet v Súpise, prázdna bunka hodnoty a nerealizovaného zisku
+v exporte CSV a prázdne pole ceny v dialógu predaja. Reťazec `"0.00"` je
+v JS pravdivý, na null sa testuje výslovne.
 
 **Voľba položky na cenenie je na jednom mieste.** `services/pricing.py::resolve_price_target`.
 Zdroj pozná dve podoby: set (`/api/v1/set/{num}`) a samotnú figúrku
@@ -189,12 +235,33 @@ záznam v zoznamoch polí `stores/filters.ts` (zoznam, číslo, dátum,
 prepínač) a popis v `composables/useFilterLabels.ts`. Hľadanie ignoruje
 diakritiku (`filters.fold`), každé slovo musí sedieť.
 
+**Zbierka sú len sety, figúrky zo sérií sú vo Figúrkach.** Zbierka posiela
+`sets_only=true` (`filterStore.sectionQuery()` v zozname, počtoch aj hromadnej
+úprave), čo vyradí figúrky aj z ponuky volieb panela. Do adresy ani do
+uloženého pohľadu nejde, takže Prehľad, export, súpis a detail setu počítajú
+všetko. Filtre len pre figúrky (Typ, Séria, Podoba, nekompletné, chýbajúce)
+a zoskupenie podľa série panel ani `facets()` nemajú; zo stavu účtu ich
+Zbierka zahodí (`hasStaleKeys`), starý odkaz s nimi v adrese presmeruje do
+Figúrok (`utils/series.ts::figuresRoute`, jedna séria na jej stránku) a
+uložený pohľad s nimi je označený a po kliknutí to oznámi
+(`hasFigureFilters`). Aby hľadanie figúrky neskončilo tichým „Nič sa
+nenašlo“, `FacetsOut.hidden_figures` povie, koľko figúrok zo sérií by filter
+našiel, a `FiguresElsewhere.vue` odkáže do Figúrok. Ponuka a hlavička
+Zbierky berú `collection_*_count` zo súhrnu, `set_count` a spol. počítajú
+všetko. Odkazy z Figúrok na detail nesú `?from=minifigs`, ponuka potom
+svieti na Figúrkach (`utils/navigation.ts::sectionRoute`). Kus pod holým
+číslom série je vždy nerozbalený sáčok (`POST /items` ho tak uloží, ako
+import), detail série sa pozná podľa `series_size`, nielen podľa kusov
+(`utils/series.ts::isSeriesPage`).
+
 **`catalog.kind` hovorí, ako sa položka cení, nie čo to je.** Figúrky
 Mighty Machines či Super Mario sú v katalógu `kind=set`, lebo sa cenia ako
 sety. Či je kus figúrka zo série, rozhoduje rodič série
-(`filters.py::series_of`); z neho ide filter Typ, skupina Séria aj
-zoskupenie. `kind` platí pre cenenie a pre variant ceny (sáčok, komplet,
-len figúrka), ktorý majú len skutočné minifigúrky.
+(`filters.py::series_of`, `kind_of`); z neho ide `sets_only` Zbierky
+a predikáty `kind` a `series` (ostali pre rozsah Prehľadu zo starých
+pohľadov a pre detail série). `kind` platí pre cenenie
+a pre variant ceny (sáčok, komplet, len figúrka), ktorý majú len skutočné
+minifigúrky.
 
 **Zoradenie je jeden register, `services/sorting.py`.** Desať kľúčov
 (zisk v € a %, ročný výnos, hodnota, kúpna cena, dátum kúpy, rok, dieliky,
@@ -214,7 +281,9 @@ Hodnota „nič“ (bez témy, bez umiestnenia) je `__none__` na oboch stranách
 berie tie isté query parametre ako `GET /items` (`FilterDep`); bez
 `item_ids` a `catalog_nums` zmení presne to, čo Zbierka s filtrom ukazuje.
 Len vlastnené kusy účtu, kategória cez `set_membership` na set,
-`dry_run` na počet pred potvrdením (`services/bulk.py`).
+`dry_run` na počet pred potvrdením (`services/bulk.py`). Figúrky zo sérií
+Zbierka nemá, hromadne sa upravujú v detaile série: `BulkBar` tam dostane
+`query` `{ series: [num] }` bez `sets_only`, „vybrať všetko“ je celá séria.
 
 **Prehľad počíta rozsah cez ten istý filter.** Všetky `/stats/*` majú
 `FilterDep` a filtrujú so stavom „všetko“ (predané v rozsahu ostanú).
@@ -255,7 +324,11 @@ Prednosť: ručná voľba na sete, potom ručná voľba na jeho sérii, potom
 pravidlá. Ručný záznam sa ukladá, len keď mení výsledok
 (`services/categories.py::set_membership`), takže vylúčenie proti pravidlu
 je riadok s `mode=exclude`. Nový účet začína bez kategórií; „Formula 1“
-z migrácie ostala len starším účtom.
+z migrácie ostala len starším účtom. Vo formulári (Pridať set aj úprava
+kusu) je výber jeden: `components/CategoryPicker.vue` so stavom
+`composables/useCategoryPicker.ts` u rodiča. Zapisuje sa až pri uložení
+formulára a len kategórie, kde sa výber líši od stavu servera; detail
+setu (`CategoryMembership.vue`) zapisuje hneď po kliknutí.
 
 **Cena pre druhý stav je lepšia než žiadna.** Zdroj vracia cenu použitého
 kusu len pri stiahnutých setoch. Postavený kus setu, ktorý je ešte v predaji,
@@ -497,7 +570,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 469 testov, frontend 114. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 545 testov, frontend 194. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá
@@ -506,3 +579,8 @@ ich údaje sa podľa podmienok nesmú šíriť.
 
 `conftest.py` nastavuje len tajomstvo a databázu v pamäti. Kľúče v ňom byť
 nemusia, konfigurácia ich nepozná.
+
+Frontend testuje aj komponenty so skutočným Vuetify
+(`components/PieceDialog.spec.ts`): komponenty Vuetify sa registrujú
+v teste, jsdom potrebuje náhradu `ResizeObserver` a `visualViewport`
+a `vitest.config.ts` spracúva Vuetify cez Vite (`server.deps.inline`).

@@ -77,6 +77,9 @@ class ItemFilter:
     box: list[str] = field(default_factory=list)
     #: Sumy v dnešných peniazoch. Filter to nemení, len výpočet zisku.
     real: bool = False
+    #: Rozsah sekcie Zbierka: len samostatné sety, figúrky zo sérií sú vo
+    #: Figúrkach. Na rozdiel od filtra Typ obmedzuje aj ponuku volieb v paneli.
+    sets_only: bool = False
 
 
 @dataclass
@@ -115,6 +118,11 @@ def kind_of(v: ValuedItem) -> str:
     v katalógu sety, lebo sa cenia ako sety, a predsa sú to figúrky zo série.
     """
     return "minifig" if series_of(v) else "set"
+
+
+def in_section(v: ValuedItem, f: ItemFilter) -> bool:
+    """Patrí kus do sekcie, pre ktorú sa filtruje? Zbierka figúrky zo sérií nevidí."""
+    return not f.sets_only or kind_of(v) == "set"
 
 
 def variant_of(v: ValuedItem) -> str | None:
@@ -277,6 +285,10 @@ def _category(v: ValuedItem, f: ItemFilter, ctx: FilterContext) -> bool:
     return not f.category or bool(set(f.category) & set(ctx.categories_by_item.get(v.item.id, [])))
 
 
+def _sets_only(v: ValuedItem, f: ItemFilter, _: FilterContext) -> bool:
+    return in_section(v, f)
+
+
 def _kind(v: ValuedItem, f: ItemFilter, _: FilterContext) -> bool:
     return not f.kind or kind_of(v) in f.kind
 
@@ -420,6 +432,7 @@ def _incomplete(v: ValuedItem, f: ItemFilter, ctx: FilterContext) -> bool:
 
 
 PREDICATES: dict[str, Predicate] = {
+    "sets_only": _sets_only,
     "status": _status,
     "q": _q,
     "category": _category,
@@ -509,25 +522,14 @@ def facets(valued: list[ValuedItem], f: ItemFilter, ctx: FilterContext) -> dict:
         for c in ctx.index.categories
     ]
 
-    everything = valued
-
-    result["kind"] = _options(
-        Counter(kind_of(v) for v in base("kind")),
-        f.kind,
-        universe=Counter(kind_of(v) for v in everything),
+    # Ponuka volieb je z celej sekcie. V Zbierke by inak ostali s nulou
+    # témy či umiestnenia, ktoré majú len figúrky zo sérií.
+    everything = [v for v in valued if in_section(v, f)]
+    # Figúrky zo sérií, ktoré by filter našiel, keby Zbierka nemala rozsah.
+    # Prázdna Zbierka po hľadaní figúrky potom povie, že je vo Figúrkach.
+    result["hidden_figures"] = (
+        sum(1 for v in base("sets_only") if not in_section(v, f)) if f.sets_only else 0
     )
-
-    series_counter = Counter(s for v in base("series") if (s := series_of(v)))
-    series_rows = _options(
-        series_counter,
-        f.series,
-        {num: p.name for num, p in ctx.parents.items()},
-        universe=Counter(s for v in everything if (s := series_of(v))),
-    )
-    for row in series_rows:
-        owned, total = ctx.series_status.get(row["value"], (0, 0))
-        row["extra"] = f"{owned}/{total}" if total else None
-    result["series"] = series_rows
 
     result["theme"] = _options(
         Counter(v.catalog.theme or NONE for v in base("theme")),
@@ -580,11 +582,6 @@ def facets(valued: list[ValuedItem], f: ItemFilter, ctx: FilterContext) -> dict:
     result["tag"] = _options(
         tag_counter, f.tag, universe=Counter(t for v in everything for t in v.catalog.tags or [])
     )
-    result["variant"] = _options(
-        Counter(var for v in base("variant") if (var := variant_of(v))),
-        f.variant,
-        universe=Counter(var for v in everything if (var := variant_of(v))),
-    )
     result["price"] = _options(
         Counter(price_bucket(v) for v in base("price")),
         f.price,
@@ -603,9 +600,6 @@ def facets(valued: list[ValuedItem], f: ItemFilter, ctx: FilterContext) -> dict:
         1
         for v in base("duplicates")
         if v.item.status == ItemStatus.OWNED and ctx.owned_counts[v.item.catalog_num] >= 2
-    )
-    result["incomplete"] = len(
-        apply(base("incomplete"), ItemFilter(status="all", incomplete=True), ctx)
     )
 
     def text(value: str | None) -> str:

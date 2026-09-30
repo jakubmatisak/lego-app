@@ -3,7 +3,8 @@
 Rozsah Prehľadu: každá trasa berie ten istý filter ako Zbierka (`FilterDep`,
 tie isté query parametre ako `GET /items`), takže „čo vidím v Zbierke“
 a „čo počíta Prehľad“ sa nerozídu. Rozsah vyberá sety, nie stav: predané
-kusy v ňom ostávajú, aby sedel realizovaný zisk.
+kusy v ňom ostávajú, aby sedel realizovaný zisk. Figúrky zo sérií Prehľad
+počíta, Zbierka nie: tá k filtru posiela `sets_only`, Prehľad nie.
 """
 
 from dataclasses import asdict, replace
@@ -22,7 +23,13 @@ from lego_api.schemas import (
     SummaryOut,
     TimelinePointOut,
 )
-from lego_api.services.filters import ItemFilter, apply, build_context, is_default_filter
+from lego_api.services.filters import (
+    ItemFilter,
+    apply,
+    build_context,
+    in_section,
+    is_default_filter,
+)
 from lego_api.services.inflation import Deflator, deflator_for
 from lego_api.services.portfolio import (
     breakdown,
@@ -81,12 +88,18 @@ async def get_summary(user: CurrentUser, session: SessionDep, f: FilterDep) -> S
         v.catalog.theme.lower() for v in owned if v.catalog.theme and not v.catalog.parent_num
     }
     theme_names |= {t.lower() for t in followed_of(user.preferences)}
+    # Sekcia Zbierka figúrky zo sérií neukazuje (``sets_only``), jej čísla tiež nie.
+    section = [v for v in valued if in_section(v, ItemFilter(sets_only=True))]
+    section_owned = [v for v in section if v.item.status == ItemStatus.OWNED]
     return SummaryOut(
         **asdict(summary),
         wishlist_hits=hits,
         wishlist_count=len(wishes),
         series_figures=len(figures),
         theme_count=len(theme_names),
+        collection_set_count=len({v.item.catalog_num for v in section_owned}),
+        collection_item_count=len(section_owned),
+        collection_sold_count=sum(1 for v in section if v.item.status == ItemStatus.SOLD),
         real_month=deflator.latest_month if deflator else None,
     )
 

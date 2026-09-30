@@ -28,7 +28,17 @@ export type SortDir = 'asc' | 'desc'
 export function defaultDir (key: SortKey): SortDir {
   return key === 'name' ? 'asc' : 'desc'
 }
-export type Grouping = 'set' | 'series' | 'item'
+/**
+ * Karty setov, alebo každý kus zvlášť. Zoskupenie podľa série figúrok
+ * Zbierka nemá: figúrky zo sérií sú vo Figúrkach.
+ */
+export type Grouping = 'set' | 'item'
+const GROUPINGS: Grouping[] = ['set', 'item']
+
+/** Zoskupenie z adresy alebo uloženého pohľadu; neznáme (aj staré „series“) = null. */
+export function groupingFrom (value: unknown): Grouping | null {
+  return GROUPINGS.find(g => g === value) ?? null
+}
 
 const t = i18n.global.t
 
@@ -95,9 +105,12 @@ export const useCollectionStore = defineStore('collection', () => {
     }
   }
 
-  /** Rovnaké filtre pre zoznam kusov aj zoskupený zoznam, z jedného miesta. */
+  /**
+   * Rovnaké filtre pre zoznam kusov, zoskupený zoznam aj hromadnú úpravu,
+   * z jedného miesta. Aj s rozsahom sekcie: Zbierka ukazuje len sety.
+   */
   function filterQuery () {
-    return { status: statusFilter.value, ...filterStore.query(), ...realQuery() } as never
+    return { status: statusFilter.value, ...filterStore.sectionQuery(), ...realQuery() } as never
   }
 
   /** Doplnok dotazu pre všetko, čo počíta so sumami. Vypnutý = nič navyše. */
@@ -108,11 +121,7 @@ export const useCollectionStore = defineStore('collection', () => {
   async function loadGrouped (): Promise<void> {
     const { data } = await api.GET('/items/grouped', {
       params: {
-        query: {
-          ...(filterQuery() as object),
-          ...sortQuery(),
-          by: grouping.value === 'series' ? 'series' : 'set',
-        } as never,
+        query: { ...(filterQuery() as object), ...sortQuery() } as never,
       },
     })
     grouped.value = data ?? []

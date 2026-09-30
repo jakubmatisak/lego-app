@@ -150,6 +150,17 @@ async def test_registration_requires_reading_the_privacy_policy(client: AsyncCli
     assert me["privacy_version"] == get_settings().privacy_version
 
 
+def test_privacy_version_covers_backups_before_update() -> None:
+    """Zásady od 2026-09-30.2 hovoria o zálohe pred každou aktualizáciou appky.
+
+    Verzia 2026-09-30 spomínala zálohu len pri zmene štruktúry databázy.
+    Staršia verzia by používateľom neukázala oznámenie o zmene zásad.
+    """
+    from lego_api.config import Settings
+
+    assert Settings().privacy_version >= "2026-09-30.2"
+
+
 async def test_operator_contact_is_public_for_the_privacy_page(client: AsyncClient) -> None:
     """Zásady musia povedať, kto je prevádzkovateľ; vyplní to správca."""
     admin = await _register(client, "spravca@x.sk")

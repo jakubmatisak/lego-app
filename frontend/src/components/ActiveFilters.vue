@@ -1,19 +1,29 @@
 <script setup lang="ts">
-  import type { ListKey } from '@/stores/filters'
   /**
    * Aktívne filtre ako čipy s krížikom a uložené pohľady.
    * Z čipu je vidno, čo je zapnuté, aj keď je panel filtrov zavretý.
+   *
+   * Starší pohľad môže mať filter figúrok zo sérií (séria, nekompletné…),
+   * ktorý Zbierka už nepozná. Čip je označený a po kliknutí oznámenie
+   * ponúkne Figúrky; inak by pohľad potichu ukázal celú zbierku.
    */
+  import type { SavedView } from '@/api/types'
+  import type { ListKey } from '@/stores/filters'
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
   import { useFilterLabels } from '@/composables/useFilterLabels'
   import { LIST_KEYS, useFilterStore } from '@/stores/filters'
+  import { useNotifyStore } from '@/stores/notify'
   import { exactMoney, shortDate } from '@/utils/format'
+  import { figuresRoute, hasFigureFilters } from '@/utils/series'
 
   const emit = defineEmits<{ view: [group: string | null] }>()
   const props = defineProps<{ group: string }>()
 
   const { t } = useI18n()
+  const router = useRouter()
+  const notify = useNotifyStore()
   const store = useFilterStore()
   const f = store.filters
 
@@ -111,11 +121,7 @@
         remove: () => (f.retired = null),
       })
     }
-    if (f.incomplete) out.push({ key: 'incomplete', label: t('filters.incomplete'), remove: () => (f.incomplete = false) })
     if (f.duplicates) out.push({ key: 'duplicates', label: t('filters.duplicates'), remove: () => (f.duplicates = false) })
-    if (store.showMissing) {
-      out.push({ key: 'missing', label: t('filters.showMissing'), remove: () => (store.showMissing = false) })
-    }
     return out
   })
 
@@ -125,17 +131,30 @@
   async function save (): Promise<void> {
     const name = viewName.value.trim()
     if (!name) return
-    // Uložený pohľad si pamätá aj zoskupenie, inak by sa „Nekompletné série“
-    // otvorili ako dvadsať samostatných figúrok.
+    // Uložený pohľad si pamätá aj zoskupenie (karty setov alebo každý kus).
     if (await store.saveView(name, { group: props.group })) {
       saveOpen.value = false
       viewName.value = ''
     }
   }
 
+  function figures (view: SavedView): boolean {
+    return hasFigureFilters(view.query ?? {})
+  }
+
   function apply (viewId: number): void {
     const view = store.views.find(v => v.id === viewId)
-    if (view) emit('view', store.applyView(view))
+    if (!view) return
+    emit('view', store.applyView(view))
+    const target = figuresRoute(view.query ?? {})
+    if (target) {
+      notify.info(t('filters.viewFigures', { name: view.name }), {
+        label: t('collection.openMinifigs'),
+        run: () => {
+          router.push(target)
+        },
+      })
+    }
   }
 </script>
 
@@ -172,8 +191,9 @@
         closable
         :close-label="t('filters.deleteView')"
         label
-        prepend-icon="mdi-bookmark-outline"
+        :prepend-icon="figures(view) ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-outline'"
         size="small"
+        :title="figures(view) ? t('filters.viewFiguresHint') : undefined"
         variant="outlined"
         @click="apply(view.id)"
         @click:close="store.deleteView(view.id)"

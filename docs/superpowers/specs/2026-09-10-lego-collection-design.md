@@ -102,7 +102,28 @@ docs/superpowers/specs/  tieto dokumenty
   Desktop štartuje so systémom.
 - **Dáta:** zväzok `./data:/app/data` drží `lego.db` aj `photos/`.
   Obraz dáta nenesie, takže nové nasadenie ich nezmaže.
-- **Migrácie:** Alembic ich spustí pri štarte kontajnera.
+- **Migrácie:** Alembic ich spustí pri štarte kontajnera. Keď migrácia
+  niečo zmení (revízia v `alembic_version` nie je head), alebo nad
+  databázou naposledy bežala iná verzia appky (aktualizácia aj návrat na
+  staršiu, aj bez zmeny schémy), databáza sa najprv skopíruje zálohovacím
+  API SQLite do `data/backups/` (`lego-RRRRMMDD-HHMMSS-v<verzia>-<revízia>.db`,
+  verzia a revízia pred štartom, posledných 5). Verzia appky je verzia
+  balíka `lego-api` z `pyproject.toml` (`lego_api.__version__`); po úspešnej
+  migrácii sa zapíše do `app_settings` → `app_version` a pred ďalšou sa
+  číta surovým SQL, keďže schéma môže byť stará. Databáza bez zapísanej
+  verzie (inštalácie spred tejto evidencie) sa zálohuje ako prvý štart novej
+  verzie, v mene je len revízia; nová prázdna databáza sa nezálohuje. Bez
+  zálohy sa migrácia nespustí; pri páde migrácie log povie, kde záloha je
+  a že pred návratom treba zmazať `lego.db-journal` (`-wal`, `-shm`)
+  (`services/db_backup.py`). Staré zálohy sa mažú až po úspešnej migrácii
+  a po zlyhanej si značka `backups/lego-failed-migration.json` pamätá
+  zálohu spred aktualizácie: slučka reštartov (`restart: unless-stopped`)
+  ju tak nevytlačí kópiami napoly zmigrovanej databázy, kým sa databáza
+  nezmení. Každý úspešný štart značku zmaže, aj keď nič nezálohoval.
+  Verzia sa pri páde nezapíše, takže to platí aj pre novú verziu bez
+  migrácie. Aby sa chyba do logu dostala, appka nastaví Alembicu
+  `keep_logging` a `env.py` nevolá `fileConfig`. Zálohy nesú aj údaje
+  neskôr zmazaných účtov, spomínajú ich zásady `/sukromie`.
 - **Tajomstvá:** v `.env` (nie je v gite) je len `JWT_SECRET`
   a prevádzkové nastavenia. Kľúče k službám tam nie sú.
 - **Prístup:** appka beží doma a von je dostupná pod doménou.
@@ -326,6 +347,18 @@ správny stav, pri nájdení v poradí:
 4. **Žiadna cena** (`missing`). Kus prispieva nulou, ale rozhranie ukáže
    pomlčku, nikdy `0 €` ani `−100 %`.
 
+**Súčet bez jedinej ceny nie je nula.** Keď v skupine nemá trhovú cenu ani
+jeden vlastnený kus, hodnota aj nerealizovaný zisk sú `null` a rozhranie
+ukáže pomlčku. Platí to pre rozpad výkonnosti (taká skupina ide na koniec),
+dlaždice Prehľadu (celá zbierka aj rozsah) a súčty výberu v Zbierke. Keď
+cenu má len časť kusov, hodnota je súčet ocenených a počet bez ceny ide
+vedľa (`price_missing`). Bez vlastnených kusov je hodnota naozaj nula.
+Top podľa zisku kusy bez ceny vynechá; bez jediného oceneného karta povie,
+že zisk ukáže po stiahnutí cien. To isté platí na verejnom odkaze (set bez
+ceny „cena neznáma“, hodnota zbierky pomlčka a „bez ceny: N“), v súčte
+Súpisu, v exporte CSV (prázdna hodnota aj nerealizovaný zisk) a v dialógu
+predaja (bez ceny prázdne pole, nie nula so stratou celej kúpnej ceny).
+
 **Nerealizovaný a realizovaný zisk sa nikdy nesčítavajú.**
 
 - **Nerealizovaný** = trhová hodnota − kúpna cena, cez vlastnené kusy.
@@ -364,7 +397,8 @@ najbližšou k začiatku okna. Položka bez staršej snímky sa vynechá, nič s
 nedopočítava.
 
 **Rozpad výkonnosti** podľa témy, podtémy alebo zoznamu: vklad, hodnota,
-zisk a výnos. **Predaje podľa kanála:** tržba, náklady, kúpna cena, čistý
+zisk a výnos. Pri čiastočnej cene ukáže pri hodnote „bez ceny: N“ a zisk
+ako pomlčku. **Predaje podľa kanála:** tržba, náklady, kúpna cena, čistý
 zisk a výnos.
 
 **V dnešných peniazoch (inflácia).**
@@ -562,6 +596,11 @@ Podrobnosti:
 - Ručný záznam sa uloží, len keď mení výsledok, takže vylúčenie proti
   pravidlu je riadok s `mode=exclude`.
 - Nový účet nemá žiadnu predvolenú kategóriu (Formula 1 majú len staršie účty z migrácie).
+- Zaradiť set sa dá na troch miestach: v detaile setu (zapíše sa hneď),
+  pri pridaní setu a v úprave kusu. Pridanie aj úprava kusu majú ten istý
+  výber (`CategoryPicker.vue`, `useCategoryPicker.ts`) so správcom
+  kategórií; zmeny sa zapíšu až pri uložení formulára a len tie, ktoré sa
+  líšia od stavu servera. V úprave kusu sa zaraďuje set kusu, nie kus.
 
 ---
 
@@ -611,26 +650,34 @@ Podrobnosti:
   - odhad hodnoty;
   - top 10 podľa zisku;
   - pohyby cien za 30, 90 a 365 dní, 10 záznamov;
-  - kompletnosť sérií, nekompletné prvé.
+  - kompletnosť sérií, nekompletné prvé; „Ukázať chýbajúce“ otvorí sériu
+    vo Figúrkach rovno na chýbajúcich (`?show=missing`).
 - Karty sú v upratanej mriežke a obrazovka nie je vyššia než monitor.
 
 **Zbierka** (`/zbierka`):
 
+- **Len sety.** Figúrky zo sérií (zberateľské minifigúrky aj blind-box série
+  ako Mighty Machines) sú vo Figúrkach. Zbierka posiela `sets_only=true`
+  do zoznamu, počtov panela aj hromadnej úpravy; figúrky tak nie sú ani vo
+  voľbách panela a súčtoch. Prehľad, export CSV, súpis a detail setu ho
+  neposielajú a počítajú všetko. Počty v ponuke a hlavičke Zbierky sú
+  `collection_set_count`, `collection_item_count`, `collection_sold_count`.
 - Hľadanie bez diakritiky v názve, čísle, téme, podtéme, umiestnení,
   obchode, poznámke a štítkoch (všetky slová musia sedieť).
 - Zoradenie desiatimi spôsobmi so smerom (register `services/sorting.py`),
   prázdne hodnoty vždy na konci; tlačidlo Filtre s počtom aktívnych filtrov.
-- Prepínač vlastnené / predané / všetko a zoskupenie podľa setu, série
-  alebo kusu.
+- Prepínač vlastnené / predané / všetko a zoskupenie podľa setu alebo
+  kusu.
 - **Panel filtrov** je vpravo a dá sa skryť:
-  - kategórie, druh, séria, téma, podtéma, stav, zoznam, umiestnenie,
-    príznaky, štítky, variant figúrky, roky, retired a cena (zisk, strata,
-    bez ceny);
+  - kategórie, téma, podtéma, stav, zoznam, umiestnenie, príznaky,
+    štítky, roky, retired a cena (zisk, strata, bez ceny);
   - kúpa a hodnota: dátum kúpy od–do, kúpna cena a trhová hodnota za kus
     od–do, kde kúpené; kanál predaja; hodnotenie Brickset (aspoň 3,5 / 4 /
     4,5); odhad rastu; pôvod ceny (trhová, odvodená, ručná, bez ceny,
     neobnovená 30+ dní); import; stiahnuté za posledný rok;
-  - len duplicity, len nekompletné série, len chýbajúce figúrky.
+  - len duplicity (pri stave kusu).
+  - Typ, séria, podoba figúrky, nekompletné série a chýbajúce figúrky tu
+    nie sú; stará adresa či uložený stav s nimi sa pri otvorení vyčistí.
 - Čipy aktívnych filtrov, uložené pohľady a „Resetovať filtre“.
 - Riadok súčtov výberu, Export CSV a Pridať set.
 - Filter je v adrese pod rovnakými menami, aké berie API. Posledný stav
@@ -646,6 +693,12 @@ Podrobnosti:
   či vyradiť (na set). `POST /items/bulk-update` s filtrom v adrese,
   zoznamom kusov alebo číslami setov; najprv `dry_run` na potvrdenie
   „Kde uložené → Povala: 143 kusov“. Menia sa len vlastnené kusy účtu.
+  Figúrky zo sérií sa hromadne upravujú v detaile série (rozsah `series`).
+- **Figúrky inde:** keď filter či hľadanie trafí figúrky zo sérií, nad
+  výsledkom je „N figúrok zo sérií je v sekcii Figúrky“ s odkazom
+  (`FacetsOut.hidden_figures`). Starý odkaz s filtrom série vedie do
+  Figúrok, uložený pohľad s filtrom figúrok je označený a po kliknutí to
+  oznámi.
 - **Karta setu:** fotka, názov, číslo, téma, dieliky, čipy stavu
   a umiestnenia, štítok Stiahnutý, kúpené → hodnota a percento. Bez ceny
   je tam pomlčka, pri odvodenej cene ≈. Predaná karta ukazuje predajnú
@@ -682,7 +735,13 @@ Podrobnosti:
   identifikácia sáčku, návrh inzerátu (cena a text pre Aukro a Bazoš).
 - Kusy sa načítavajú so `status=all`, aby predaný kus nezmizol aj
   s históriou.
-- „Ďalší kus“ pridá kus bez hľadania.
+- „Ďalší kus“ pridá kus bez hľadania; na stránke série (podľa
+  `series_size`, aj nezačatej) vedie do Figúrok. Kus pod holým číslom
+  série server vždy uloží ako nerozbalený sáčok.
+- Na stránke série hromadná úprava jej vlastnených kusov (krabica, zoznam,
+  stav, príznaky, kategória).
+- Úprava kusu sa počas ukladania nedá zavrieť a uloží sa na kus, pre ktorý
+  sa začala; výber kategórií hlási načítanie aj chybu so „Skúsiť znova“.
 
 **Figúrky** (`/figurky`):
 
@@ -691,7 +750,11 @@ Podrobnosti:
   a „najmenej chýba“, úplnosť každej série (`utils/seriesList.ts`).
 - **Séria** (`/figurky/:num`): mám a nemám. Chýbajúca figúrka je
   prerušovaná karta s „Chcem“ a „Mám ju“. „Mám všetky“ zadá celú sériu
-  jednou sumou, rozpočítanou na centy.
+  jednou sumou, rozpočítanou na centy. „Kusy série“ vedie do detailu série
+  (`/set/:num`): nerozbalené sáčky, predané figúrky, hromadná úprava
+  a obnova cien série. Pridať set po uložení série alebo figúrky vedie sem,
+  nie do Zbierky. Odkazy odtiaľ na detail nesú `?from=minifigs`, ponuka
+  potom ostane na Figúrkach.
 
 **Série** (`/temy`, v rozhraní „Série“, v dátach téma): moje série a hľadanie vo všetkých. Tému bez setu sa dá
 uložiť hviezdičkou. Moje témy sa radia podľa počtu mojich setov, úplnosti
@@ -726,7 +789,9 @@ predvolene najbližšie k cieľu navrch, prázdne hodnoty na konci. „Kúpil so
   - potvrdenie, vrátenie a história importov.
 
   Pod tým je export CSV a súpis pre poistku.
-- **Používatelia** a **Aplikácia** (registrácia): len správca.
+- **Používatelia** a **Aplikácia** (registrácia, prevádzkovateľ): len
+  správca. Na konci Aplikácie je nenápadne verzia appky z `GET /health`
+  (`components/AppVersion.vue`).
 
 **Overiť cenu** (`/overit-cenu`): napíšem číslo alebo naskenujem kód
 (čítačka ide cez `useScanCodes`, sken ostane na stránke) a hneď vidím set,
@@ -769,7 +834,7 @@ prihlásenie. Úplná schéma je v OpenAPI (`openapi_export`).
 |---|---|
 | auth | `POST register, login, refresh, logout`; `GET/PATCH me`; `GET/PUT me/keys` (aj `capabilities`), `GET/PUT me/sources`; `GET me/preferences`, `PUT me/preferences/{key}` |
 | katalóg | `GET catalog/{num}`, `children`, `ownership`, `categories`; `POST catalog` (ručne), `{num}/refresh`, `{num}/brickset`, `brickset/backfill`; `GET catalog/by-ean/{code}`; `PUT catalog/{num}/ean` |
-| kusy | `GET items` (filtre, `sort`, `real`), `items/grouped` (`by`), `items/facets` (počty + súčty), `items/missing`, `locations`, `suggestions`; `POST items`, `items/bulk`; `GET/PATCH/DELETE items/{id}`; `PATCH {id}/identify`; `POST {id}/sell`, `{id}/unsell` |
+| kusy | `GET items` (filtre, `sort`, `real`), `items/grouped` (`by`), `items/facets` (počty + súčty, `hidden_figures`), `locations`, `suggestions`; `POST items`, `items/bulk`; `GET/PATCH/DELETE items/{id}`; `PATCH {id}/identify`; `POST {id}/sell`, `{id}/unsell` |
 | fotky | `GET/POST items/{id}/photos`; `GET photos`; `GET/DELETE photos/{id}` |
 | kategórie | `GET/POST categories`; `PATCH/DELETE categories/{id}`; `PUT categories/{id}/members/{num}`; `GET/POST views`, `DELETE views/{id}` |
 | ceny | `GET prices/refresh-status`; `POST prices/refresh-all?num=`; `GET prices/{num}`; `POST prices/{num}/refresh?max_age_hours=`; `PUT prices/{num}/manual`; `POST prices/lookup/{num}`; `GET/POST/DELETE prices/checks` |
@@ -779,7 +844,7 @@ prihlásenie. Úplná schéma je v OpenAPI (`openapi_export`).
 | Chcem | `GET/POST wishlist`; `DELETE wishlist/{id}` |
 | zdieľanie | `GET/POST share`; `PATCH/DELETE share/{id}`; `GET public/{token}` |
 | import | `GET imports/template.xlsx`, `imports/template.csv`; `GET/POST imports`; `GET/DELETE imports/{id}`; `POST imports/{id}/commit`, `imports/{id}/undo` |
-| iné | `GET export/items.csv`; `GET usage`; `GET providers/status`; `GET health` |
+| iné | `GET export/items.csv`; `GET usage`; `GET providers/status`; `GET health` (stav a verzia appky) |
 | správa | `GET admin/users`, `PATCH admin/users/{id}`; `GET/PATCH admin/settings` |
 
 Pravidlá API:
@@ -790,6 +855,8 @@ Pravidlá API:
   - v skupine platí ALEBO, medzi skupinami A;
   - skupina sa zadáva opakovaním parametra (`?theme=a&theme=b`);
   - hodnota „nič“ je `__none__`;
+  - `sets_only` je rozsah sekcie Zbierka, nie filter: vyradí figúrky zo
+    sérií (`kind_of`) aj z ponuky volieb (`in_section`);
   - počet pri voľbe ráta s ostatnými skupinami, nie s vlastnou. Voľba,
     po ktorej by nič neostalo, zošedne, ale ostane.
 - **`Literal` na číselnom query parametri nefunguje**, lebo hodnota príde
@@ -892,4 +959,10 @@ Pravidlá API:
   `alembic revision --autogenerate`; nový stĺpec NOT NULL potrebuje
   `server_default`.
 - **Nasadenie:** `docker compose up -d --build` a kontrola
-  `GET /api/v1/health`.
+  `GET /api/v1/health` (vráti aj verziu, napríklad `1.0.0`).
+- **Verzia appky:** jediný zdroj je `version` v `backend/pyproject.toml`
+  (`lego_api.__version__` cez metadáta balíka; hlási ju `/health`,
+  OpenAPI aj Nastavenia → Aplikácia). Pri vydaní sa zvýši spolu
+  s `uv lock` a verziou vo `frontend/package.json` (aj `package-lock.json`),
+  zhodu stráži `tests/test_version.py`. Zmena verzie spustí pri štarte
+  zálohu databázy. Prvé vydanie je 1.0.0.

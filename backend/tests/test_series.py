@@ -450,10 +450,10 @@ async def _seed_series(session) -> None:
 async def test_series_grouping_folds_members_into_one_card(
     auth_client: AsyncClient, session
 ) -> None:
-    """Dvanásť figúrok jednej série je v zbierke dvanásť kariet.
+    """Dvanásť figúrok jednej série je dvanásť setov v katalógu.
 
-    Pri zoskupení podľa série z nich má byť jedna karta s kompletnosťou,
-    aby sa v nej zvyšok zbierky nestratil.
+    Pri zoskupení podľa série (výber setov do odkazu na pozretie) z nich má
+    byť jedna položka pod číslom série.
     """
     await _seed_series(session)
 
@@ -470,18 +470,15 @@ async def test_series_grouping_folds_members_into_one_card(
     assert row["catalog"]["catalog_num"] == "71046"
     assert row["catalog"]["name"] == "Series 26 Minifigures"
     assert row["quantity"] == 3
-    assert row["member_owned"] == 3
-    assert row["member_total"] == 12
 
 
-async def test_series_grouping_counts_members_not_pieces(auth_client: AsyncClient, session) -> None:
-    """Dva kusy tej istej figúrky sú dva kusy, ale jeden člen série."""
+async def test_series_grouping_counts_pieces(auth_client: AsyncClient, session) -> None:
+    """Dva kusy tej istej figúrky sú v položke série dva kusy."""
     await _seed_series(session)
     await auth_client.post("/items", json={"catalog_num": "71046-1", "quantity": 2})
 
     row = (await auth_client.get("/items/grouped", params={"by": "series"})).json()[0]
     assert row["quantity"] == 2
-    assert row["member_owned"] == 1
 
 
 async def test_series_grouping_leaves_ordinary_sets_alone(auth_client: AsyncClient) -> None:
@@ -496,6 +493,3 @@ async def test_series_grouping_leaves_ordinary_sets_alone(auth_client: AsyncClie
     assert len(rows) == 1
     assert rows[0]["catalog"]["catalog_num"] == "10294-1"
     assert rows[0]["quantity"] == 2
-    # Bežný set sériou nie je, kompletnosť sa pri ňom nedopočítava.
-    assert rows[0]["member_owned"] is None
-    assert rows[0]["member_total"] is None

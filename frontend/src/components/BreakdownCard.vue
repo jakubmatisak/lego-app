@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * Výkonnosť vlastnených kusov podľa témy, podtémy alebo zoznamu.
- * Počíta sa z uložených cien, zdroj cien sa tu nevolá.
+ * Počíta sa z uložených cien, zdroj cien sa tu nevolá. Skupina, v ktorej
+ * cenu nemá ani jeden kus, príde s hodnotou null a ukáže pomlčku, nie 0 €.
  */
   import type { BreakdownRow } from '@/api/types'
   import { computed, onMounted, ref, watch } from 'vue'
@@ -88,7 +89,15 @@
             <td class="font-weight-medium">{{ label(row) }}</td>
             <td class="text-end">{{ row.pieces }}</td>
             <td class="text-end">{{ money(row.invested) }}</td>
-            <td class="text-end">{{ money(row.market_value) }}</td>
+
+            <td class="text-end">
+              {{ money(row.market_value) }}
+              <!-- Hodnota je len z ocenených kusov; koľko cenu nemá, povie poznámka. -->
+              <div
+                v-if="row.price_missing > 0 && row.market_value !== null"
+                class="text-caption text-medium-emphasis"
+              >{{ t('totals.noPrice', { count: row.price_missing }) }}</div>
+            </td>
 
             <!-- Bez ceny časti kusov by zisk vyšiel voči nule, preto pomlčka. -->
             <td class="text-end font-weight-medium" :class="profitClass(row)">

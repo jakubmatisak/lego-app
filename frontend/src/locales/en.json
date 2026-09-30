@@ -58,6 +58,7 @@
     "legendProceeds": "from sales",
     "themes": "By series",
     "topProfit": "Biggest profit",
+    "topProfitEmpty": "Profit shows once market prices are known. Fetch them with the price refresh button in the top bar or enter a price by hand in the set detail.",
     "wholeCollection": "Whole collection",
     "movers": "Biggest movers",
     "moversEmpty": "Comparison needs at least two prices over time. Check back in a few days.",
@@ -68,7 +69,7 @@
     "seriesShowMissing": "Show missing",
     "empty": "The collection is still empty",
     "emptyHint": "Add your first set and the numbers will appear.",
-    "priceMissing": "We do not know the market price for {count} pieces yet.",
+    "priceMissingPlural": "We do not know the market price for {count} piece yet. | We do not know the market price for {count} pieces yet.",
     "chartHint": "Drag to pan, Ctrl + wheel to zoom",
     "range": {
       "1m": "1M",
@@ -78,7 +79,8 @@
       "ytd": "YTD",
       "all": "All",
       "showAll": "Whole history"
-    }
+    },
+    "donutSetsPlural": "set | sets"
   },
   "collection": {
     "title": "Collection",
@@ -98,7 +100,6 @@
     },
     "groupBy": {
       "set": "By set",
-      "series": "By minifigure series",
       "item": "Each piece"
     },
     "status": {
@@ -117,14 +118,14 @@
     "pieces": "{count} pcs",
     "empty": "Nothing found",
     "emptyHint": "Try changing the filters or add a new set.",
+    "figuresElsewherePlural": "{count} series figure is in the Minifigures section; the collection shows sets only. | {count} series figures are in the Minifigures section; the collection shows sets only.",
+    "openMinifigs": "Open Minifigures",
     "addSet": "Add set",
     "exportCsv": "Export CSV",
     "exportFailed": "Export failed",
     "summaryLine": "{sets} · {items} · {sold} sold",
     "twoPlaces": "{count} places",
     "mixedConditions": "{items}",
-    "seriesProgress": "{owned} of {total} figures",
-    "seriesComplete": "complete",
     "approxPriceHint": "Derived from the new-condition price, the source has none for this condition yet.",
     "unknownPrice": "price unknown",
     "setsPlural": "{count} set | {count} sets",
@@ -133,7 +134,8 @@
     "sortAsc": "Ascending (click to flip)",
     "sortDesc": "Descending (click to flip)",
     "viewCards": "Cards",
-    "viewTable": "Table"
+    "viewTable": "Table",
+    "partsPlural": "{count} part | {count} parts"
   },
   "add": {
     "categories": "Categories",
@@ -366,6 +368,7 @@
     "userActive": "Active",
     "userRole": "Role",
     "appTitle": "Application settings",
+    "appVersion": "Version {version}",
     "allowRegistration": "Allow new account registration",
     "registrationOpenHint": "Anyone with the app address can create an account. Close registration once everyone has theirs.",
     "registrationClosedHint": "New accounts cannot be created; the login page hides “New account”. Existing accounts keep working.",
@@ -408,7 +411,9 @@
     "removeConfirm": "Yes, delete",
     "removeWarning": "The piece and its history will be gone. If you sold it, use Sell instead.",
     "saveFailed": "Could not save the changes.",
-    "removeFailed": "Could not delete the piece."
+    "removeFailed": "Could not delete the piece.",
+    "categories": "Set categories",
+    "categoriesHint": "Categories belong to the set, not the piece: a change applies to all its pieces. Saved with the piece."
   },
   "condition": {
     "new_sealed": "New, sealed",
@@ -534,14 +539,7 @@
     "button": "Filters",
     "categories": "My categories",
     "manage": "Manage",
-    "kind": "Type",
-    "series": "Minifigure series",
-    "showMissing": "Only missing figures",
-    "nothingMissing": "Nothing missing",
-    "nothingMissingHint": "You have every figure from the selected series.",
-    "incomplete": "Incomplete series only",
     "duplicates": "Duplicates only",
-    "variant": "Figure form",
     "theme": "Series and subseries",
     "condition": "Condition",
     "purpose": "List",
@@ -558,7 +556,9 @@
     "clear": "Clear filters",
     "saveView": "Save view",
     "viewName": "View name",
-    "viewNameHint": "For example “Sealed F1” or “Incomplete series”.",
+    "viewFigures": "View “{name}” filters series figures. The collection shows sets only; the figures are in Minifigures.",
+    "viewFiguresHint": "The collection ignores the series-figure filter; the figures are in Minifigures. The view still works as the Overview scope.",
+    "viewNameHint": "For example “Sealed F1” or “For sale from the attic”.",
     "views": "Saved views",
     "deleteView": "Delete view",
     "noCategories": "None yet. A category collects sets across series, for example all F1.",
@@ -593,10 +593,6 @@
     "box": "Box",
     "noBox": "No box"
   },
-  "kind": {
-    "set": "Sets",
-    "minifig": "Series figures"
-  },
   "price": {
     "gain": "In profit",
     "loss": "At a loss",
@@ -622,6 +618,8 @@
     "save": "Save",
     "edit": "Edit",
     "empty": "No categories yet.",
+    "loading": "Loading categories…",
+    "loadFailed": "Categories could not be loaded.",
     "inDetail": "Categories",
     "editMembership": "Assign to categories",
     "viaRule": "by rule",
@@ -661,6 +659,8 @@
     "notSynced": "Figures are still downloading",
     "duplicatesPlural": "{count} duplicate | {count} duplicates",
     "bagsPlural": "{count} sealed bag | {count} sealed bags",
+    "seriesPieces": "Series pieces",
+    "seriesPiecesHint": "Every piece of the series, including sealed bags and sold figures, and the series price refresh",
     "back": "All series",
     "have": "Owned",
     "showAll": "All",
@@ -1077,7 +1077,8 @@
     "userSaved": "User saved",
     "registrationSaved": "Registration setting saved",
     "profileSaved": "Profile saved",
-    "followupFailed": "Saved, but the category or barcode could not be stored"
+    "followupFailed": "Saved, but the category or barcode could not be stored",
+    "categoriesFailed": "The set's categories could not be saved"
   },
   "formMemory": {
     "title": "What adding remembers",

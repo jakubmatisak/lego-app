@@ -5,6 +5,9 @@
    *
    * Vlastnená figúrka vedie do detailu. Chýbajúca je prerušovaná karta,
    * z ktorej ide rovno do Chcem, alebo „Mám ju“, keď ju už kúpil.
+   *
+   * Zbierka figúrky zo sérií neukazuje, takže nerozbalené sáčky, predané
+   * figúrky a obnova cien celej série sú v detaile série (`/set/:num`).
    */
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -16,8 +19,7 @@
   import SeriesPurchaseDialog from '@/components/SeriesPurchaseDialog.vue'
   import SetImage from '@/components/SetImage.vue'
   import { imageSrc } from '@/utils/imageSrc'
-
-  type Show = 'all' | 'owned' | 'missing'
+  import { memberShowFrom } from '@/utils/seriesList'
 
   const { t } = useI18n()
   const route = useRoute()
@@ -27,7 +29,8 @@
   const members = ref<CmfMember[]>([])
   const loading = ref(true)
   const error = ref<string | null>(null)
-  const show = ref<Show>('all')
+  /** Z Prehľadu („Ukázať chýbajúce“) prichádza `?show=missing`. */
+  const show = ref(memberShowFrom(route.query.show))
   const allOpen = ref(false)
 
   async function load (): Promise<void> {
@@ -114,7 +117,7 @@
               :total="series.total"
             />
 
-            <div v-if="series.duplicates || series.sealed_bags" class="d-flex ga-1 mt-2">
+            <div class="d-flex align-center flex-wrap ga-1 mt-2">
               <v-chip v-if="series.duplicates" label size="small" variant="tonal">
                 {{ t('minifigs.duplicatesPlural', series.duplicates, { named: { count: series.duplicates } }) }}
               </v-chip>
@@ -122,6 +125,15 @@
               <v-chip v-if="series.sealed_bags" label size="small" variant="tonal">
                 {{ t('minifigs.bagsPlural', series.sealed_bags, { named: { count: series.sealed_bags } }) }}
               </v-chip>
+
+              <!-- Všetky kusy série vrátane sáčkov a predaných, aj obnova cien. -->
+              <v-btn
+                prepend-icon="mdi-format-list-bulleted"
+                size="small"
+                :title="t('minifigs.seriesPiecesHint')"
+                :to="{ name: 'set-detail', params: { num: series.series_num ?? num }, query: { from: 'minifigs' } }"
+                variant="text"
+              >{{ t('minifigs.seriesPieces') }}</v-btn>
             </div>
           </div>
         </div>
@@ -159,7 +171,7 @@
             border
             class="h-100 d-flex flex-column"
             flat
-            :to="{ name: 'set-detail', params: { num: member.catalog.catalog_num } }"
+            :to="{ name: 'set-detail', params: { num: member.catalog.catalog_num }, query: { from: 'minifigs' } }"
           >
             <SetImage :alt="member.catalog.name" rounded="0" :size="132" :src="imageSrc(member.catalog.image_url) ?? undefined" />
 

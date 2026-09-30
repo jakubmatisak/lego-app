@@ -21,18 +21,19 @@
    * pri rýchlom skenovaní nič neuložilo dvakrát. Sken z inej obrazovky sem
    * príde cez `?code=` (AppLayout).
    */
-  import type { CatalogCategory, CatalogDetail, ItemCondition, ItemPurpose } from '@/api/types'
+  import type { CatalogDetail, ItemCondition, ItemPurpose } from '@/api/types'
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRoute, useRouter } from 'vue-router'
   import { api, errorMessage } from '@/api/client'
   import { CONDITIONS, FLAGS, PURPOSES } from '@/api/types'
   import BarcodeScanner from '@/components/BarcodeScanner.vue'
-  import CategoryManager from '@/components/CategoryManager.vue'
+  import CategoryPicker from '@/components/CategoryPicker.vue'
   import DateField from '@/components/DateField.vue'
   import KeyHint from '@/components/KeyHint.vue'
   import PlaceFields from '@/components/PlaceFields.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { useCategoryPicker } from '@/composables/useCategoryPicker'
   import { useFormMemory } from '@/composables/useFormMemory'
   import { saveWithFollowups, undoCreated } from '@/scanner/saveFlow'
   import { decideScan } from '@/scanner/scanFlow'
@@ -45,6 +46,7 @@
   import { isBarcode } from '@/utils/barcode'
   import { count, exactMoney, isoDate, money, shortDate, toNumber } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
+  import { afterSaveRoute } from '@/utils/series'
 
   const { t } = useI18n()
   const router = useRouter()
@@ -89,9 +91,7 @@
   const flags = ref<string[]>(['has_box', 'has_manual'])
 
   /** Kategórie z pohľadu nájdeného setu a to, čo v nich má byť po uložení. */
-  const categoryRows = ref<CatalogCategory[]>([])
-  const chosenCategories = ref<number[]>([])
-  const managerOpen = ref(false)
+  const categories = useCategoryPicker()
 
   const memberCounts = ref<Record<string, number>>({})
   const sealedBag = ref(false)
@@ -135,35 +135,6 @@
 
   const canSubmit = computed(() => found.value !== null && totalPieces.value > 0 && !saving.value)
 
-  /**
-   * Načíta kategórie pre nájdený set. Po úprave kategórií v správcovi ostane
-   * výber, ktorý už používateľ urobil; nové kategórie prídu s návrhom z pravidla.
-   */
-  async function loadCategoryRows (keepChoice = false): Promise<void> {
-    if (!found.value) return
-    const { data } = await api.GET('/catalog/{num}/categories', {
-      params: { path: { num: found.value.catalog_num } },
-    })
-    const known = new Set(categoryRows.value.map(r => r.id))
-    const previous = new Set(chosenCategories.value)
-    categoryRows.value = data ?? []
-    chosenCategories.value = categoryRows.value
-      .filter(r => (keepChoice && known.has(r.id) ? previous.has(r.id) : r.member))
-      .map(r => r.id)
-  }
-
-  /** Zapíše len rozdiely oproti tomu, čo by platilo samo od seba. */
-  async function applyCategories (num: string): Promise<void> {
-    const chosen = new Set(chosenCategories.value)
-    for (const row of categoryRows.value) {
-      if (chosen.has(row.id) === row.member) continue
-      await api.PUT('/categories/{category_id}/members/{num}', {
-        params: { path: { category_id: row.id, num } },
-        body: { member: chosen.has(row.id) },
-      })
-    }
-  }
-
   function resetFound (): void {
     notFound.value = false
     error.value = null
@@ -173,8 +144,7 @@
     foundCode.value = null
     memberCounts.value = {}
     sealedBag.value = false
-    categoryRows.value = []
-    chosenCategories.value = []
+    categories.reset()
   }
 
   /** Nájdený set (číslom aj kódom) sa ďalej spracuje rovnako. */
@@ -183,7 +153,7 @@
     for (const member of data.members ?? []) {
       memberCounts.value[member.catalog_num] = 0
     }
-    await loadCategoryRows()
+    await categories.load(data.catalog_num)
   }
 
   async function lookup (): Promise<void> {
@@ -381,7 +351,10 @@
     // platí, inak by ďalší sken ten istý set uložil znova.
     const ids = await saveWithFollowups(create, [
       // Pri sérii sa kategória lepí na sériu a prenesie sa na jej figúrky.
-      () => applyCategories(num),
+      // Zapíšu sa len rozdiely oproti tomu, čo by platilo samo od seba.
+      async () => {
+        await categories.apply(num)
+      },
       async () => {
         if (!ean) return
         const { error: err } = await api.PUT('/catalog/{num}/ean', {
@@ -454,6 +427,8 @@
       if (!found.value) return
       const name = found.value.name
       const pieces = totalPieces.value
+      // Figúrky zo sérií Zbierka neukazuje, po uložení sa ide za nimi do Figúrok.
+      const next = afterSaveRoute(found.value, isSeries.value)
       saving.value = true
       error.value = null
       try {
@@ -463,10 +438,11 @@
         resetFound()
         setNumber.value = ''
         notify.success(t('notice.addedPieces', { name, count: pieces }))
-        // Keď medzitým prišiel sken, ostáva sa tu a načíta sa; inak do Zbierky.
+        // Keď medzitým prišiel sken, ostáva sa tu a načíta sa; inak do Zbierky
+        // (séria a jej figúrky do Figúrok).
         if (queue.waiting() === 0) {
           await collection.refreshAll()
-          router.push({ name: 'collection' })
+          router.push(next)
         } else {
           collection.refreshAll()
         }
@@ -903,46 +879,10 @@
         </v-chip-group>
       </div>
 
-      <div>
-        <div class="d-flex align-center ga-2 mb-1">
-          <span class="text-body-2 text-medium-emphasis">{{ t('add.categories') }}</span>
-          <v-spacer />
-
-          <v-btn
-            prepend-icon="mdi-cog-outline"
-            size="small"
-            variant="text"
-            @click="managerOpen = true"
-          >{{ t('filters.manage') }}</v-btn>
-        </div>
-
-        <div class="text-caption text-medium-emphasis mb-2">
-          {{ isSeries ? t('add.categoriesHintSeries') : t('add.categoriesHint') }}
-        </div>
-
-        <v-chip-group
-          v-if="categoryRows.length > 0"
-          v-model="chosenCategories"
-          column
-          filter
-          multiple
-        >
-          <v-chip
-            v-for="row in categoryRows"
-            :key="row.id"
-            label
-            :title="row.reason === 'rule' ? t('categories.viaRule') : undefined"
-            :value="row.id"
-            variant="outlined"
-          >
-            <span class="add-cat-dot me-2" :class="`bg-${row.color ?? 'grey'}`" />
-            {{ row.name }}
-            <v-icon v-if="row.reason === 'rule'" class="ms-1" icon="mdi-auto-fix" size="x-small" />
-          </v-chip>
-        </v-chip-group>
-
-        <div v-else class="text-body-2 text-medium-emphasis">{{ t('categories.empty') }}</div>
-      </div>
+      <CategoryPicker
+        :hint="isSeries ? t('add.categoriesHintSeries') : t('add.categoriesHint')"
+        :picker="categories"
+      />
 
       <v-textarea v-model="note" :label="t('add.note')" rows="2" />
     </v-card>
@@ -968,17 +908,6 @@
       >{{ t('add.submit') }}</v-btn>
     </div>
 
-    <CategoryManager v-model="managerOpen" @changed="loadCategoryRows(true)" />
-
     <BarcodeScanner v-model="scanOpen" @detected="onScanned" />
   </div>
 </template>
-
-<style scoped>
-.add-cat-dot {
-  border-radius: 50%;
-  display: inline-block;
-  height: 8px;
-  width: 8px;
-}
-</style>

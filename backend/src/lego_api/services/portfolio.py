@@ -106,8 +106,10 @@ class ValuedItem:
 @dataclass(slots=True)
 class Summary:
     invested: Decimal = ZERO
-    market_value: Decimal = ZERO
-    unrealized: Decimal = ZERO
+    #: None, keď vlastním kusy a ani jeden nemá trhovú cenu: hodnota je
+    #: neznáma, nie nula (rozhranie ukáže pomlčku).
+    market_value: Decimal | None = ZERO
+    unrealized: Decimal | None = ZERO
     unrealized_pct: float | None = None
     realized: Decimal = ZERO
     sold_proceeds: Decimal = ZERO
@@ -280,7 +282,8 @@ def selection_totals(valued: list[ValuedItem], deflator: Deflator | None) -> dic
 
     Nominálne aj v dnešných peniazoch naraz, nezávisle od prepínača: čísla
     sa berú priamo z kusu, nie z ``buy_factor``. Zisk sa ráta len z kusov
-    so známou cenou, kus bez ceny by ho stiahol o celú kúpnu cenu.
+    so známou cenou, kus bez ceny by ho stiahol o celú kúpnu cenu. Keď cenu
+    nemá ani jeden vlastnený kus, hodnota aj zisk sú None, nie 0 €.
     """
     owned = [v for v in valued if v.item.status == ItemStatus.OWNED]
     sold = [v for v in valued if v.item.status == ItemStatus.SOLD]
@@ -299,14 +302,16 @@ def selection_totals(valued: list[ValuedItem], deflator: Deflator | None) -> dic
     def pct(gain: Decimal, base: Decimal) -> float | None:
         return float(gain / base * 100) if base > 0 else None
 
+    # Bez jedinej ceny hodnotu nepoznáme; bez vlastnených kusov je naozaj nula.
+    known = bool(priced) or not owned
     market = sum((v.market_value for v in priced), ZERO)
     priced_buy = sum((buy(v, False) for v in priced), ZERO)
     unrealized = market - priced_buy
     result: dict = {
         "owned": len(owned),
         "purchase": sum((buy(v, False) for v in owned), ZERO),
-        "market_value": market,
-        "unrealized": unrealized,
+        "market_value": market if known else None,
+        "unrealized": unrealized if known else None,
         "unrealized_pct": pct(unrealized, priced_buy),
         "price_missing": len(owned) - len(priced),
         "sold": len(sold),
@@ -320,7 +325,7 @@ def selection_totals(valued: list[ValuedItem], deflator: Deflator | None) -> dic
     if deflator is not None:
         priced_real = sum((buy(v, True) for v in priced), ZERO)
         result["purchase_real"] = sum((buy(v, True) for v in owned), ZERO)
-        result["unrealized_real"] = market - priced_real
+        result["unrealized_real"] = market - priced_real if known else None
         result["unrealized_real_pct"] = pct(market - priced_real, priced_real)
         result["realized_real"] = sum((net(v, True) - buy(v, True) for v in sold), ZERO)
     return result
@@ -336,18 +341,25 @@ def summarize(valued: list[ValuedItem]) -> Summary:
     summary.sold_count = len(sold)
 
     priced_invested = ZERO
+    market = ZERO
     for v in owned:
         summary.invested += v.purchase
-        summary.market_value += v.market_value
         if v.price_source == "missing":
             summary.price_missing += 1
         else:
+            market += v.market_value
             priced_invested += v.purchase
-    # Zisk len z kusov so známou cenou, rovnako ako súčty výberu v Zbierke
-    # (selection_totals). Kus bez ceny by zisk stiahol o celú kúpnu cenu.
-    summary.unrealized = summary.market_value - priced_invested
-    if priced_invested > 0:
-        summary.unrealized_pct = float(summary.unrealized / priced_invested * 100)
+    if owned and summary.price_missing == len(owned):
+        # Vlastním kusy, ale cenu nemá ani jeden: hodnota je neznáma, nie 0 €.
+        summary.market_value = None
+        summary.unrealized = None
+    else:
+        # Zisk len z kusov so známou cenou, rovnako ako súčty výberu v Zbierke
+        # (selection_totals). Kus bez ceny by zisk stiahol o celú kúpnu cenu.
+        summary.market_value = market
+        summary.unrealized = market - priced_invested
+        if priced_invested > 0:
+            summary.unrealized_pct = float(summary.unrealized / priced_invested * 100)
 
     for v in sold:
         summary.realized += v.realized
@@ -444,7 +456,9 @@ def breakdown(valued: list[ValuedItem], by: str, today: date | None = None) -> l
     """Výkonnosť vlastnených kusov podľa témy, podtémy alebo zoznamu.
 
     Kusy bez trhovej ceny sa do hodnoty nezapočítajú a skupina s nimi
-    nehlási percento, rovnako ako karta setu, aby nevyšlo −100 %.
+    nehlási percento, rovnako ako karta setu, aby nevyšlo −100 %. Keď cenu
+    nemá ani jeden kus skupiny, hodnota aj zisk sú None (pomlčka, nie 0 €)
+    a skupina ide na koniec.
     """
     groups: dict[str, list[ValuedItem]] = defaultdict(list)
     for v in valued:
@@ -461,9 +475,10 @@ def breakdown(valued: list[ValuedItem], by: str, today: date | None = None) -> l
     rows: list[dict] = []
     for key, members in groups.items():
         invested = sum((v.purchase for v in members), ZERO)
-        missing = sum(1 for v in members if v.price_source == "missing")
-        value = sum((v.market_value for v in members if v.price_source != "missing"), ZERO)
-        unrealized = value - invested
+        priced = [v for v in members if v.price_source != "missing"]
+        missing = len(members) - len(priced)
+        value = sum((v.market_value for v in priced), ZERO) if priced else None
+        unrealized = value - invested if value is not None else None
         cagr, sample = collection_cagr(members, today)
         rows.append(
             {
@@ -474,14 +489,20 @@ def breakdown(valued: list[ValuedItem], by: str, today: date | None = None) -> l
                 "market_value": value,
                 "unrealized": unrealized,
                 "unrealized_pct": (
-                    float(unrealized / invested * 100) if invested > 0 and missing == 0 else None
+                    float(unrealized / invested * 100)
+                    if unrealized is not None and invested > 0 and missing == 0
+                    else None
                 ),
                 "cagr_pct": cagr,
                 "cagr_sample": sample,
                 "price_missing": missing,
             }
         )
-    rows.sort(key=lambda r: r["market_value"], reverse=True)
+    # Najcennejšie navrch, skupiny bez ceny na koniec a medzi nimi podľa vkladu.
+    rows.sort(
+        key=lambda r: (r["market_value"] is not None, r["market_value"] or ZERO, r["invested"]),
+        reverse=True,
+    )
     return rows
 
 
@@ -557,8 +578,14 @@ def theme_breakdown(valued: list[ValuedItem]) -> list[dict]:
 
 
 def top_profit(valued: list[ValuedItem], limit: int = 10) -> list[dict]:
+    """Sety s najväčším ziskom, z kusov so známou trhovou cenou.
+
+    Kus bez ceny zisk nemá; započítaný by set ukázal s 0 € a −100 %.
+    """
     grouped: dict[str, dict] = {}
     for v in valued:
+        if v.price_source == "missing":
+            continue
         row = grouped.setdefault(
             v.catalog.catalog_num,
             {

@@ -356,10 +356,6 @@ class GroupedItemOut(BaseModel):
     purchase_auto: int = 0
     #: Ročný výnos vlastnených kusov ako celku; pod rok držania prázdne.
     cagr_pct: float | None = None
-    #: Vyplnené len pri zoskupení podľa série: koľko rôznych figúrok
-    #: používateľ má a koľko ich séria celkovo obsahuje.
-    member_owned: int | None = None
-    member_total: int | None = None
     categories: list[int] = Field(default_factory=list)
 
 
@@ -476,8 +472,9 @@ class TopProfitOut(BaseModel):
 
 class SummaryOut(BaseModel):
     invested: Money
-    market_value: Money
-    unrealized: Money
+    #: Null, keď ani jeden vlastnený kus nemá trhovú cenu (pomlčka, nie 0 €).
+    market_value: Money | None
+    unrealized: Money | None
     unrealized_pct: float | None
     realized: Money
     sold_proceeds: Money
@@ -506,6 +503,11 @@ class SummaryOut(BaseModel):
     wishlist_count: int = 0
     series_figures: int = 0
     theme_count: int = 0
+    #: Sekcia Zbierka (ponuka a jej hlavička): rôzne sety, vlastnené a predané
+    #: kusy bez figúrok zo sérií. ``set_count`` a spol. počítajú všetko.
+    collection_set_count: int = 0
+    collection_item_count: int = 0
+    collection_sold_count: int = 0
     themes: list[ThemeSliceOut]
     top_profit: list[TopProfitOut]
     #: Pri ``real=true`` posledný mesiac indexu inflácie, ku ktorému sú sumy
@@ -518,8 +520,9 @@ class BreakdownRowOut(BaseModel):
     label: str
     pieces: int
     invested: Money
-    market_value: Money
-    unrealized: Money
+    #: Len kusy so známou cenou; null, keď ju nemá ani jeden kus skupiny.
+    market_value: Money | None
+    unrealized: Money | None
     unrealized_pct: float | None
     cagr_pct: float | None
     cagr_sample: int
@@ -644,7 +647,10 @@ class PublicItemOut(BaseModel):
     quantity: int
     is_retired: bool
     purchase_total: Money | None = None
+    #: Súčet len ocenených kusov; None, keď cenu nemá ani jeden (alebo sú sumy vypnuté).
     market_total: Money | None = None
+    #: Koľko kusov setu nemá trhovú cenu; None pri vypnutých sumách.
+    price_missing: int | None = None
 
 
 class PublicWishOut(BaseModel):
@@ -672,7 +678,10 @@ class PublicCollectionOut(BaseModel):
     oldest_year: int | None
     show_values: bool
     invested: Money | None = None
+    #: Trhová hodnota ocenených kusov; None, keď cenu nemá ani jeden.
     market_value: Money | None = None
+    #: Kusy bez trhovej ceny; None pri vypnutých sumách.
+    price_missing: int | None = None
     items: list[PublicItemOut]
     wishes: list[PublicWishOut] = Field(default_factory=list)
 
@@ -692,6 +701,14 @@ class ProviderStatusOut(BaseModel):
     operator_name: str | None = None
     operator_email: str | None = None
     privacy_version: str | None = None
+
+
+class HealthOut(BaseModel):
+    """Stav appky pre Docker HEALTHCHECK a verzia, ktorú ukazujú Nastavenia."""
+
+    status: str
+    #: Verzia balíka lego-api (``lego_api.__version__``).
+    version: str
 
 
 class ApiKeyOut(BaseModel):
@@ -797,8 +814,9 @@ class SelectionTotalsOut(BaseModel):
     owned: int
     purchase: Money
     #: Len kusy so známou cenou; koľko ju nemá, je v ``price_missing``.
-    market_value: Money
-    unrealized: Money
+    #: Null, keď ju nemá ani jeden vlastnený kus (pomlčka, nie 0 €).
+    market_value: Money | None
+    unrealized: Money | None
     unrealized_pct: float | None
     price_missing: int
     sold: int
@@ -841,9 +859,10 @@ class FacetsOut(BaseModel):
     """Počty pre panel filtrov, každá skupina bez vlastného výberu."""
 
     total: int
+    #: Figúrky zo sérií, ktoré by filter našiel mimo rozsahu Zbierky (sú vo
+    #: Figúrkach); 0 bez ``sets_only``.
+    hidden_figures: int = 0
     category: list[FacetOption]
-    kind: list[FacetOption]
-    series: list[FacetOption]
     theme: list[FacetOption]
     subtheme: list[FacetOption]
     condition: list[FacetOption]
@@ -851,7 +870,6 @@ class FacetsOut(BaseModel):
     location: list[FacetOption]
     flag: list[FacetOption]
     tag: list[FacetOption] = []
-    variant: list[FacetOption]
     price: list[FacetOption]
     #: Súčty toho, čo filter ukazuje, pre riadok nad kartami.
     totals: SelectionTotalsOut | None = None
@@ -877,7 +895,6 @@ class FacetsOut(BaseModel):
     year_min: int | None
     year_max: int | None
     duplicates: int
-    incomplete: int
 
 
 # --- kategórie ------------------------------------------------------------------

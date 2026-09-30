@@ -27,6 +27,8 @@ data/*.db-wal
 data/*.db-shm
 # Vlastné fotky kusov sú osobné, do repozitára nepatria.
 data/photos/
+# Zálohy databázy pred migráciou (services/db_backup.py).
+data/backups/
 backend/data/
 
 # Editors / OS

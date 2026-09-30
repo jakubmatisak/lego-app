@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareSeries, matchesState, seriesState } from './seriesList'
+import { compareSeries, matchesState, memberShowFrom, seriesState } from './seriesList'
 
 function row (name: string, owned: number, total: number, year = 2024) {
   return ({ name, owned, total, year, series_num: name }) as never
@@ -27,5 +27,12 @@ describe('figúrky: stav a zoradenie sérií', () => {
     const rows = [row('Series 10', 1, 12), row('Series 2', 1, 12)]
     const sorted = rows.toSorted((a, b) => compareSeries(a, b, 'nameAsc', collator))
     expect(sorted.map((r: { name: string }) => r.name)).toEqual(['Series 2', 'Series 10'])
+  })
+
+  it('odkaz „Ukázať chýbajúce“ otvorí sériu rovno na chýbajúcich', () => {
+    expect(memberShowFrom('missing')).toBe('missing')
+    expect(memberShowFrom('owned')).toBe('owned')
+    expect(memberShowFrom('nesmysel')).toBe('all')
+    expect(memberShowFrom(undefined)).toBe('all')
   })
 })

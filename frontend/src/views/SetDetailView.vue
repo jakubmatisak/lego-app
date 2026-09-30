@@ -2,12 +2,17 @@
   /**
    * Detail setu. Predaný kus zostáva v tabuľke aj po predaji, aby sa
    * nestratila jeho história a realizovaný zisk.
+   *
+   * Pri sérii (holé číslo) sú tu všetky jej kusy: figúrky, sáčky aj predané.
+   * Zbierka figúrky zo sérií nemá, preto sa tu dajú aj hromadne upraviť
+   * (krabica, zoznam, príznaky…) cez tú istú lištu s rozsahom `series`.
    */
   import type { CatalogDetail, PriceOverview, ValuedItem } from '@/api/types'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRoute } from 'vue-router'
   import { api, errorMessage } from '@/api/client'
+  import BulkBar from '@/components/BulkBar.vue'
   import CategoryManager from '@/components/CategoryManager.vue'
   import CategoryMembership from '@/components/CategoryMembership.vue'
   import ConditionChips from '@/components/ConditionChips.vue'
@@ -20,6 +25,7 @@
   import SellDialog from '@/components/SellDialog.vue'
   import SetGallery from '@/components/SetGallery.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { createSelection } from '@/composables/useSelection'
   import { useAuthStore } from '@/stores/auth'
   import { useCollectionStore } from '@/stores/collection'
   import { useNotifyStore } from '@/stores/notify'
@@ -27,6 +33,7 @@
   import { count, dateTime, exactMoney, money, percent, shortDate, toNumber } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
   import { placeLabel } from '@/utils/place'
+  import { isSeriesPage as isSeriesDetail } from '@/utils/series'
 
   const route = useRoute()
   const { t, locale } = useI18n()
@@ -134,9 +141,8 @@
     editOpen.value = true
   }
 
-  async function savePiece (payload: Record<string, unknown>): Promise<void> {
-    const id = editTarget.value?.id
-    if (id === undefined) return
+  /** `id` posiela dialóg: kus, pre ktorý sa ukladanie začalo, nie ten, čo je v ňom teraz. */
+  async function savePiece (id: number, payload: Record<string, unknown>): Promise<void> {
     const { error: err } = await api.PATCH('/items/{item_id}', {
       params: { path: { item_id: id } },
       body: payload as never,
@@ -147,7 +153,8 @@
     } else {
       notify.success(t('notice.pieceSaved'))
     }
-    editOpen.value = false
+    // Dialóg iného kusu, otvorený medzitým, ostane otvorený.
+    if (editTarget.value?.id === id) editOpen.value = false
     await loadPieces()
     collection.refreshAll()
   }
@@ -334,8 +341,17 @@
     await loadPieces()
   }
 
-  /** Stránka série: kusy sú jej členovia, séria sama cenu nemá. */
-  const isSeriesPage = computed(() => pieces.value.some(p => p.catalog_num !== num.value))
+  /** Stránka série: kusy sú jej členovia, séria sama cenu nemá. Aj nezačatá. */
+  const isSeriesPage = computed(() => isSeriesDetail(catalog.value, pieces.value))
+
+  /** Hromadná úprava vlastnených kusov série; rozsah pre server je séria. */
+  const selection = createSelection({ items: () => owned.value.map(p => p.id) })
+  const seriesScope = computed(() => ({ series: [num.value] }))
+
+  async function onBulkDone (): Promise<void> {
+    await loadPieces()
+    collection.refreshAll()
+  }
   const refreshing = ref(false)
   const buyOpen = ref(false)
   const refreshNote = ref<string | null>(null)
@@ -413,7 +429,10 @@
     }
   }
 
-  watch(num, load)
+  watch(num, () => {
+    selection.stop()
+    load()
+  })
   watch(() => collection.real, loadPieces)
   onMounted(load)
 </script>
@@ -651,11 +670,21 @@
                 {{ t('collection.soldPlural', sold.length, { named: { count: sold.length } }) }}
               </span>
 
+              <!-- Zbierka figúrky zo sérií nemá, hromadná úprava je preto tu. -->
+              <v-btn
+                v-if="isSeriesPage && owned.length > 0 && !selection.active.value"
+                class="ms-auto"
+                prepend-icon="mdi-checkbox-multiple-outline"
+                size="small"
+                variant="text"
+                @click="selection.active.value = true"
+              >{{ t('bulk.select') }}</v-btn>
+
               <!-- Ďalší kus toho istého setu netreba hľadať, stačí doplniť kúpu.
                    Pri sérii treba vybrať figúrku, to je v sekcii Figúrky. -->
               <v-btn
                 v-if="isSeriesPage"
-                class="ms-auto"
+                :class="owned.length > 0 && !selection.active.value ? '' : 'ms-auto'"
                 prepend-icon="mdi-plus"
                 size="small"
                 :to="{ name: 'minifig-series', params: { num } }"
@@ -679,6 +708,16 @@
           <div v-for="item in pieces" :key="item.id">
             <div class="pa-3" :class="{ 'bg-surface-variant': item.status === 'sold' }">
               <div class="d-flex ga-3 flex-wrap align-center">
+                <v-btn
+                  v-if="selection.active.value && item.status === 'owned'"
+                  :color="selection.hasItem(item.id) ? 'primary' : undefined"
+                  :icon="selection.hasItem(item.id) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'"
+                  size="small"
+                  :title="t('bulk.select')"
+                  variant="text"
+                  @click="selection.toggleItem(item.id)"
+                />
+
                 <div class="flex-grow-1" style="min-width: 200px">
                   <!--
                     Stav je hlavná informácia o kuse, preto stojí sám na
@@ -885,6 +924,16 @@
               >{{ money(totals.realized, { sign: true }) }}</span>
             </div>
           </div>
+
+          <!-- Rozsah je séria bez obmedzenia Zbierky: figúrky aj sáčky, len vlastnené. -->
+          <BulkBar
+            v-if="isSeriesPage && selection.active.value"
+            :query="seriesScope"
+            :selection="selection"
+            :total="owned.length"
+            unit="pieces"
+            @done="onBulkDone"
+          />
         </v-card>
       </v-col>
 
@@ -1103,10 +1152,12 @@
       :prices-used="pricesU"
     />
 
+    <!-- Kategórie z úpravy kusu patria setu: obnoví sa aj riadok kategórií hore. -->
     <PieceDialog
       v-model="editOpen"
       :item="editTarget"
       :locations="locations"
+      @categories-changed="membership?.reload()"
       @remove="removePiece"
       @save="savePiece"
     />

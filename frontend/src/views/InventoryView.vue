@@ -26,14 +26,19 @@
 
   const today = isoDate()
 
+  /**
+   * Súčty do riadku Spolu. Bez jedinej známej ceny je súčet null (pomlčka),
+   * nie 0 €: vytlačený súpis pre poisťovňu by inak hlásil nulovú hodnotu.
+   */
   const totals = computed(() => {
-    let paid = 0
-    let value = 0
+    let paid: number | null = null
+    let value: number | null = null
     let missing = 0
     for (const p of pieces.value) {
-      paid += toNumber(p.purchase_price_eur) ?? 0
+      const price = toNumber(p.purchase_price_eur)
+      if (price !== null) paid = (paid ?? 0) + price
       if (p.price_source === 'missing') missing++
-      else value += toNumber(p.market_value) ?? 0
+      else value = (value ?? 0) + (toNumber(p.market_value) ?? 0)
     }
     return { paid, value, missing }
   })
@@ -161,7 +166,13 @@
               <tr>
                 <td class="font-weight-bold" colspan="4">{{ t('inventory.total') }}</td>
                 <td class="num font-weight-bold">{{ money(totals.paid, { decimals: 2 }) }}</td>
-                <td class="num font-weight-bold">{{ money(totals.value, { decimals: 2 }) }}</td>
+
+                <td class="num font-weight-bold">
+                  {{ money(totals.value, { decimals: 2 }) }}
+                  <div v-if="totals.value !== null && totals.missing > 0" class="muted font-weight-regular">
+                    {{ t('totals.noPrice', { count: totals.missing }) }}
+                  </div>
+                </td>
               </tr>
             </tfoot>
           </table>

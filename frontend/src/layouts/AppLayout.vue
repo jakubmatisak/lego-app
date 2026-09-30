@@ -21,6 +21,7 @@
   import { useScannerStore } from '@/stores/scanner'
   import { dialogOpen } from '@/utils/dialogOpen'
   import { pricesHidden, setPricesHidden } from '@/utils/format'
+  import { sectionRoute } from '@/utils/navigation'
 
   const { t, locale } = useI18n()
   const display = useDisplay()
@@ -62,7 +63,8 @@
       to: { name: 'collection' },
       icon: 'mdi-layers-outline',
       label: t('nav.collection'),
-      badge: collection.summary?.set_count,
+      // Len sety: figúrky zo sérií sú vo Figúrkach, s vlastným počtom.
+      badge: collection.summary?.collection_set_count,
       // Detail setu aj pridávanie patria do Zbierky, nech ponuka nepreskakuje.
       routes: ['collection', 'set-detail', 'add-set'],
     },
@@ -99,9 +101,10 @@
   /**
    * Zvýraznenie sa riadi menom trasy, nie porovnaním adries. Prehľad býva
    * na "/" a ako predpona sedí na každú trasu, takže by svietil stále.
+   * Detail figúrky otvorený z Figúrok ostane pri Figúrkach (`sectionRoute`).
    */
   function isActive (item: { routes: string[] }): boolean {
-    return item.routes.includes(route.name as string)
+    return item.routes.includes(sectionRoute(route.name as string | undefined, route.query))
   }
 
   const pageTitle = computed(() => {

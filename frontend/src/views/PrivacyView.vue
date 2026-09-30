@@ -46,6 +46,7 @@
       title: 'Ako dlho',
       body: [
         'Údaje účtu a zbierky, kým účet nezmažeš. Záznam volaní a tokeny 30 dní.',
+        'Pred každou aktualizáciou appky na inú verziu sa celá databáza zálohuje na server do priečinka backups. Uchováva sa 5 posledných záloh, staršie sa mažú. Údaje zmazaného účtu v nich môžu ostať, kým sa zálohy neprestriedajú.',
       ],
     },
     {
@@ -61,7 +62,7 @@
       body: [
         'Prístup a prenosnosť: v Nastaveniach → Účet si stiahneš všetky svoje údaje aj fotky (ZIP).',
         'Oprava: údaje zmeníš priamo v appke.',
-        'Vymazanie: v Nastaveniach → Účet zmažeš účet so všetkým, čo k nemu patrí.',
+        'Vymazanie: v Nastaveniach → Účet zmažeš účet so všetkým, čo k nemu patrí. V zálohách pred aktualizáciou ostane, kým sa neprestriedajú (pozri Ako dlho).',
         'Námietka a obmedzenie spracúvania: napíš prevádzkovateľovi.',
         'Sťažnosť: Úrad na ochranu osobných údajov Slovenskej republiky, dataprotection.gov.sk.',
       ],
@@ -89,7 +90,10 @@
     },
     {
       title: 'How long',
-      body: ['Account and collection data until you delete the account. Call log and tokens 30 days.'],
+      body: [
+        'Account and collection data until you delete the account. Call log and tokens 30 days.',
+        'Before every update of the app to another version, the whole database is backed up on the server to the backups folder. The last 5 backups are kept, older ones are deleted. Data of a deleted account may remain in them until the backups rotate out.',
+      ],
     },
     {
       title: 'Who receives it',
@@ -104,7 +108,7 @@
       body: [
         'Access and portability: in Settings → Account you download all your data and photos (ZIP).',
         'Rectification: change your data directly in the app.',
-        'Erasure: in Settings → Account you delete the account with everything that belongs to it.',
+        'Erasure: in Settings → Account you delete the account with everything that belongs to it. It stays in the pre-update backups until they rotate out (see How long).',
         'Objection and restriction: write to the operator.',
         'Complaint: the Office for Personal Data Protection of the Slovak Republic, dataprotection.gov.sk.',
       ],

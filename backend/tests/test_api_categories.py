@@ -180,25 +180,6 @@ async def _series(session) -> None:
     await session.commit()
 
 
-async def test_missing_members(auth_client: AsyncClient, session) -> None:
-    await _series(session)
-    await _add(auth_client, "71051-1")
-
-    missing = (await auth_client.get("/items/missing")).json()
-    assert [m["catalog_num"] for m in missing] == ["71051-2", "71051-3"]
-
-    searched = (await auth_client.get("/items/missing", params={"q": "gold"})).json()
-    assert [m["name"] for m in searched] == ["Goldfish"]
-
-
-async def test_no_missing_members_without_owning_the_series(
-    auth_client: AsyncClient, session
-) -> None:
-    """Chýbajúce sa ukazujú len zo sérií, ktoré zbieram."""
-    await _series(session)
-    assert (await auth_client.get("/items/missing")).json() == []
-
-
 async def test_series_filters(auth_client: AsyncClient, session) -> None:
     await _series(session)
     await _add(auth_client, "71051-1")
@@ -216,7 +197,6 @@ async def test_series_filters(auth_client: AsyncClient, session) -> None:
 
     facets = (await auth_client.get("/items/facets")).json()
     assert facets["duplicates"] == 2
-    assert facets["series"][0]["extra"] == "2/3"
 
 
 # --- uložené pohľady ----------------------------------------------------------

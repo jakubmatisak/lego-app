@@ -1,9 +1,12 @@
 <script setup lang="ts">
   /**
-   * Lišta hromadnej úpravy v Zbierke: počet vybraných, „vybrať všetko“
-   * a akcie. Pred uložením sa server opýta, koľko kusov by sa zmenilo
-   * (`dry_run`), a používateľ to potvrdí („Zmeniť umiestnenie 143 kusov na
-   * Povala?“). Menia sa len vlastnené kusy; kategória sa zaradí na set.
+   * Lišta hromadnej úpravy: počet vybraných, „vybrať všetko“ a akcie. Pred
+   * uložením sa server opýta, koľko kusov by sa zmenilo (`dry_run`), a
+   * používateľ to potvrdí („Zmeniť umiestnenie 143 kusov na Povala?“). Menia
+   * sa len vlastnené kusy; kategória sa zaradí na set.
+   *
+   * Rozsah je filter Zbierky (bez figúrok zo sérií). Detail série pošle
+   * vlastný `query` (`series`), inak by sa figúrky hromadne upraviť nedali.
    */
   import type { Selection } from '@/composables/useSelection'
   import { computed, ref } from 'vue'
@@ -17,8 +20,16 @@
 
   type Action = 'location' | 'box' | 'purpose' | 'condition' | 'flags_add' | 'flags_remove' | 'category_add' | 'category_remove'
 
-  /** `total`: koľko položiek výsledok má; `unit`: karty setov, alebo kusy. */
-  const props = defineProps<{ selection: Selection, total: number, unit: 'sets' | 'pieces' }>()
+  /**
+   * `total`: koľko položiek výsledok má; `unit`: karty setov, alebo kusy.
+   * `query`: rozsah výberu pre server; bez neho filter Zbierky.
+   */
+  const props = defineProps<{
+    selection: Selection
+    total: number
+    unit: 'sets' | 'pieces'
+    query?: Record<string, unknown>
+  }>()
   const emit = defineEmits<{ done: [] }>()
 
   const { t } = useI18n()
@@ -90,7 +101,7 @@
 
   async function send (dryRun: boolean): Promise<{ items: number, sets: number } | null> {
     const { data, error } = await api.POST('/items/bulk-update', {
-      params: { query: collection.filterQuery() as never },
+      params: { query: (props.query ?? collection.filterQuery()) as never },
       body: { ...props.selection.payload(), changes: changes() as never, dry_run: dryRun },
     })
     if (error || !data) {

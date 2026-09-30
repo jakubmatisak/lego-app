@@ -4,12 +4,14 @@
   import { ArcElement, Chart as ChartJS, Legend, Tooltip } from 'chart.js'
   import { computed } from 'vue'
   import { Doughnut } from 'vue-chartjs'
+  import { useI18n } from 'vue-i18n'
   import { CHART_COLORS } from '@/plugins/vuetify'
   import { percent } from '@/utils/format'
 
   ChartJS.register(ArcElement, Tooltip, Legend)
 
   const props = defineProps<{ themes: Summary['themes'] }>()
+  const { t } = useI18n()
 
   const top = computed(() => props.themes.slice(0, 6))
 
@@ -42,7 +44,7 @@
 
       <div class="theme-donut__center text-center">
         <div class="text-h6 font-weight-medium">{{ total }}</div>
-        <div class="text-caption text-medium-emphasis">setov</div>
+        <div class="text-caption text-medium-emphasis">{{ t('dashboard.donutSetsPlural', total) }}</div>
       </div>
     </div>
 

@@ -64,6 +64,13 @@
     auth.can('brickeconomy.prices') || Number(summary.value?.market_value ?? 0) > 0,
   )
 
+  /** Farba zisku. Keď cenu nemá ani jeden kus, zisk je null: pomlčka bez farby. */
+  const unrealizedColor = computed(() => {
+    const value = summary.value?.unrealized
+    if (value === null || value === undefined) return null
+    return Number(value) >= 0 ? 'positive' : 'negative'
+  })
+
   const valueHint = computed(() =>
     auth.hasPriceKey ? t('dashboard.priceSource') : t('dashboard.manualPrices'),
   )
@@ -144,9 +151,9 @@
         sm="6"
       >
         <StatTile
-          :chip="percent(summary.unrealized_pct)"
-          :chip-color="Number(summary.unrealized) >= 0 ? 'positive' : 'negative'"
-          :color="Number(summary.unrealized) >= 0 ? 'positive' : 'negative'"
+          :chip="summary.unrealized_pct === null ? null : percent(summary.unrealized_pct)"
+          :chip-color="unrealizedColor"
+          :color="unrealizedColor"
           :hint="cagrHint"
           :label="t('dashboard.unrealized')"
           :value="money(summary.unrealized, { sign: true, decimals: 0 })"
@@ -183,7 +190,7 @@
       icon="mdi-help-circle-outline"
       variant="tonal"
     >
-      {{ t('dashboard.priceMissing', { count: summary.price_missing }) }}
+      {{ t('dashboard.priceMissingPlural', summary.price_missing, { named: { count: summary.price_missing } }) }}
     </v-alert>
 
     <v-row dense>
@@ -226,7 +233,12 @@
             </div>
           </v-card-item>
 
-          <v-list density="comfortable" lines="two">
+          <!-- Kusy bez ceny server preskočí; bez jediného oceneného by karta ostala prázdna. -->
+          <v-card-text v-if="summary.top_profit.length === 0" class="text-body-2 text-medium-emphasis pt-0">
+            {{ t('dashboard.topProfitEmpty') }}
+          </v-card-text>
+
+          <v-list v-else density="comfortable" lines="two">
             <v-list-item
               v-for="row in summary.top_profit"
               :key="row.catalog_num"

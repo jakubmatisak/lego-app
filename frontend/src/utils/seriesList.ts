@@ -11,6 +11,14 @@ export type SeriesSort = 'progress' | 'leastMissing' | 'yearDesc' | 'yearAsc' | 
 
 type Row = Pick<CmfSeries, 'name' | 'owned' | 'total' | 'year'>
 
+/** Figúrky jednej série: všetky, tie, čo mám, alebo tie, čo chýbajú. */
+export type MemberShow = 'all' | 'owned' | 'missing'
+
+/** Voľba z adresy (`?show=missing` z Prehľadu); neznáma = všetky. */
+export function memberShowFrom (value: unknown): MemberShow {
+  return value === 'owned' || value === 'missing' ? value : 'all'
+}
+
 /** Skoro kompletná: chýbajú najviac toľko figúrok. */
 export const ALMOST_MISSING = 2
 

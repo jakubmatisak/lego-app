@@ -25,3 +25,15 @@ export function safeRedirect (raw: string | null | undefined): string {
   }
   return raw
 }
+
+/**
+ * Trasa, podľa ktorej sa zvýrazní ponuka. Detail setu patrí Zbierke, ale
+ * figúrka zo série v Zbierke nie je: odkazy z Figúrok pridajú
+ * `?from=minifigs` a ponuka potom ostane na Figúrkach.
+ */
+export function sectionRoute (name: string | null | undefined, query: Record<string, unknown>): string {
+  if (name === 'set-detail' && query.from === 'minifigs') {
+    return 'minifig-series'
+  }
+  return name ?? ''
+}

@@ -30,6 +30,7 @@ from lego_api.services.app_settings import (
     set_registration,
 )
 from lego_api.services.catalog import CatalogService
+from lego_api.services.filters import known_value
 from lego_api.services.portfolio import load_items, load_snapshots, value_items
 from lego_api.services.wishlist import WishFilter, WishSort, arrange, wishlist_prices
 
@@ -164,6 +165,9 @@ async def export_csv(user: CurrentUser, session: SessionDep) -> StreamingRespons
         ]
     )
     for v in valued:
+        owned = v.item.status == ItemStatus.OWNED
+        # Bez trhovej ceny prázdna bunka, nie 0,00 a strata celej kúpnej ceny.
+        market = known_value(v) if owned else None
         writer.writerow(
             [
                 v.catalog.catalog_num,
@@ -180,14 +184,14 @@ async def export_csv(user: CurrentUser, session: SessionDep) -> StreamingRespons
                 _num(v.item.purchase_price_eur),
                 v.item.purchase_date.isoformat() if v.item.purchase_date else "",
                 v.item.purchase_place or "",
-                _num(v.market_value) if v.item.status == ItemStatus.OWNED else "",
-                v.price_source if v.item.status == ItemStatus.OWNED else "",
+                _num(market),
+                v.price_source if owned else "",
                 _num(v.item.sold_price_eur),
                 v.item.sold_date.isoformat() if v.item.sold_date else "",
                 v.item.sold_via or "",
                 _num(v.item.sold_fees_eur),
                 _num(v.item.sold_shipping_eur),
-                _num(v.unrealized) if v.item.status == ItemStatus.OWNED else "",
+                _num(v.unrealized) if market is not None else "",
                 _num(v.realized) if v.item.status == ItemStatus.SOLD else "",
                 v.item.note or "",
             ]
