@@ -172,7 +172,7 @@
 
         <PlaceFields v-model:box="box" v-model:location="location" />
 
-        <div class="text-caption text-medium-emphasis">
+        <div class="text-body-small text-medium-emphasis">
           {{ wishlistId ? t('purchase.hintWishlist') : t('purchase.hint') }}
         </div>
       </v-card-text>

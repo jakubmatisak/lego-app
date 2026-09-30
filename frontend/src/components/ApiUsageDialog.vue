@@ -117,18 +117,18 @@
             @click="only = only === p.provider ? null : p.provider"
           >
             <div class="d-flex align-center">
-              <span class="text-subtitle-2">{{ NAMES[p.provider] ?? p.provider }}</span>
+              <span class="text-title-small">{{ NAMES[p.provider] ?? p.provider }}</span>
               <v-spacer />
               <v-icon v-if="only === p.provider" color="primary" icon="mdi-filter" size="small" />
             </div>
 
             <template v-if="!p.enabled">
-              <div class="text-caption text-medium-emphasis mt-1">{{ t('usage.noKey') }}</div>
+              <div class="text-body-small text-medium-emphasis mt-1">{{ t('usage.noKey') }}</div>
             </template>
 
             <template v-else-if="p.limit !== null">
-              <div class="text-h6">{{ remaining(p) }} <span class="text-body-2 text-medium-emphasis">/ {{ p.limit }}</span></div>
-              <div class="text-caption text-medium-emphasis">{{ t('usage.leftToday', { used: p.used }) }}</div>
+              <div class="text-title-large font-weight-medium">{{ remaining(p) }} <span class="text-body-medium text-medium-emphasis">/ {{ p.limit }}</span></div>
+              <div class="text-body-small text-medium-emphasis">{{ t('usage.leftToday', { used: p.used }) }}</div>
 
               <v-progress-linear
                 class="mt-2"
@@ -140,15 +140,15 @@
             </template>
 
             <template v-else>
-              <div class="text-h6">{{ p.used }}</div>
-              <div class="text-caption text-medium-emphasis">{{ t('usage.noDailyLimit') }}</div>
+              <div class="text-title-large font-weight-medium">{{ p.used }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('usage.noDailyLimit') }}</div>
             </template>
           </v-card>
         </div>
 
         <!-- História volaní -->
         <div class="d-flex align-center">
-          <span class="text-subtitle-1">{{ t('usage.history') }}</span>
+          <span class="text-body-large">{{ t('usage.history') }}</span>
 
           <v-chip
             v-if="only"
@@ -160,7 +160,7 @@
           >{{ NAMES[only] ?? only }}</v-chip>
         </div>
 
-        <div v-if="shown.length === 0" class="text-body-2 text-medium-emphasis">{{ t('usage.empty') }}</div>
+        <div v-if="shown.length === 0" class="text-body-medium text-medium-emphasis">{{ t('usage.empty') }}</div>
 
         <v-table v-else density="compact">
           <thead>
@@ -179,11 +179,11 @@
 
               <td class="text-no-wrap">
                 {{ NAMES[c.provider] ?? c.provider }}
-                <span v-if="!c.counted" class="text-caption text-medium-emphasis" :title="t('usage.notCounted')">*</span>
+                <span v-if="!c.counted" class="text-body-small text-medium-emphasis" :title="t('usage.notCounted')">*</span>
               </td>
 
               <td>
-                <span class="text-caption text-medium-emphasis">{{ c.action }}</span>
+                <span class="text-body-small text-medium-emphasis">{{ c.action }}</span>
                 <span v-if="c.subject"> · {{ c.subject }}</span>
               </td>
 
@@ -201,7 +201,7 @@
           </tbody>
         </v-table>
 
-        <div class="text-caption text-medium-emphasis">{{ t('usage.note') }}</div>
+        <div class="text-body-small text-medium-emphasis">{{ t('usage.note') }}</div>
       </v-card-text>
 
       <v-card-actions>

@@ -221,7 +221,7 @@
           <v-text-field v-model="displayName" :label="t('settings.displayName')" />
           <v-text-field :label="t('auth.email')" :model-value="auth.user?.email" readonly />
           <v-divider class="my-2" />
-          <div class="text-subtitle-2">{{ t('settings.changePassword') }}</div>
+          <div class="text-title-small">{{ t('settings.changePassword') }}</div>
 
           <v-text-field
             v-model="currentPassword"
@@ -250,8 +250,8 @@
         <div class="d-flex flex-column ga-4">
           <div class="d-flex align-start ga-4 flex-wrap">
             <div class="flex-grow-1" style="min-width: 260px">
-              <div class="text-h6">{{ t('settings.shareTitle') }}</div>
-              <div class="text-body-2 text-medium-emphasis">{{ t('settings.shareIntro') }}</div>
+              <div class="text-title-large font-weight-medium">{{ t('settings.shareTitle') }}</div>
+              <div class="text-body-medium text-medium-emphasis">{{ t('settings.shareIntro') }}</div>
             </div>
 
             <v-menu>
@@ -303,7 +303,7 @@
                 {{ t('share.chosenCount', { sets: t('collection.setsPlural', link.catalog_nums.length, { named: { count: link.catalog_nums.length } }) }) }}
               </v-chip>
 
-              <code class="text-body-2">{{ publicUrl(link.token) }}</code>
+              <code class="text-body-medium">{{ publicUrl(link.token) }}</code>
 
               <v-chip
                 :color="link.show_values ? 'secondary' : undefined"
@@ -341,11 +341,11 @@
                 @update:model-value="value => toggleValues(link, Boolean(value))"
               />
 
-              <span class="text-body-2 text-medium-emphasis">
+              <span class="text-body-medium text-medium-emphasis">
                 {{ link.show_values ? t('settings.shareValuesOn') : t('settings.shareValuesOff') }}
               </span>
 
-              <span class="ms-auto text-body-2 text-medium-emphasis">
+              <span class="ms-auto text-body-medium text-medium-emphasis">
                 {{ link.last_viewed_at
                   ? t('settings.shareLastViewed', { when: dateTime(link.last_viewed_at) })
                   : t('settings.shareNeverViewed') }}
@@ -354,7 +354,7 @@
           </v-card>
 
           <v-alert density="comfortable" icon="mdi-shield-lock-outline" variant="tonal">
-            <span class="text-body-2">{{ t('settings.shareNote') }}</span>
+            <span class="text-body-medium">{{ t('settings.shareNote') }}</span>
           </v-alert>
         </div>
       </v-window-item>
@@ -392,8 +392,8 @@
           <ImportPanel />
 
           <v-card border class="pa-4" flat>
-            <div class="text-h6 mb-1">{{ t('settings.exportTitle') }}</div>
-            <div class="text-body-2 text-medium-emphasis mb-3">{{ t('settings.exportHint') }}</div>
+            <div class="text-title-large font-weight-medium mb-1">{{ t('settings.exportTitle') }}</div>
+            <div class="text-body-medium text-medium-emphasis mb-3">{{ t('settings.exportHint') }}</div>
 
             <div class="d-flex ga-2 flex-wrap">
               <ExportCsvButton variant="outlined" />
@@ -410,7 +410,7 @@
 
       <v-window-item v-if="auth.isAdmin" class="settings-narrow" value="app">
         <v-card border class="pa-4 d-flex flex-column ga-3" flat>
-          <div class="text-h6">{{ t('settings.appTitle') }}</div>
+          <div class="text-title-large font-weight-medium">{{ t('settings.appTitle') }}</div>
 
           <v-switch
             color="primary"
@@ -422,15 +422,15 @@
             @update:model-value="value => setRegistration(Boolean(value))"
           />
 
-          <div class="text-body-2 text-medium-emphasis">
+          <div class="text-body-medium text-medium-emphasis">
             {{ appSettings?.allow_registration ? t('settings.registrationOpenHint') : t('settings.registrationClosedHint') }}
           </div>
 
-          <div class="text-caption text-medium-emphasis">{{ t('settings.registrationFirstHint') }}</div>
+          <div class="text-body-small text-medium-emphasis">{{ t('settings.registrationFirstHint') }}</div>
 
           <v-divider class="my-2" />
-          <div class="text-subtitle-2">{{ t('settings.operatorTitle') }}</div>
-          <div class="text-body-2 text-medium-emphasis">{{ t('settings.operatorHint') }}</div>
+          <div class="text-title-small">{{ t('settings.operatorTitle') }}</div>
+          <div class="text-body-medium text-medium-emphasis">{{ t('settings.operatorHint') }}</div>
           <v-text-field v-model="operatorName" hide-details :label="t('settings.operatorName')" />
           <v-text-field v-model="operatorEmail" hide-details :label="t('settings.operatorEmail')" type="email" />
 

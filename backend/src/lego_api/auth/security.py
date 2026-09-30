@@ -58,8 +58,12 @@ def hash_refresh_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def refresh_expiry() -> datetime:
-    return datetime.now(UTC) + timedelta(days=get_settings().refresh_token_days)
+def refresh_expiry(remember: bool) -> datetime:
+    """Do kedy platí obnovovací token: zapamätaný dni, bez zapamätania hodiny."""
+    settings = get_settings()
+    if remember:
+        return datetime.now(UTC) + timedelta(days=settings.refresh_token_days)
+    return datetime.now(UTC) + timedelta(hours=settings.refresh_session_hours)
 
 
 def new_share_token() -> str:

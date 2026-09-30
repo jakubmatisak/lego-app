@@ -93,7 +93,7 @@
           </v-list-item>
         </v-list>
 
-        <div v-else class="pa-3 text-body-2 text-medium-emphasis">{{ t('categories.empty') }}</div>
+        <div v-else class="pa-3 text-body-medium text-medium-emphasis">{{ t('categories.empty') }}</div>
 
         <v-divider />
 

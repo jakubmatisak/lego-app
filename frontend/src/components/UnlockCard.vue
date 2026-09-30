@@ -51,17 +51,17 @@
   <v-card v-if="auth.keys && missing.length > 0" border class="pa-4" flat>
     <div class="d-flex align-center ga-2 mb-2">
       <v-icon color="primary" icon="mdi-key-plus" />
-      <div class="text-subtitle-1 font-weight-medium">{{ t('unlock.title') }}</div>
+      <div class="text-body-large font-weight-medium">{{ t('unlock.title') }}</div>
       <v-spacer />
       <v-btn size="small" variant="text" @click="hide">{{ t('unlock.hide') }}</v-btn>
     </div>
 
-    <div class="text-body-2 text-medium-emphasis mb-3">{{ t('unlock.intro') }}</div>
+    <div class="text-body-medium text-medium-emphasis mb-3">{{ t('unlock.intro') }}</div>
 
     <div class="d-flex flex-column ga-2">
       <div v-for="s in missing" :key="s.provider" class="unlock-row">
-        <div class="text-body-2 font-weight-medium">{{ s.label }}</div>
-        <div class="text-body-2 text-medium-emphasis">{{ s.unlocks.join(' · ') }}</div>
+        <div class="text-body-medium font-weight-medium">{{ s.label }}</div>
+        <div class="text-body-medium text-medium-emphasis">{{ s.unlocks.join(' · ') }}</div>
       </div>
     </div>
 

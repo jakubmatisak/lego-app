@@ -52,3 +52,35 @@ describe('zásady: zálohy pred aktualizáciou', () => {
     expect(body).toContain('deleted account')
   })
 })
+
+describe('zásady: cookie prihlásenia', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  afterEach(() => {
+    i18n.global.locale.value = 'sk'
+  })
+
+  it('slovenský text povie, že cookie trvá do zatvorenia prehliadača a 30 dní len so zapamätaním', async () => {
+    i18n.global.locale.value = 'sk'
+    const body = await text()
+
+    expect(body).toContain('lego_refresh')
+    expect(body).toContain('do zatvorenia prehliadača')
+    expect(body).toContain('30 dní, keď zaškrtneš Zapamätať si prihlásenie')
+    expect(body).toContain('na serveri najviac 12 hodín bez použitia')
+    expect(body).toContain('prihlasovacie tokeny najviac 30 dní')
+    expect(body).not.toContain('tokeny, oboje 30 dní')
+  })
+
+  it('anglický text povie to isté', async () => {
+    i18n.global.locale.value = 'en'
+    const body = await text()
+
+    expect(body).toContain('until you close the browser')
+    expect(body).toContain('30 days if you tick Remember me')
+    expect(body).toContain('on the server at most 12 hours without use')
+    expect(body).toContain('sign-in tokens for at most 30 days')
+  })
+})

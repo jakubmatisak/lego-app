@@ -315,7 +315,7 @@
     <aside v-if="wide && panelOpen" class="collection-aside">
       <v-card border class="collection-aside__card" flat>
         <div class="d-flex align-center px-3 pt-3 pb-1">
-          <span class="text-subtitle-1 font-weight-medium">{{ t('filters.title') }}</span>
+          <span class="text-body-large font-weight-medium">{{ t('filters.title') }}</span>
           <v-spacer />
 
           <v-btn
@@ -341,7 +341,7 @@
 
     <div class="d-flex flex-column ga-4 collection-main">
       <div class="d-flex align-center flex-wrap ga-2">
-        <span class="text-body-2 text-medium-emphasis">{{ summaryLine }}</span>
+        <span class="text-body-medium text-medium-emphasis">{{ summaryLine }}</span>
         <v-spacer />
 
         <!-- Filter si účet pamätá, takže návrat k celej zbierke musí byť po ruke. -->
@@ -532,11 +532,11 @@
 
               <template #append>
                 <div class="text-end">
-                  <div class="text-body-2 font-weight-medium">
+                  <div class="text-body-medium font-weight-medium">
                     {{ pieceValue(item) }}
                   </div>
 
-                  <div class="text-caption" :class="pieceProfitClass(item)">
+                  <div class="text-body-small" :class="pieceProfitClass(item)">
                     {{ pieceProfit(item) }}
                   </div>
                 </div>

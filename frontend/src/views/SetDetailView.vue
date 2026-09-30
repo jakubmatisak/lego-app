@@ -464,8 +464,8 @@
 
         <div class="flex-grow-1" style="min-width: 280px">
           <div class="d-flex align-center ga-2 flex-wrap mb-2">
-            <div class="text-h5">{{ catalog.name }}</div>
-            <span class="text-body-2 text-medium-emphasis">{{ catalog.catalog_num }}</span>
+            <div class="text-headline-small">{{ catalog.name }}</div>
+            <span class="text-body-medium text-medium-emphasis">{{ catalog.catalog_num }}</span>
             <v-chip v-if="catalog.theme" label size="small" variant="tonal">{{ catalog.theme }}</v-chip>
             <v-chip v-if="catalog.subtheme" label size="small" variant="tonal">{{ catalog.subtheme }}</v-chip>
             <v-chip v-if="catalog.year" label size="small" variant="tonal">{{ catalog.year }}</v-chip>
@@ -525,30 +525,30 @@
 
           <v-row dense>
             <v-col cols="6" md="2" sm="4">
-              <div class="text-caption text-medium-emphasis">{{ t('detail.parts') }}</div>
-              <div class="text-h6">{{ count(catalog.num_parts) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('detail.parts') }}</div>
+              <div class="text-title-large font-weight-medium">{{ count(catalog.num_parts) }}</div>
             </v-col>
 
             <v-col cols="6" md="2" sm="4">
-              <div class="text-caption text-medium-emphasis">{{ t('detail.minifigs') }}</div>
-              <div class="text-h6">{{ count(catalog.num_minifigs) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('detail.minifigs') }}</div>
+              <div class="text-title-large font-weight-medium">{{ count(catalog.num_minifigs) }}</div>
             </v-col>
 
             <v-col cols="6" md="2" sm="4">
-              <div class="text-caption text-medium-emphasis">{{ t('detail.rrp') }}</div>
-              <div class="text-h6">{{ exactMoney(catalog.rrp_eur) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('detail.rrp') }}</div>
+              <div class="text-title-large font-weight-medium">{{ exactMoney(catalog.rrp_eur) }}</div>
             </v-col>
 
             <v-col cols="6" md="2" sm="4">
-              <div class="text-caption text-medium-emphasis">{{ t('detail.ownedPieces') }}</div>
-              <div class="text-h6">{{ owned.length }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('detail.ownedPieces') }}</div>
+              <div class="text-title-large font-weight-medium">{{ owned.length }}</div>
             </v-col>
 
             <v-col cols="6" md="2" sm="4">
-              <div class="text-caption text-medium-emphasis">{{ t('detail.unrealized') }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('detail.unrealized') }}</div>
 
               <div
-                class="text-h6"
+                class="text-title-large font-weight-medium"
                 :class="priceUnknown
                   ? 'text-medium-emphasis'
                   : totals.unrealized >= 0 ? 'text-positive' : 'text-negative'"
@@ -556,10 +556,10 @@
             </v-col>
 
             <v-col cols="6" md="2" sm="4">
-              <div class="text-caption text-medium-emphasis">{{ t('detail.realized') }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('detail.realized') }}</div>
 
               <div
-                class="text-h6"
+                class="text-title-large font-weight-medium"
                 :class="totals.realized >= 0 ? 'text-positive' : 'text-negative'"
               >{{ sold.length > 0 ? money(totals.realized, { sign: true, decimals: 0 }) : '—' }}</div>
             </v-col>
@@ -570,7 +570,7 @@
             v-if="catalog.bs_rating || catalog.bs_owned_by || catalog.tags?.length || catalog.description"
             class="mt-3 d-flex flex-column ga-2"
           >
-            <div v-if="catalog.bs_rating || catalog.bs_owned_by" class="d-flex align-center flex-wrap ga-2 text-body-2">
+            <div v-if="catalog.bs_rating || catalog.bs_owned_by" class="d-flex align-center flex-wrap ga-2 text-body-medium">
               <template v-if="catalog.bs_rating">
                 <v-rating
                   active-color="amber"
@@ -608,7 +608,7 @@
             </div>
 
             <div v-if="catalog.description">
-              <div class="text-body-2 set-description" :class="{ 'set-description--clamped': !descriptionOpen }">
+              <div class="text-body-medium set-description" :class="{ 'set-description--clamped': !descriptionOpen }">
                 {{ catalog.description }}
               </div>
 
@@ -645,7 +645,7 @@
           />
 
           <v-alert class="mt-3" density="compact" variant="tonal">
-            <span class="text-caption">
+            <span class="text-body-small">
               {{ t('detail.metaSource', {
                 sources: catalog.source,
                 date: shortDate(catalog.fetched_at),
@@ -662,9 +662,9 @@
         <v-card border flat>
           <v-card-item>
             <div class="d-flex align-center ga-2 flex-wrap">
-              <v-card-title class="text-h6 pa-0">{{ t('detail.myPieces') }}</v-card-title>
+              <v-card-title class="text-title-large font-weight-medium pa-0">{{ t('detail.myPieces') }}</v-card-title>
 
-              <span class="text-body-2 text-medium-emphasis">
+              <span class="text-body-medium text-medium-emphasis">
                 {{ t('detail.ownedPlural', owned.length, { named: { count: owned.length } }) }}
                 ·
                 {{ t('collection.soldPlural', sold.length, { named: { count: sold.length } }) }}
@@ -737,10 +737,10 @@
                     -->
                     <div
                       v-if="item.catalog_num !== num"
-                      class="text-body-2 font-weight-medium"
+                      class="text-body-medium font-weight-medium"
                     >
                       {{ item.catalog.name }}
-                      <span class="text-caption text-medium-emphasis">{{ item.catalog_num }}</span>
+                      <span class="text-body-small text-medium-emphasis">{{ item.catalog_num }}</span>
                     </div>
 
                     <div class="d-flex flex-wrap ga-2 align-center mb-1">
@@ -787,7 +787,7 @@
                       />
                     </div>
 
-                    <div class="text-caption text-medium-emphasis mt-1">
+                    <div class="text-body-small text-medium-emphasis mt-1">
                       <template v-if="item.status === 'sold'">
                         {{ shortDate(item.sold_date) }}
                         <span v-if="item.sold_via"> · {{ item.sold_via }}</span>
@@ -803,9 +803,9 @@
 
                 <!-- Popis nad sumou má každá bunka sama, na telefóne sa inak nedá čítať, čo je čo. -->
                 <div class="piece-cell piece-cell--purchased piece-amount">
-                  <div class="text-caption text-medium-emphasis">{{ t('detail.columnPurchased') }}</div>
+                  <div class="text-body-small text-medium-emphasis">{{ t('detail.columnPurchased') }}</div>
 
-                  <div class="text-body-2">
+                  <div class="text-body-medium">
                     <v-icon
                       v-if="item.purchase_price_auto"
                       class="me-1"
@@ -815,30 +815,30 @@
                     />{{ exactMoney(paid(item)) }}
                   </div>
 
-                  <div v-if="item.purchase_real_eur" class="text-caption text-medium-emphasis">
+                  <div v-if="item.purchase_real_eur" class="text-body-small text-medium-emphasis">
                     {{ t('inflation.paid', { amount: exactMoney(item.purchase_price_eur) }) }}
                   </div>
                 </div>
 
                 <div class="piece-cell piece-cell--value piece-amount">
-                  <div class="text-caption text-medium-emphasis">
+                  <div class="text-body-small text-medium-emphasis">
                     {{ item.status === 'sold' ? t('collection.soldFor') : t('detail.columnValue') }}
                   </div>
 
-                  <div class="text-body-1 font-weight-medium">{{ pieceValue(item) }}</div>
+                  <div class="text-body-large font-weight-medium">{{ pieceValue(item) }}</div>
                 </div>
 
                 <div class="piece-cell piece-cell--profit piece-amount">
-                  <div class="text-caption text-medium-emphasis">{{ t('detail.columnProfit') }}</div>
+                  <div class="text-body-small text-medium-emphasis">{{ t('detail.columnProfit') }}</div>
 
-                  <div class="text-body-2 font-weight-medium" :class="pieceProfitClass(item)">
+                  <div class="text-body-medium font-weight-medium" :class="pieceProfitClass(item)">
                     {{ pieceProfit(item) }}
                   </div>
 
                   <!-- Pod rok držania server ročný výnos nepošle, riadok potom chýba. -->
                   <div
                     v-if="item.status === 'owned' && item.cagr_pct !== null && item.cagr_pct !== undefined"
-                    class="text-caption"
+                    class="text-body-small"
                     :class="item.cagr_pct >= 0 ? 'text-positive' : 'text-negative'"
                   >{{ t('detail.yearly', { value: percent(item.cagr_pct, { decimals: 1 }) }) }}</div>
                 </div>
@@ -898,7 +898,7 @@
               </div>
 
               <!-- Súčty majú tie isté bunky ako kus, akcie ostanú prázdne. -->
-              <div class="piece-row piece-row--total text-body-2">
+              <div class="piece-row piece-row--total text-body-medium">
                 <div class="piece-cell piece-cell--main text-medium-emphasis">
                   {{ t('detail.totalOwned', { count: owned.length }) }}
                 </div>
@@ -919,7 +919,7 @@
                 <div class="piece-cell piece-cell--actions" />
               </div>
 
-              <div v-if="sold.length > 0" class="piece-row piece-row--total text-body-2">
+              <div v-if="sold.length > 0" class="piece-row piece-row--total text-body-medium">
                 <div class="piece-cell piece-cell--main text-medium-emphasis">
                   {{ t('detail.totalSold', { count: sold.length }) }}
                 </div>
@@ -955,9 +955,9 @@
       <v-col cols="12">
         <v-card border class="pa-4 d-flex flex-column ga-3" flat>
           <div class="d-flex align-center">
-            <div class="text-h6">{{ t('detail.marketPrice') }}</div>
+            <div class="text-title-large font-weight-medium">{{ t('detail.marketPrice') }}</div>
 
-            <span class="ms-auto text-caption text-medium-emphasis">
+            <span class="ms-auto text-body-small text-medium-emphasis">
               {{ auth.hasPriceKey ? t('detail.priceSourceNote') : t('prices.providerOff') }}
             </span>
           </div>
@@ -980,14 +980,14 @@
                     flat
                     @click="priceCondition = tile.key"
                   >
-                    <div class="text-caption text-medium-emphasis">{{ tile.label }}</div>
+                    <div class="text-body-small text-medium-emphasis">{{ tile.label }}</div>
 
                     <div
                       v-if="tile.data?.current"
-                      class="text-h5 font-weight-medium"
+                      class="text-headline-small font-weight-medium"
                     >{{ exactMoney(tile.data.current.avg_price) }}</div>
 
-                    <div v-else class="text-body-2 text-medium-emphasis mt-1">
+                    <div v-else class="text-body-medium text-medium-emphasis mt-1">
                       {{ tile.key === 'U' ? t('detail.noUsedPrice') : t('detail.noNewPrice') }}
                     </div>
                   </v-card>
@@ -1004,24 +1004,24 @@
                 color="surface-variant"
                 flat
               >
-                <div class="text-caption text-medium-emphasis mb-1">{{ t('detail.forecastTitle') }}</div>
+                <div class="text-body-small text-medium-emphasis mb-1">{{ t('detail.forecastTitle') }}</div>
 
                 <div class="d-flex ga-4 flex-wrap">
                   <div v-if="catalog?.forecast_2y_eur">
-                    <div class="text-caption text-medium-emphasis">{{ t('detail.forecast2y') }}</div>
-                    <div class="text-body-1 font-weight-medium">{{ exactMoney(catalog.forecast_2y_eur) }}</div>
+                    <div class="text-body-small text-medium-emphasis">{{ t('detail.forecast2y') }}</div>
+                    <div class="text-body-large font-weight-medium">{{ exactMoney(catalog.forecast_2y_eur) }}</div>
                   </div>
 
                   <div v-if="catalog?.forecast_5y_eur">
-                    <div class="text-caption text-medium-emphasis">{{ t('detail.forecast5y') }}</div>
-                    <div class="text-body-1 font-weight-medium">{{ exactMoney(catalog.forecast_5y_eur) }}</div>
+                    <div class="text-body-small text-medium-emphasis">{{ t('detail.forecast5y') }}</div>
+                    <div class="text-body-large font-weight-medium">{{ exactMoney(catalog.forecast_5y_eur) }}</div>
                   </div>
 
                   <div v-if="catalog?.growth_12m_pct !== null && catalog?.growth_12m_pct !== undefined">
-                    <div class="text-caption text-medium-emphasis">{{ t('detail.growth12m') }}</div>
+                    <div class="text-body-small text-medium-emphasis">{{ t('detail.growth12m') }}</div>
 
                     <div
-                      class="text-body-1 font-weight-medium"
+                      class="text-body-large font-weight-medium"
                       :class="catalog.growth_12m_pct >= 0 ? 'text-positive' : 'text-negative'"
                     >{{ percent(catalog.growth_12m_pct) }}</div>
                   </div>
@@ -1049,12 +1049,12 @@
                     color="surface-variant"
                     flat
                   >
-                    <div class="text-caption text-medium-emphasis">
+                    <div class="text-body-small text-medium-emphasis">
                       {{ delta.window_days === 365 ? t('detail.year') : `${delta.window_days} dní` }}
                     </div>
 
                     <div
-                      class="text-body-2 font-weight-medium"
+                      class="text-body-medium font-weight-medium"
                       :class="delta.delta_pct === null ? '' : delta.delta_pct >= 0 ? 'text-positive' : 'text-negative'"
                     >{{ delta.delta_pct === null ? '—' : percent(delta.delta_pct) }}</div>
                   </v-card>
@@ -1063,18 +1063,18 @@
                 <v-card class="pa-3" color="surface-variant" flat>
                   <div class="d-flex ga-4 flex-wrap">
                     <div>
-                      <div class="text-caption text-medium-emphasis">{{ t('detail.lowest') }}</div>
-                      <div class="text-body-1 font-weight-medium">{{ exactMoney(prices.current.min_price) }}</div>
+                      <div class="text-body-small text-medium-emphasis">{{ t('detail.lowest') }}</div>
+                      <div class="text-body-large font-weight-medium">{{ exactMoney(prices.current.min_price) }}</div>
                     </div>
 
                     <div>
-                      <div class="text-caption text-medium-emphasis">{{ t('detail.highest') }}</div>
-                      <div class="text-body-1 font-weight-medium">{{ exactMoney(prices.current.max_price) }}</div>
+                      <div class="text-body-small text-medium-emphasis">{{ t('detail.highest') }}</div>
+                      <div class="text-body-large font-weight-medium">{{ exactMoney(prices.current.max_price) }}</div>
                     </div>
 
                     <div v-if="prices.current.qty">
-                      <div class="text-caption text-medium-emphasis">{{ t('detail.sales') }}</div>
-                      <div class="text-body-1 font-weight-medium">{{ prices.current.qty }}</div>
+                      <div class="text-body-small text-medium-emphasis">{{ t('detail.sales') }}</div>
+                      <div class="text-body-large font-weight-medium">{{ prices.current.qty }}</div>
                     </div>
                   </div>
                 </v-card>
@@ -1094,7 +1094,7 @@
             <v-divider />
 
             <div class="d-flex align-center ga-2 flex-wrap">
-              <span v-if="lastCaptured" class="text-caption text-medium-emphasis">
+              <span v-if="lastCaptured" class="text-body-small text-medium-emphasis">
                 {{ t('detail.updatedAt', { time: dateTime(lastCaptured) }) }}
               </span>
 
@@ -1114,7 +1114,7 @@
               >{{ isSeriesPage ? t('detail.refreshSeries') : t('detail.refreshPrices') }}</v-btn>
             </div>
 
-            <div v-if="refreshNote" class="text-caption text-medium-emphasis">{{ refreshNote }}</div>
+            <div v-if="refreshNote" class="text-body-small text-medium-emphasis">{{ refreshNote }}</div>
           </template>
 
           <template v-else>
@@ -1139,7 +1139,7 @@
               </v-btn>
             </div>
 
-            <div v-if="refreshNote" class="text-caption text-medium-emphasis text-center">
+            <div v-if="refreshNote" class="text-body-small text-medium-emphasis text-center">
               {{ refreshNote }}
             </div>
           </template>

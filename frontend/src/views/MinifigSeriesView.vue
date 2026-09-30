@@ -85,14 +85,14 @@
           />
 
           <div class="flex-grow-1" style="min-width: 220px">
-            <div class="text-h6">{{ series.name }}</div>
+            <div class="text-title-large font-weight-medium">{{ series.name }}</div>
 
-            <div class="text-body-2 text-medium-emphasis">
+            <div class="text-body-medium text-medium-emphasis">
               {{ series.series_num }}<span v-if="series.year"> · {{ series.year }}</span>
             </div>
 
             <div class="d-flex align-center ga-2 mt-2">
-              <span class="text-body-2 font-weight-medium">
+              <span class="text-body-medium font-weight-medium">
                 {{ t('dashboard.seriesOf', { owned: ownedCount, total: series.total }) }}
               </span>
 
@@ -105,7 +105,7 @@
                 variant="tonal"
               >{{ t('dashboard.seriesDone') }}</v-chip>
 
-              <span v-else class="text-body-2 missing-count">
+              <span v-else class="text-body-medium missing-count">
                 · {{ t('dashboard.seriesMissingPlural', missingCount, { named: { count: missingCount } }) }}
               </span>
             </div>
@@ -176,8 +176,8 @@
             <SetImage :alt="member.catalog.name" rounded="0" :size="132" :src="imageSrc(member.catalog.image_url) ?? undefined" />
 
             <div class="pa-3 d-flex flex-column ga-1 flex-grow-1">
-              <div class="text-body-1 font-weight-medium text-truncate">{{ member.catalog.name }}</div>
-              <div class="text-caption text-medium-emphasis">{{ member.catalog.catalog_num }}</div>
+              <div class="text-body-large font-weight-medium text-truncate">{{ member.catalog.name }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ member.catalog.catalog_num }}</div>
 
               <div class="d-flex ga-1 mt-1">
                 <v-chip

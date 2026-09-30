@@ -130,7 +130,7 @@
     </div>
 
     <div class="d-flex align-center flex-wrap ga-2">
-      <div class="text-h5">{{ theme }}</div>
+      <div class="text-headline-small">{{ theme }}</div>
 
       <v-btn
         :color="isFollowed ? 'amber-darken-2' : undefined"
@@ -162,9 +162,9 @@
           :variant="isSelected ? 'tonal' : 'outlined'"
           @click="toggle"
         >
-          <div class="text-subtitle-1 font-weight-medium">{{ row.year }}</div>
+          <div class="text-body-large font-weight-medium">{{ row.year }}</div>
 
-          <div class="text-caption">
+          <div class="text-body-small">
             <span v-if="!row.exact && row.owned">≈ </span>{{ t('dashboard.seriesOf', { owned: row.owned, total: row.set_count }) }}
           </div>
         </v-card>
@@ -176,7 +176,7 @@
     <template v-else-if="wave">
       <div class="d-flex align-center flex-wrap ga-3">
         <div>
-          <span class="text-body-1 font-weight-medium">
+          <span class="text-body-large font-weight-medium">
             {{ t('dashboard.seriesOf', { owned: wave.owned, total: wave.total }) }}
           </span>
 
@@ -228,8 +228,8 @@
             <SetImage :alt="member.catalog.name" rounded="0" :size="132" :src="imageSrc(member.catalog.image_url) ?? undefined" />
 
             <div class="pa-3 d-flex flex-column ga-1 flex-grow-1">
-              <div class="text-body-1 font-weight-medium text-truncate">{{ member.catalog.name }}</div>
-              <div class="text-caption text-medium-emphasis">{{ member.catalog.catalog_num }}</div>
+              <div class="text-body-large font-weight-medium text-truncate">{{ member.catalog.name }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ member.catalog.catalog_num }}</div>
 
               <div class="d-flex ga-1 mt-1">
                 <v-chip

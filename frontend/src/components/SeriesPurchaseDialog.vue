@@ -167,14 +167,14 @@
         <PlaceFields v-model:box="box" v-model:location="location" />
 
         <v-card class="pa-3" color="surface-variant" flat>
-          <div class="text-body-2">
+          <div class="text-body-medium">
             {{ t('purchase.willAddPlural', targets.length, { named: { count: targets.length } }) }}
             <template v-if="perPiece !== null">
               · {{ t('purchase.perPieceAbout', { price: exactMoney(perPiece) }) }}
             </template>
           </div>
 
-          <div class="text-caption text-medium-emphasis mt-1">{{ t('purchase.splitHint') }}</div>
+          <div class="text-body-small text-medium-emphasis mt-1">{{ t('purchase.splitHint') }}</div>
         </v-card>
       </v-card-text>
 

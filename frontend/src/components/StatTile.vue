@@ -17,7 +17,7 @@
 
 <template>
   <v-card border class="stat-tile h-100 pa-4 d-flex flex-column justify-space-between" flat>
-    <span class="text-overline text-medium-emphasis stat-tile__label">{{ label }}</span>
+    <span class="text-label-medium text-uppercase text-medium-emphasis stat-tile__label">{{ label }}</span>
     <span class="stat-tile__value" :class="color ? `text-${color}` : ''">{{ value }}</span>
 
     <v-chip
@@ -30,8 +30,8 @@
     >{{ chip }}</v-chip>
 
     <!-- Čip aj poznámka môžu byť naraz: pri zisku percento aj ročný výnos. -->
-    <span v-if="hint" class="text-caption text-medium-emphasis">{{ hint }}</span>
-    <span v-if="!chip && !hint" class="text-caption">&nbsp;</span>
+    <span v-if="hint" class="text-body-small text-medium-emphasis">{{ hint }}</span>
+    <span v-if="!chip && !hint" class="text-body-small">&nbsp;</span>
   </v-card>
 </template>
 

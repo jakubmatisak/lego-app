@@ -20,7 +20,7 @@
     titleClass?: string
   }>(), {
     label: undefined,
-    titleClass: 'text-body-2 text-medium-emphasis',
+    titleClass: 'text-body-medium text-medium-emphasis',
   })
   /** Kategórie sa zmenili v správcovi; rodič obnoví, čo ich ukazuje inde. */
   const emit = defineEmits<{ managed: [] }>()
@@ -54,10 +54,10 @@
       >{{ t('filters.manage') }}</v-btn>
     </div>
 
-    <div class="text-caption text-medium-emphasis mb-2">{{ hint }}</div>
+    <div class="text-body-small text-medium-emphasis mb-2">{{ hint }}</div>
 
     <!-- Prázdny zoznam počas čakania alebo po chybe nie je „žiadne kategórie“. -->
-    <div v-if="rows.length === 0 && picker.loading.value" class="text-body-2 text-medium-emphasis">
+    <div v-if="rows.length === 0 && picker.loading.value" class="text-body-medium text-medium-emphasis">
       {{ t('categories.loading') }}
     </div>
 
@@ -82,9 +82,9 @@
       </v-chip>
     </v-chip-group>
 
-    <div v-else-if="!picker.failed.value" class="text-body-2 text-medium-emphasis">{{ t('categories.empty') }}</div>
+    <div v-else-if="!picker.failed.value" class="text-body-medium text-medium-emphasis">{{ t('categories.empty') }}</div>
 
-    <div v-if="picker.failed.value" class="d-flex align-center flex-wrap ga-2 text-body-2">
+    <div v-if="picker.failed.value" class="d-flex align-center flex-wrap ga-2 text-body-medium">
       <span class="text-negative">{{ t('categories.loadFailed') }}</span>
 
       <v-btn

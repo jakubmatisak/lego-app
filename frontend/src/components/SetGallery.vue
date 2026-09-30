@@ -31,7 +31,7 @@
 
 <template>
   <div v-if="images.length > 0" class="d-flex flex-column ga-1">
-    <div class="text-caption text-medium-emphasis">
+    <div class="text-body-small text-medium-emphasis">
       {{ t('detail.galleryTitle', { count: images.length }) }}
     </div>
 
@@ -48,7 +48,7 @@
       </button>
     </div>
 
-    <div class="text-caption text-medium-emphasis">
+    <div class="text-body-small text-medium-emphasis">
       <a href="https://brickset.com" rel="noopener" target="_blank">{{ t('detail.galleryCredit') }}</a>
     </div>
 
@@ -71,7 +71,7 @@
         </v-carousel>
 
         <v-card-actions>
-          <span class="text-caption text-medium-emphasis ps-2">{{ t('detail.galleryCredit') }}</span>
+          <span class="text-body-small text-medium-emphasis ps-2">{{ t('detail.galleryCredit') }}</span>
           <v-spacer />
           <v-btn variant="text" @click="open = false">{{ t('common.close') }}</v-btn>
         </v-card-actions>

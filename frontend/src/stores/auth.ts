@@ -86,12 +86,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login (email: string, password: string): Promise<boolean> {
+  /**
+   * `remember`: zapamätať si prihlásenie na tomto počítači. Server potom
+   * pošle cookie na 30 dní, inak zanikne so zatvorením prehliadača.
+   */
+  async function login (email: string, password: string, remember = false): Promise<boolean> {
     loading.value = true
     error.value = null
     try {
       const { data, error: err } = await api.POST('/auth/login', {
-        body: { email, password },
+        body: { email, password, remember },
       })
       if (err || !data) {
         error.value = errorMessage(err, 'Prihlásenie zlyhalo')
@@ -110,13 +114,14 @@ export const useAuthStore = defineStore('auth', () => {
     email: string,
     password: string,
     displayName?: string,
+    remember = false,
   ): Promise<boolean> {
     // Formulár pustí registráciu len so zaškrtnutým potvrdením zásad.
     loading.value = true
     error.value = null
     try {
       const { data, error: err } = await api.POST('/auth/register', {
-        body: { email, password, display_name: displayName || null, accept_privacy: true },
+        body: { email, password, display_name: displayName || null, accept_privacy: true, remember },
       })
       if (err || !data) {
         error.value = errorMessage(err, 'Registrácia zlyhala')
@@ -150,10 +155,11 @@ export const useAuthStore = defineStore('auth', () => {
     password: string,
     displayName: string | undefined,
     target: string,
+    remember = false,
   ): Promise<boolean> {
     const ok = mode === 'register'
-      ? await register(email, password, displayName)
-      : await login(email, password)
+      ? await register(email, password, displayName, remember)
+      : await login(email, password, remember)
     if (ok) {
       reloadTo(target)
     }

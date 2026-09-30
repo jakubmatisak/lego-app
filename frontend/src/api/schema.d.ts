@@ -2655,6 +2655,11 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+            /**
+             * Remember
+             * @default false
+             */
+            remember: boolean;
         };
         /**
          * ManualCatalogRequest
@@ -2996,6 +3001,11 @@ export interface components {
              * @default false
              */
             accept_privacy: boolean;
+            /**
+             * Remember
+             * @default false
+             */
+            remember: boolean;
         };
         /**
          * RemovedWishOut
@@ -3870,7 +3880,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                lego_refresh?: string | null;
+            };
         };
         requestBody: {
             content: {

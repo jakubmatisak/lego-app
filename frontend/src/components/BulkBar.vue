@@ -133,7 +133,7 @@
 
 <template>
   <v-card class="bulk-bar pa-2 d-flex align-center flex-wrap ga-2" color="surface-variant" flat>
-    <span class="text-body-2 font-weight-medium px-2">
+    <span class="text-body-medium font-weight-medium px-2">
       {{ t('bulk.selected', { what: countLabel(selected) }) }}
     </span>
 
@@ -196,13 +196,13 @@
           />
         </template>
 
-        <div v-else class="text-body-1">
+        <div v-else class="text-body-large">
           {{ t('bulk.confirm', {
             action: t(`bulk.actions.${action}`),
             value: valueTitle,
             pieces: t('collection.piecesPlural', preview.items, { named: { count: preview.items } }),
           }) }}
-          <div v-if="action.startsWith('category')" class="text-caption text-medium-emphasis mt-1">
+          <div v-if="action.startsWith('category')" class="text-body-small text-medium-emphasis mt-1">
             {{ t('bulk.categoryNote', { sets: t('collection.setsPlural', preview.sets, { named: { count: preview.sets } }) }) }}
           </div>
         </div>

@@ -24,7 +24,7 @@
 <template>
   <v-card v-if="rows.length > 0" border flat>
     <v-card-item>
-      <v-card-title class="text-h6 pa-0">{{ t('insights.salesTitle') }}</v-card-title>
+      <v-card-title class="text-title-large font-weight-medium pa-0">{{ t('insights.salesTitle') }}</v-card-title>
     </v-card-item>
 
     <div class="sales-scroll">

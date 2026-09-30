@@ -84,7 +84,7 @@
 
     <template v-else-if="enabled">
       <div class="d-flex align-center flex-wrap ga-2">
-        <div class="text-h6 me-2">{{ t('themes.mine') }}</div>
+        <div class="text-title-large font-weight-medium me-2">{{ t('themes.mine') }}</div>
 
         <v-chip
           v-for="chip in CHIPS"
@@ -127,7 +127,7 @@
           :to="{ name: 'theme', params: { theme: row.theme } }"
         >
           <div class="d-flex align-center ga-1">
-            <span class="text-subtitle-1 font-weight-medium">{{ row.theme }}</span>
+            <span class="text-body-large font-weight-medium">{{ row.theme }}</span>
 
             <v-icon
               v-if="row.followed"
@@ -138,11 +138,11 @@
             />
           </div>
 
-          <div class="text-caption text-medium-emphasis">
+          <div class="text-body-small text-medium-emphasis">
             {{ row.year_from }}–{{ row.year_to }} · {{ t('themes.setsInTheme', { count: row.set_count }) }}
           </div>
 
-          <div class="text-body-2 mt-2">
+          <div class="text-body-medium mt-2">
             <template v-if="row.owned">
               {{ t('collection.setsPlural', row.owned, { named: { count: row.owned } }) }}
               {{ t('themes.inCollection') }}

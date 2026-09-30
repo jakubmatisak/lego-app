@@ -51,9 +51,9 @@
     </div>
 
     <div class="pa-3 d-flex flex-column ga-1 flex-grow-1">
-      <div class="text-body-1 font-weight-medium text-truncate">{{ catalog.name }}</div>
+      <div class="text-body-large font-weight-medium text-truncate">{{ catalog.name }}</div>
 
-      <div class="text-caption text-medium-emphasis text-truncate">
+      <div class="text-body-small text-medium-emphasis text-truncate">
         {{ catalog.catalog_num }}
       </div>
 

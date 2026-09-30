@@ -125,7 +125,7 @@
 
         <!-- Zoznam kategórií -->
         <template v-if="!editing">
-          <div v-if="store.categories.length === 0" class="text-body-2 text-medium-emphasis">
+          <div v-if="store.categories.length === 0" class="text-body-medium text-medium-emphasis">
             {{ t('categories.empty') }}
           </div>
 
@@ -141,7 +141,7 @@
                 {{ t('categories.setsPlural', category.sets, { named: { count: category.sets } }) }}
                 <span v-if="category.manual_in"> · {{ t('categories.manualIn', { count: category.manual_in }) }}</span>
                 <span v-if="category.manual_out"> · {{ t('categories.manualOut', { count: category.manual_out }) }}</span>
-                <div v-for="(rule, i) in category.rules" :key="i" class="text-caption">{{ ruleText(rule) }}</div>
+                <div v-for="(rule, i) in category.rules" :key="i" class="text-body-small">{{ ruleText(rule) }}</div>
               </v-list-item-subtitle>
 
               <template #append>
@@ -156,7 +156,7 @@
           <v-text-field v-model="editing.name" autofocus hide-details :label="t('categories.name')" />
 
           <div>
-            <div class="text-subtitle-2 mb-2">{{ t('categories.color') }}</div>
+            <div class="text-title-small mb-2">{{ t('categories.color') }}</div>
 
             <div class="d-flex flex-wrap ga-2">
               <button
@@ -172,10 +172,10 @@
           </div>
 
           <div>
-            <div class="text-subtitle-2 mb-1">{{ t('categories.rules') }}</div>
-            <div class="text-caption text-medium-emphasis mb-2">{{ t('categories.rulesHint') }}</div>
+            <div class="text-title-small mb-1">{{ t('categories.rules') }}</div>
+            <div class="text-body-small text-medium-emphasis mb-2">{{ t('categories.rulesHint') }}</div>
 
-            <div v-if="editing.rules.length === 0" class="text-body-2 text-medium-emphasis mb-2">
+            <div v-if="editing.rules.length === 0" class="text-body-medium text-medium-emphasis mb-2">
               {{ t('categories.noRules') }}
             </div>
 

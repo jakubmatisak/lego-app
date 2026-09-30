@@ -213,7 +213,7 @@
 
       <v-col cols="12" :lg="showMarket ? 4 : 12">
         <v-card border class="pa-4 h-100" flat>
-          <div class="text-h6 mb-3">{{ t('dashboard.themes') }}</div>
+          <div class="text-title-large font-weight-medium mb-3">{{ t('dashboard.themes') }}</div>
           <ThemeDonut :themes="summary.themes" />
         </v-card>
       </v-col>
@@ -235,7 +235,7 @@
         <v-card border class="h-100" flat>
           <v-card-item>
             <div class="d-flex align-center">
-              <v-card-title class="text-h6 pa-0">{{ t('dashboard.topProfit') }}</v-card-title>
+              <v-card-title class="text-title-large font-weight-medium pa-0">{{ t('dashboard.topProfit') }}</v-card-title>
 
               <v-btn
                 class="ms-auto"
@@ -247,7 +247,7 @@
           </v-card-item>
 
           <!-- Kusy bez ceny server preskočí; bez jediného oceneného by karta ostala prázdna. -->
-          <v-card-text v-if="summary.top_profit.length === 0" class="text-body-2 text-medium-emphasis pt-0">
+          <v-card-text v-if="summary.top_profit.length === 0" class="text-body-medium text-medium-emphasis pt-0">
             {{ t('dashboard.topProfitEmpty') }}
           </v-card-text>
 
@@ -269,16 +269,16 @@
 
               <v-list-item-title class="font-weight-medium">{{ row.name }}</v-list-item-title>
 
-              <v-list-item-subtitle class="text-caption">
+              <v-list-item-subtitle class="text-body-small">
                 {{ row.catalog_num }} · {{ row.theme }} · {{ t('collection.pieces', { count: row.quantity }) }}
               </v-list-item-subtitle>
 
               <template #append>
                 <div class="text-end">
-                  <div class="text-body-2 font-weight-medium">{{ exactMoney(row.market_value) }}</div>
+                  <div class="text-body-medium font-weight-medium">{{ exactMoney(row.market_value) }}</div>
 
                   <div
-                    class="text-caption font-weight-medium"
+                    class="text-body-small font-weight-medium"
                     :class="Number(row.profit) >= 0 ? 'text-positive' : 'text-negative'"
                   >
                     {{ money(row.profit, { sign: true, decimals: 0 }) }}

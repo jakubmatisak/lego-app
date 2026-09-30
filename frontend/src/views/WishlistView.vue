@@ -263,38 +263,38 @@
         </div>
 
         <div class="pa-3 d-flex flex-column ga-1 flex-grow-1">
-          <div class="text-body-1 font-weight-medium text-truncate">{{ item.catalog.name }}</div>
+          <div class="text-body-large font-weight-medium text-truncate">{{ item.catalog.name }}</div>
 
-          <div class="text-caption text-medium-emphasis">
+          <div class="text-body-small text-medium-emphasis">
             {{ item.catalog.catalog_num }}
             <span v-if="item.catalog.num_parts"> · {{ count(item.catalog.num_parts) }} dielikov</span>
           </div>
 
           <div class="d-flex ga-4 mt-1">
             <div v-if="item.market_price">
-              <div class="text-caption text-medium-emphasis">{{ t('wishlist.marketNow') }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('wishlist.marketNow') }}</div>
 
               <div
-                class="text-body-2 font-weight-medium"
+                class="text-body-medium font-weight-medium"
                 :class="{ 'text-positive': item.target_reached }"
               >{{ exactMoney(item.market_price) }}</div>
             </div>
 
             <div v-if="item.target_price_eur">
-              <div class="text-caption text-medium-emphasis">{{ t('wishlist.target') }}</div>
-              <div class="text-body-2">{{ exactMoney(item.target_price_eur) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('wishlist.target') }}</div>
+              <div class="text-body-medium">{{ exactMoney(item.target_price_eur) }}</div>
             </div>
 
             <div v-else>
-              <div class="text-caption text-medium-emphasis">{{ t('wishlist.target') }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('wishlist.target') }}</div>
               <v-btn class="px-0" size="small" variant="text" @click="openEdit(item)">{{ t('wishlist.setTarget') }}</v-btn>
             </div>
 
             <div v-if="item.distance_pct !== null && item.distance_pct !== undefined">
-              <div class="text-caption text-medium-emphasis">{{ t('wishlist.distance') }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('wishlist.distance') }}</div>
 
               <!-- Nad cieľom červené, na cieli a pod ním zelené. -->
-              <div class="text-body-2 font-weight-bold" :class="item.distance_pct <= 0 ? 'text-positive' : 'text-negative'">
+              <div class="text-body-medium font-weight-bold" :class="item.distance_pct <= 0 ? 'text-positive' : 'text-negative'">
                 {{ percent(item.distance_pct, { decimals: 0 }) }}
               </div>
             </div>

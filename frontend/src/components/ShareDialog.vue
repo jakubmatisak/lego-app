@@ -94,7 +94,7 @@
           <v-btn value="chosen">{{ t('share.chosen') }}</v-btn>
         </v-btn-toggle>
 
-        <div class="text-body-2 text-medium-emphasis">
+        <div class="text-body-medium text-medium-emphasis">
           {{ mode === 'all' ? t('share.allHint') : t('share.chosenHint') }}
         </div>
 
@@ -145,7 +145,7 @@
             </v-list-item>
           </v-list>
 
-          <div class="text-caption">
+          <div class="text-body-small">
             {{ t('share.pickedCount', { sets: t('collection.setsPlural', picked.size, { named: { count: picked.size } }) }) }}
           </div>
         </template>

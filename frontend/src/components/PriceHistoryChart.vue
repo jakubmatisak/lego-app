@@ -178,7 +178,7 @@
 
 <template>
   <div v-if="hasData">
-    <div class="text-caption text-medium-emphasis mb-1">{{ t('detail.historyTitle') }}</div>
+    <div class="text-body-small text-medium-emphasis mb-1">{{ t('detail.historyTitle') }}</div>
 
     <div class="price-history">
       <Line :data="chartData" :options="chartOptions" />

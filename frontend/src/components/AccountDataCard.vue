@@ -64,8 +64,8 @@
 
 <template>
   <v-card border class="pa-4 d-flex flex-column ga-3" flat>
-    <div class="text-subtitle-1 font-weight-medium">{{ t('account.title') }}</div>
-    <div class="text-body-2 text-medium-emphasis">{{ t('account.intro') }}</div>
+    <div class="text-body-large font-weight-medium">{{ t('account.title') }}</div>
+    <div class="text-body-medium text-medium-emphasis">{{ t('account.intro') }}</div>
 
     <div class="d-flex ga-2 flex-wrap">
       <v-btn :loading="exporting" prepend-icon="mdi-download" variant="tonal" @click="exportData">
@@ -87,7 +87,7 @@
       <v-card :title="t('account.deleteTitle')">
         <v-card-text class="d-flex flex-column ga-3">
           <v-alert type="error" variant="tonal">{{ t('account.deleteWarning') }}</v-alert>
-          <div class="text-body-2">{{ t('account.deleteExportFirst') }}</div>
+          <div class="text-body-medium">{{ t('account.deleteExportFirst') }}</div>
 
           <v-btn
             class="align-self-start"

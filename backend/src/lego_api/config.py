@@ -15,7 +15,14 @@ class Settings(BaseSettings):
     jwt_secret: str = "zmen-ma-v-produkcii"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 15
+    #: Zapamätané prihlásenie („Zapamätať si prihlásenie na tomto počítači“):
+    #: trvalé cookie, pri každej obnove tokenu sa posunie.
     refresh_token_days: int = 30
+    #: Prihlásenie bez zapamätania: session cookie zanikne so zatvorením
+    #: prehliadača, lenže prehliadač s obnovou kariet ho vráti aj po reštarte.
+    #: Server ho preto stráži sám: po 12 h bez použitia (noc, zabudnutá
+    #: karta na cudzom počítači) sa pýta heslo, cez deň obnova stačí.
+    refresh_session_hours: int = 12
     cookie_secure: bool = False
     cookie_domain: str | None = None
     #: Len východisko pre novú inštaláciu. Správca to prebije v Nastaveniach.
@@ -53,7 +60,7 @@ class Settings(BaseSettings):
     photos_per_item: int = 12
     #: Verzia zásad ochrany súkromia (frontend `/sukromie`). Po zmene textu
     #: zvýšiť; prihlásený používateľ uvidí jednorazové oznámenie.
-    privacy_version: str = "2026-09-30.2"
+    privacy_version: str = "2026-09-30.4"
 
     # Ostatné
     cors_origins: str = "http://localhost:3000,http://localhost:5173"

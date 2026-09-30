@@ -116,8 +116,8 @@
 
     <div class="pa-3 d-flex flex-column ga-2 flex-grow-1">
       <div>
-        <div class="text-body-1 font-weight-medium text-truncate">{{ row.catalog.name }}</div>
-        <div class="text-caption text-medium-emphasis text-truncate">{{ meta }}</div>
+        <div class="text-body-large font-weight-medium text-truncate">{{ row.catalog.name }}</div>
+        <div class="text-body-small text-medium-emphasis text-truncate">{{ meta }}</div>
       </div>
 
       <div class="d-flex flex-wrap ga-1">
@@ -146,9 +146,9 @@
 
       <div class="d-flex align-end ga-2 mt-auto">
         <div class="d-flex flex-column">
-          <span class="text-caption text-medium-emphasis">{{ t('collection.purchased') }}</span>
+          <span class="text-body-small text-medium-emphasis">{{ t('collection.purchased') }}</span>
 
-          <span class="text-body-2">
+          <span class="text-body-medium">
             {{ exactMoney(row.purchase_total) }}
             <v-icon
               v-if="row.purchase_auto"
@@ -162,19 +162,19 @@
         <v-icon class="mb-1" color="medium-emphasis" icon="mdi-arrow-right" size="16" />
 
         <div class="d-flex flex-column">
-          <span class="text-caption text-medium-emphasis">
+          <span class="text-body-small text-medium-emphasis">
             {{ sold ? t('collection.soldFor') : t('collection.value') }}
           </span>
           <!-- Bez trhovej ceny nemá zmysel ukazovať hodnotu ani percento. -->
           <!-- Na úzkej karte sa to nesmie zlomiť do troch riadkov. Cenu doplníš v detaile. -->
           <span
             v-if="!sold && priceUnknown"
-            class="text-body-2 text-medium-emphasis text-no-wrap"
+            class="text-body-medium text-medium-emphasis text-no-wrap"
           >{{ t('collection.unknownPrice') }}</span>
 
           <span
             v-else
-            class="text-body-1 font-weight-medium"
+            class="text-body-large font-weight-medium"
             :title="!sold && priceApprox ? t('collection.approxPriceHint') : undefined"
           >
             <span v-if="!sold && priceApprox" class="text-medium-emphasis">≈ </span>
@@ -223,7 +223,7 @@
   background: rgb(var(--v-theme-surface-variant));
 }
 
-.set-card--sold .text-body-1 {
+.set-card--sold .text-body-large {
   color: rgb(var(--v-theme-on-surface-variant));
 }
 

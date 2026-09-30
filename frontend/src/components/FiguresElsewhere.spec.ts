@@ -29,7 +29,7 @@ describe('Zbierka: figúrky zo sérií sú vo Figúrkach', () => {
 
   it('písmo je malé: trieda typografie, ktorú Vuetify 4 naozaj má', () => {
     // Vuetify 4 má typografiu MD3 (text-body-medium, 14 px). Staré triedy ako
-    // text-body-2 v jeho CSS nie sú: riadok by zdedil 16 px a v prázdnom stave
+    // text-body-medium v jeho CSS nie sú: riadok by zdedil 16 px a v prázdnom stave
     // bol väčší než rada „Skús zmeniť filtre…“ nad ním.
     const classes = render(3).find('.figures-elsewhere').classes()
     expect(classes).toContain('text-body-medium')

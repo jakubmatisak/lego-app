@@ -129,7 +129,7 @@
 
       <v-card-text class="d-flex flex-column ga-4 pt-4">
         <div>
-          <div class="text-subtitle-2 mb-2">{{ t('piece.condition') }}</div>
+          <div class="text-title-small mb-2">{{ t('piece.condition') }}</div>
 
           <v-chip-group v-model="condition" column mandatory selected-class="bg-primary">
             <v-chip
@@ -143,7 +143,7 @@
         </div>
 
         <div v-if="isMinifig">
-          <div class="text-subtitle-2 mb-2">{{ t('piece.variant') }}</div>
+          <div class="text-title-small mb-2">{{ t('piece.variant') }}</div>
 
           <v-chip-group v-model="variant" column selected-class="bg-primary">
             <v-chip
@@ -157,7 +157,7 @@
         </div>
 
         <div>
-          <div class="text-subtitle-2 mb-2">{{ t('piece.flags') }}</div>
+          <div class="text-title-small mb-2">{{ t('piece.flags') }}</div>
 
           <v-chip-group v-model="flags" column multiple selected-class="bg-primary">
             <v-chip
@@ -171,7 +171,7 @@
         </div>
 
         <div>
-          <div class="text-subtitle-2 mb-2">{{ t('purpose.label') }}</div>
+          <div class="text-title-small mb-2">{{ t('purpose.label') }}</div>
 
           <v-chip-group v-model="purpose" column selected-class="bg-primary">
             <v-chip
@@ -229,7 +229,7 @@
           :hint="t('piece.categoriesHint')"
           :label="t('piece.categories')"
           :picker="categories"
-          title-class="text-subtitle-2"
+          title-class="text-title-small"
           @managed="emit('categories-changed')"
         />
 

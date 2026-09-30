@@ -221,7 +221,7 @@
 <template>
   <div class="d-flex flex-column ga-4">
     <div class="d-flex align-center flex-wrap ga-2">
-      <span class="text-body-2 text-medium-emphasis">
+      <span class="text-body-medium text-medium-emphasis">
         {{ t(isMinifigs ? 'minifigs.summary' : 'minifigs.summaryOther', { figures, collecting: counts.collecting, complete: counts.complete }) }}
       </span>
 
@@ -287,7 +287,7 @@
     </v-alert>
 
     <v-card v-if="sync?.running" class="pa-3" color="surface-variant" flat>
-      <div class="text-body-2 mb-2">{{ syncLabel }}</div>
+      <div class="text-body-medium mb-2">{{ syncLabel }}</div>
 
       <v-progress-linear
         color="primary"
@@ -401,16 +401,16 @@
         />
 
         <div class="pa-3 d-flex flex-column ga-1 flex-grow-1">
-          <div class="text-body-1 font-weight-medium text-truncate">{{ row.name }}</div>
+          <div class="text-body-large font-weight-medium text-truncate">{{ row.name }}</div>
 
-          <div class="text-caption text-medium-emphasis">
+          <div class="text-body-small text-medium-emphasis">
             <template v-if="row.series_num">{{ row.series_num }}</template>
             <span v-if="row.year"> · {{ row.year }}</span>
           </div>
 
           <template v-if="row.total > 0">
             <div class="d-flex align-center mt-2">
-              <span class="text-body-2">{{ t('dashboard.seriesOf', { owned: row.owned, total: row.total }) }}</span>
+              <span class="text-body-medium">{{ t('dashboard.seriesOf', { owned: row.owned, total: row.total }) }}</span>
               <v-spacer />
 
               <v-chip
@@ -436,7 +436,7 @@
             </div>
           </template>
 
-          <div v-else class="text-caption text-medium-emphasis mt-2">{{ t('minifigs.notSynced') }}</div>
+          <div v-else class="text-body-small text-medium-emphasis mt-2">{{ t('minifigs.notSynced') }}</div>
         </div>
       </v-card>
     </CardGrid>

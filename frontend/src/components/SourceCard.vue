@@ -79,7 +79,7 @@
   <v-card border class="pa-4" :class="{ 'source--off': !source.available }" flat>
     <!-- Hlavička -->
     <div class="d-flex align-center flex-wrap ga-2">
-      <span class="text-h6">{{ t(`sources.${source.provider}.name`) }}</span>
+      <span class="text-title-large font-weight-medium">{{ t(`sources.${source.provider}.name`) }}</span>
 
       <v-chip :color="source.paid ? 'secondary' : 'positive'" label size="x-small" variant="tonal">
         {{ source.paid ? t('sources.paid') : t('sources.free') }}
@@ -90,10 +90,10 @@
       </v-chip>
 
       <v-spacer />
-      <span v-if="usage && source.available" class="text-caption text-medium-emphasis">{{ usage }}</span>
+      <span v-if="usage && source.available" class="text-body-small text-medium-emphasis">{{ usage }}</span>
     </div>
 
-    <div class="text-body-2 text-medium-emphasis mt-1">{{ t(`sources.${source.provider}.about`) }}</div>
+    <div class="text-body-medium text-medium-emphasis mt-1">{{ t(`sources.${source.provider}.about`) }}</div>
 
     <v-alert
       v-if="source.provider === 'brickeconomy' || source.provider === 'brickset'"
@@ -102,8 +102,8 @@
       type="info"
       variant="tonal"
     >
-      <span class="text-caption">{{ t('sources.ownDataOnly') }}</span>
-      <span v-if="source.provider === 'brickeconomy'" class="text-caption"> {{ t('sources.personalLicense') }}</span>
+      <span class="text-body-small">{{ t('sources.ownDataOnly') }}</span>
+      <span v-if="source.provider === 'brickeconomy'" class="text-body-small"> {{ t('sources.personalLicense') }}</span>
     </v-alert>
 
     <!-- Kľúč -->
@@ -160,11 +160,11 @@
 
     <!-- Čo odomkne -->
     <div class="mt-3">
-      <div class="text-caption text-medium-emphasis">
+      <div class="text-body-small text-medium-emphasis">
         {{ source.available ? t('sources.unlocks') : t('sources.wouldUnlock') }}
       </div>
 
-      <ul class="unlocks text-body-2">
+      <ul class="unlocks text-body-medium">
         <li v-for="line in unlocks" :key="line">{{ line }}</li>
       </ul>
     </div>
@@ -172,7 +172,7 @@
     <!-- Prepínače volaní -->
     <template v-if="source.available">
       <v-divider class="my-3" />
-      <div class="text-subtitle-2 mb-1">{{ t('sources.calls') }}</div>
+      <div class="text-title-small mb-1">{{ t('sources.calls') }}</div>
 
       <div v-for="cap in source.capabilities" :key="cap.key" class="cap-row">
         <v-switch
@@ -184,7 +184,7 @@
           @update:model-value="value => emit('toggle', cap.key, Boolean(value))"
         >
           <template #label>
-            <span class="text-body-2">{{ t(`capabilities.${cap.key}.title`) }}</span>
+            <span class="text-body-medium">{{ t(`capabilities.${cap.key}.title`) }}</span>
 
             <v-chip
               v-if="cap.required"
@@ -212,7 +212,7 @@
           </template>
         </v-switch>
 
-        <div class="cap-hint text-caption text-medium-emphasis">
+        <div class="cap-hint text-body-small text-medium-emphasis">
           {{ t(`capabilities.${cap.key}.hint`) }}
           <template v-if="brings(cap.key)"><br>{{ t('sources.brings', { what: brings(cap.key) }) }}</template>
         </div>
@@ -258,7 +258,7 @@
           @update:model-value="value => emit('auto-purchase', Boolean(value))"
         />
 
-        <div class="cap-hint text-caption text-medium-emphasis">{{ t('sources.autoPurchaseHint') }}</div>
+        <div class="cap-hint text-body-small text-medium-emphasis">{{ t('sources.autoPurchaseHint') }}</div>
       </div>
 
       <!-- Obnova cien patrí ku kľúču cien -->

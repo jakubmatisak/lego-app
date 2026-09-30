@@ -183,7 +183,7 @@
     </div>
 
     <div v-if="store.views.length > 0" class="d-flex flex-wrap ga-1 align-center">
-      <span class="text-caption text-medium-emphasis me-1">{{ t('filters.views') }}</span>
+      <span class="text-body-small text-medium-emphasis me-1">{{ t('filters.views') }}</span>
 
       <v-chip
         v-for="view in store.views"

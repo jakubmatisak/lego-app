@@ -48,7 +48,7 @@
 
 <template>
   <div class="d-flex flex-column ga-4">
-    <div class="text-body-2 text-medium-emphasis">{{ t('sources.intro') }}</div>
+    <div class="text-body-medium text-medium-emphasis">{{ t('sources.intro') }}</div>
 
     <SourceCard
       v-for="source in sources"

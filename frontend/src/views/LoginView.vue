@@ -31,6 +31,12 @@
 
   /** Registrácia: prečítal si zásady ochrany súkromia (povinné). */
   const privacyRead = ref(false)
+  /**
+   * Zapamätať si prihlásenie na tomto počítači: cookie na 30 dní namiesto
+   * do zatvorenia prehliadača. Predvolene nie, aj pri registrácii: na
+   * cudzom či spoločnom počítači by inak ostal účet otvorený.
+   */
+  const remember = ref(false)
   const canSubmit = computed(() =>
     email.value.includes('@')
     && password.value.length >= (isRegister.value ? 8 : 1)
@@ -58,7 +64,7 @@
 
   async function submit (): Promise<void> {
     const target = router.resolve(safeRedirect(route.query.redirect as string | undefined)).href
-    await auth.signIn(isRegister.value ? 'register' : 'login', email.value, password.value, displayName.value, target)
+    await auth.signIn(isRegister.value ? 'register' : 'login', email.value, password.value, displayName.value, target, remember.value)
   }
 </script>
 
@@ -76,8 +82,8 @@
           <v-icon color="primary" icon="mdi-toy-brick" size="32" />
 
           <div>
-            <div class="text-h5 font-weight-bold">{{ t('app.name') }}</div>
-            <div class="text-caption text-medium-emphasis">{{ t('app.tagline') }}</div>
+            <div class="text-headline-small font-weight-bold">{{ t('app.name') }}</div>
+            <div class="text-body-small text-medium-emphasis">{{ t('app.tagline') }}</div>
           </div>
         </div>
 
@@ -93,7 +99,7 @@
           <v-tab value="register">{{ t('auth.registerTitle') }}</v-tab>
         </v-tabs>
 
-        <div v-else class="text-h6 mb-4">{{ t('auth.loginTitle') }}</div>
+        <div v-else class="text-title-large font-weight-medium mb-4">{{ t('auth.loginTitle') }}</div>
 
         <v-alert v-if="auth.error" class="mb-4" type="error" variant="tonal">
           {{ auth.error }}
@@ -141,10 +147,20 @@
             hide-details
           >
             <template #label>
-              <span class="text-body-2">
+              <span class="text-body-medium">
                 {{ t('auth.privacyRead') }}
                 <router-link target="_blank" to="/sukromie" @click.stop>{{ t('privacy.title') }}</router-link>
               </span>
+            </template>
+          </v-checkbox>
+
+          <v-checkbox
+            v-model="remember"
+            density="compact"
+            hide-details
+          >
+            <template #label>
+              <span class="text-body-medium">{{ t('auth.remember') }}</span>
             </template>
           </v-checkbox>
 
@@ -158,7 +174,7 @@
           >{{ isRegister ? t('auth.register') : t('auth.login') }}</v-btn>
         </v-form>
 
-        <div v-if="isRegister" class="text-caption text-medium-emphasis mt-4">
+        <div v-if="isRegister" class="text-body-small text-medium-emphasis mt-4">
           {{ t('auth.firstAccountAdmin') }}
         </div>
 
@@ -174,7 +190,7 @@
           variant="tonal"
           @click:close="closeNote"
         >
-          <span class="text-caption">{{ t('privacy.cookieNote') }}</span>
+          <span class="text-body-small">{{ t('privacy.cookieNote') }}</span>
         </v-alert>
       </v-card>
     </v-main>

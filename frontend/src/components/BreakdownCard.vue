@@ -55,7 +55,7 @@
   <v-card border class="h-100" flat>
     <v-card-item>
       <div class="d-flex align-center ga-3 flex-wrap">
-        <v-card-title class="text-h6 pa-0">{{ t('insights.breakdownTitle') }}</v-card-title>
+        <v-card-title class="text-title-large font-weight-medium pa-0">{{ t('insights.breakdownTitle') }}</v-card-title>
 
         <v-btn-toggle
           v-model="by"
@@ -95,7 +95,7 @@
               <!-- Hodnota je len z ocenených kusov; koľko cenu nemá, povie poznámka. -->
               <div
                 v-if="row.price_missing > 0 && row.market_value !== null"
-                class="text-caption text-medium-emphasis"
+                class="text-body-small text-medium-emphasis"
               >{{ t('totals.noPrice', { count: row.price_missing }) }}</div>
             </td>
 
@@ -105,7 +105,7 @@
 
               <template v-else>
                 {{ money(row.unrealized, { sign: true }) }}
-                <span v-if="row.unrealized_pct !== null" class="text-caption">
+                <span v-if="row.unrealized_pct !== null" class="text-body-small">
                   · {{ percent(row.unrealized_pct, { decimals: 0 }) }}
                 </span>
               </template>
@@ -120,7 +120,7 @@
       </v-table>
     </div>
 
-    <div v-if="subthemesMissing" class="px-4 pb-3 text-caption text-medium-emphasis">
+    <div v-if="subthemesMissing" class="px-4 pb-3 text-body-small text-medium-emphasis">
       {{ t('insights.subthemeHint') }}
     </div>
   </v-card>

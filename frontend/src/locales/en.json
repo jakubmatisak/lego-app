@@ -35,7 +35,8 @@
     "registerClosed": "Registration is closed. Ask the administrator for an account.",
     "passwordHint": "At least 8 characters",
     "firstAccountAdmin": "The first account created becomes the administrator.",
-    "privacyRead": "I have read the"
+    "privacyRead": "I have read the",
+    "remember": "Remember me on this computer"
   },
   "dashboard": {
     "title": "Overview",
@@ -1231,7 +1232,7 @@
     "operator": "Operator",
     "noOperator": "The administrator of this instance has not filled in their name and contact yet (Settings → Application).",
     "cookiesTitle": "Cookies and browser storage",
-    "cookiesIntro": "The app uses only one strictly necessary sign-in cookie and remembers settings you choose in the browser. Under § 109(8) of Act No. 452/2021 no consent is needed for that. It uses no analytics, advertising or tracking.",
+    "cookiesIntro": "The app uses only one strictly necessary sign-in cookie and remembers settings you choose in the browser. Under § 109(8) of Act No. 452/2021 no consent is needed for that. The sign-in cookie ends when you close the browser; it stays for 30 days only if you tick Remember me yourself when signing in. It uses no analytics, advertising or tracking.",
     "cookieNote": "We use only a strictly necessary sign-in cookie, no analytics or ads. Details are in the privacy policy.",
     "updated": "The privacy policy has changed.",
     "understood": "Got it",
@@ -1246,7 +1247,7 @@
       "camera": "Chosen scanning camera",
       "range": "Chart range on the dashboard",
       "note": "Cookie note dismissed",
-      "days30": "30 days",
+      "refreshLasts": "until you close the browser; 30 days if you tick Remember me",
       "untilCleared": "until you clear it"
     }
   },

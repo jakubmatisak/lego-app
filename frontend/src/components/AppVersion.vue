@@ -23,5 +23,5 @@
 </script>
 
 <template>
-  <div v-if="version" class="text-caption text-medium-emphasis">{{ t('settings.appVersion', { version }) }}</div>
+  <div v-if="version" class="text-body-small text-medium-emphasis">{{ t('settings.appVersion', { version }) }}</div>
 </template>

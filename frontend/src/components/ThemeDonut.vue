@@ -43,8 +43,8 @@
       <Doughnut :data="chartData" :options="chartOptions" />
 
       <div class="theme-donut__center text-center">
-        <div class="text-h6 font-weight-medium">{{ total }}</div>
-        <div class="text-caption text-medium-emphasis">{{ t('dashboard.donutSetsPlural', total) }}</div>
+        <div class="text-title-large font-weight-medium">{{ total }}</div>
+        <div class="text-body-small text-medium-emphasis">{{ t('dashboard.donutSetsPlural', total) }}</div>
       </div>
     </div>
 
@@ -52,7 +52,7 @@
       <div
         v-for="(slice, index) in top"
         :key="slice.theme"
-        class="d-flex align-center ga-2 text-body-2"
+        class="d-flex align-center ga-2 text-body-medium"
       >
         <span
           class="theme-donut__swatch"

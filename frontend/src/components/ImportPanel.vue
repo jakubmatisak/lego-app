@@ -248,15 +248,15 @@
 
     <!-- 1. Nahratie -->
     <v-card v-if="!current" border class="pa-4" flat>
-      <div class="text-h6 mb-1">{{ t('imports.title') }}</div>
-      <div class="text-body-2 text-medium-emphasis mb-4">{{ t('imports.intro') }}</div>
+      <div class="text-title-large font-weight-medium mb-1">{{ t('imports.title') }}</div>
+      <div class="text-body-medium text-medium-emphasis mb-4">{{ t('imports.intro') }}</div>
 
       <div class="steps mb-4">
         <div class="step">
           <v-avatar color="primary" size="28" variant="tonal">1</v-avatar>
 
           <div>
-            <div class="text-subtitle-2">{{ t('imports.step1') }}</div>
+            <div class="text-title-small">{{ t('imports.step1') }}</div>
 
             <div class="d-flex ga-2 flex-wrap mt-2">
               <v-btn prepend-icon="mdi-microsoft-excel" size="small" variant="outlined" @click="download('xlsx')">
@@ -274,8 +274,8 @@
           <v-avatar color="primary" size="28" variant="tonal">2</v-avatar>
 
           <div>
-            <div class="text-subtitle-2">{{ t('imports.step2') }}</div>
-            <div class="text-caption text-medium-emphasis">{{ t('imports.step2Hint') }}</div>
+            <div class="text-title-small">{{ t('imports.step2') }}</div>
+            <div class="text-body-small text-medium-emphasis">{{ t('imports.step2Hint') }}</div>
           </div>
         </div>
 
@@ -283,8 +283,8 @@
           <v-avatar color="primary" size="28" variant="tonal">3</v-avatar>
 
           <div>
-            <div class="text-subtitle-2">{{ t('imports.step3') }}</div>
-            <div class="text-caption text-medium-emphasis">{{ t('imports.step3Hint') }}</div>
+            <div class="text-title-small">{{ t('imports.step3') }}</div>
+            <div class="text-body-small text-medium-emphasis">{{ t('imports.step3Hint') }}</div>
           </div>
         </div>
       </div>
@@ -304,8 +304,8 @@
 
         <template v-else>
           <v-icon color="primary" icon="mdi-file-upload-outline" size="40" />
-          <div class="text-subtitle-1 mt-2">{{ t('imports.drop') }}</div>
-          <div class="text-caption text-medium-emphasis">{{ t('imports.dropHint') }}</div>
+          <div class="text-body-large mt-2">{{ t('imports.drop') }}</div>
+          <div class="text-body-small text-medium-emphasis">{{ t('imports.dropHint') }}</div>
         </template>
 
         <input
@@ -317,7 +317,7 @@
         >
       </div>
 
-      <div class="text-caption text-medium-emphasis mt-3">
+      <div class="text-body-small text-medium-emphasis mt-3">
         <v-icon icon="mdi-lightbulb-outline" size="small" />
         {{ t('imports.tipExport') }}
       </div>
@@ -327,7 +327,7 @@
     <v-card v-else border class="pa-4" flat>
       <div class="d-flex align-center flex-wrap ga-2 mb-3">
         <v-icon icon="mdi-file-table-outline" />
-        <span class="text-h6">{{ current.filename }}</span>
+        <span class="text-title-large font-weight-medium">{{ current.filename }}</span>
         <v-chip v-if="current.state === 'committed'" color="positive" size="small" variant="tonal">{{ t('imports.state.committed') }}</v-chip>
         <v-chip v-else-if="current.state === 'undone'" size="small" variant="tonal">{{ t('imports.state.undone') }}</v-chip>
         <v-spacer />
@@ -351,18 +351,18 @@
 
       <!-- Dohľadávanie -->
       <div v-if="lookingUp" class="mb-4">
-        <div class="text-body-2 mb-1">
+        <div class="text-body-medium mb-1">
           {{ t('imports.lookingUp', { done: current.progress_done, total: current.progress_total }) }}
         </div>
 
         <v-progress-linear color="primary" height="8" :model-value="progressPct" rounded />
-        <div class="text-caption text-medium-emphasis mt-1">{{ t('imports.lookingUpHint') }}</div>
+        <div class="text-body-small text-medium-emphasis mt-1">{{ t('imports.lookingUpHint') }}</div>
       </div>
 
       <!-- Hotovo -->
       <v-alert v-if="current.state === 'committed'" class="mb-4" type="success" variant="tonal">
         {{ t('imports.done', { pieces: current.pieces_created, wishes: current.wishes_created }) }}
-        <div class="text-caption mt-1">{{ t('imports.doneHint') }}</div>
+        <div class="text-body-small mt-1">{{ t('imports.doneHint') }}</div>
 
         <template #append>
           <div class="d-flex ga-2 flex-wrap">
@@ -411,7 +411,7 @@
         </v-chip>
       </v-chip-group>
 
-      <div v-if="isDraft && current.counts.duplicate" class="text-caption text-medium-emphasis mb-2">
+      <div v-if="isDraft && current.counts.duplicate" class="text-body-small text-medium-emphasis mb-2">
         {{ t('imports.duplicateHint') }}
       </div>
 
@@ -453,8 +453,8 @@
                     <img v-if="row.image_url" alt="" class="thumb" :src="imageSrc(row.image_url) ?? undefined">
 
                     <div>
-                      <div class="text-body-2">{{ row.name ?? row.name_hint ?? '—' }}</div>
-                      <div class="text-caption text-medium-emphasis">{{ row.catalog_num ?? row.raw_num }}</div>
+                      <div class="text-body-medium">{{ row.name ?? row.name_hint ?? '—' }}</div>
+                      <div class="text-body-small text-medium-emphasis">{{ row.catalog_num ?? row.raw_num }}</div>
                     </div>
                   </div>
                 </td>
@@ -472,7 +472,7 @@
 
                   <template v-else>
                     {{ row.purchase_price ? exactMoney(row.purchase_price) : '—' }}
-                    <div v-if="row.ownership === 'sold'" class="text-caption text-medium-emphasis">
+                    <div v-if="row.ownership === 'sold'" class="text-body-small text-medium-emphasis">
                       → {{ exactMoney(row.sold_price) }}
                     </div>
                   </template>
@@ -480,7 +480,7 @@
 
                 <td class="text-no-wrap">
                   {{ row.purchase_date ? shortDate(row.purchase_date) : '' }}
-                  <div v-if="row.sold_date" class="text-caption text-medium-emphasis">→ {{ shortDate(row.sold_date) }}</div>
+                  <div v-if="row.sold_date" class="text-body-small text-medium-emphasis">→ {{ shortDate(row.sold_date) }}</div>
                 </td>
 
                 <td>{{ row.location ?? '' }}</td>
@@ -492,11 +492,11 @@
                 <td />
 
                 <td colspan="8">
-                  <div v-for="(message, i) in row.errors" :key="`e${i}`" class="text-caption text-negative">
+                  <div v-for="(message, i) in row.errors" :key="`e${i}`" class="text-body-small text-negative">
                     <v-icon icon="mdi-alert-circle-outline" size="x-small" /> {{ message }}
                   </div>
 
-                  <div v-for="(message, i) in row.warnings" :key="`w${i}`" class="text-caption text-medium-emphasis">
+                  <div v-for="(message, i) in row.warnings" :key="`w${i}`" class="text-body-small text-medium-emphasis">
                     <v-icon icon="mdi-information-outline" size="x-small" /> {{ message }}
                   </div>
                 </td>
@@ -507,7 +507,7 @@
       </div>
 
       <div v-if="isDraft" class="d-flex align-center flex-wrap ga-2 mt-4">
-        <div class="text-body-2 text-medium-emphasis">
+        <div class="text-body-medium text-medium-emphasis">
           <template v-if="current.counts.error">{{ t('imports.skipped', { count: current.counts.error }) }}</template>
         </div>
 
@@ -527,7 +527,7 @@
 
     <!-- História -->
     <v-card v-if="history.length > 0" border class="pa-4" flat>
-      <div class="text-h6 mb-2">{{ t('imports.history') }}</div>
+      <div class="text-title-large font-weight-medium mb-2">{{ t('imports.history') }}</div>
 
       <v-list density="compact">
         <v-list-item

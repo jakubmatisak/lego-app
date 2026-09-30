@@ -35,7 +35,8 @@
     "registerClosed": "Registrácia je zatvorená. O účet požiadaj správcu.",
     "passwordHint": "Aspoň 8 znakov",
     "firstAccountAdmin": "Prvý založený účet sa stane správcom.",
-    "privacyRead": "Prečítal(a) som si"
+    "privacyRead": "Prečítal(a) som si",
+    "remember": "Zapamätať si prihlásenie na tomto počítači"
   },
   "dashboard": {
     "title": "Prehľad",
@@ -1231,7 +1232,7 @@
     "operator": "Prevádzkovateľ",
     "noOperator": "Správca tejto inštancie ešte nevyplnil svoje meno a kontakt (Nastavenia → Aplikácia).",
     "cookiesTitle": "Cookies a úložisko v prehliadači",
-    "cookiesIntro": "Appka používa len jedno nevyhnutné cookie na prihlásenie a v prehliadači si pamätá nastavenia, ktoré si sám zvolíš. Na to podľa § 109 ods. 8 zákona č. 452/2021 Z. z. súhlas netreba. Analytiku, reklamu ani sledovanie nepoužíva.",
+    "cookiesIntro": "Appka používa len jedno nevyhnutné cookie na prihlásenie a v prehliadači si pamätá nastavenia, ktoré si sám zvolíš. Na to podľa § 109 ods. 8 zákona č. 452/2021 Z. z. súhlas netreba. Cookie prihlásenia zanikne so zatvorením prehliadača; na 30 dní ostane, len keď pri prihlásení sám zaškrtneš Zapamätať si prihlásenie. Analytiku, reklamu ani sledovanie nepoužíva.",
     "cookieNote": "Používame len nevyhnutné cookie na prihlásenie, bez analytiky a reklamy. Podrobnosti sú v zásadách ochrany súkromia.",
     "updated": "Zásady ochrany súkromia sa zmenili.",
     "understood": "Rozumiem",
@@ -1246,7 +1247,7 @@
       "camera": "Zvolená kamera na skenovanie",
       "range": "Rozsah grafu na Prehľade",
       "note": "Poznámka o cookies je zavretá",
-      "days30": "30 dní",
+      "refreshLasts": "do zatvorenia prehliadača; 30 dní, keď zaškrtneš Zapamätať si prihlásenie",
       "untilCleared": "kým ho nezmažeš"
     }
   },

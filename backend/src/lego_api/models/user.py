@@ -57,5 +57,9 @@ class RefreshToken(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(TimestampTZ, default=None)
     created_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow)
     user_agent: Mapped[str | None] = mapped_column(String(255), default=None)
+    #: Zapamätané prihlásenie: cookie na 30 dní, inak do zatvorenia prehliadača.
+    #: Obnova tokenu režim zdedí. Tokeny spred tohto stĺpca sú bez zapamätania:
+    #: kĺzavých 30 dní by inak ostalo trvalých naveky, hoci ich nikto nezvolil.
+    remember: Mapped[bool] = mapped_column(default=False, server_default="0")
 
     user: Mapped[User] = relationship(back_populates="refresh_tokens")

@@ -259,9 +259,9 @@
           <SetImage :alt="found.name" :size="160" :src="imageSrc(found.image_url) ?? undefined" />
 
           <div class="flex-grow-1" style="min-width: 220px">
-            <div class="text-h5 font-weight-bold">{{ found.name }}</div>
+            <div class="text-headline-small font-weight-bold">{{ found.name }}</div>
 
-            <div class="text-body-1 text-medium-emphasis">
+            <div class="text-body-large text-medium-emphasis">
               {{ found.catalog_num }}
               <span v-if="found.theme"> · {{ found.theme }}</span>
               <span v-if="found.year"> · {{ found.year }}</span>
@@ -283,19 +283,19 @@
 
           <div v-if="!isSeries" class="d-flex ga-6">
             <div>
-              <div class="text-caption text-medium-emphasis">{{ t('check.newLabel') }}</div>
-              <div class="text-h4 font-weight-bold">{{ money(newValue) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('check.newLabel') }}</div>
+              <div class="text-headline-large font-weight-bold">{{ money(newValue) }}</div>
             </div>
 
             <div>
-              <div class="text-caption text-medium-emphasis">{{ t('check.usedLabel') }}</div>
-              <div class="text-h4 font-weight-bold">{{ money(usedValue) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('check.usedLabel') }}</div>
+              <div class="text-headline-large font-weight-bold">{{ money(usedValue) }}</div>
             </div>
           </div>
         </div>
 
         <template v-if="isSeries">
-          <div class="text-body-2">{{ t('check.pickMember') }}</div>
+          <div class="text-body-medium">{{ t('check.pickMember') }}</div>
 
           <div class="d-flex ga-2 flex-wrap">
             <v-chip
@@ -309,11 +309,11 @@
 
         <template v-else>
           <div class="d-flex align-center ga-2 flex-wrap">
-            <span v-if="priceNote" class="text-body-2 text-medium-emphasis">{{ priceNote }}</span>
+            <span v-if="priceNote" class="text-body-medium text-medium-emphasis">{{ priceNote }}</span>
 
             <span
               v-if="pricesN?.current?.captured_at"
-              class="text-caption text-medium-emphasis"
+              class="text-body-small text-medium-emphasis"
             >{{ t('check.capturedAt', { time: dateTime(pricesN.current.captured_at) }) }}</span>
 
             <v-spacer />

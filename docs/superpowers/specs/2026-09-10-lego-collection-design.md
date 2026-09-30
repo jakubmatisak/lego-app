@@ -136,7 +136,8 @@ docs/superpowers/specs/  tieto dokumenty
 |---|---|---|
 | `DATABASE_URL` | `sqlite+aiosqlite:///./data/lego.db` | databáza |
 | `JWT_SECRET` | – | podpis tokenov a šifrovanie kľúčov |
-| `ACCESS_TOKEN_MINUTES` / `REFRESH_TOKEN_DAYS` | 15 / 30 | platnosť tokenov |
+| `ACCESS_TOKEN_MINUTES` / `REFRESH_TOKEN_DAYS` | 15 / 30 | platnosť tokenov (30 dní so zapamätaním prihlásenia) |
+| `REFRESH_SESSION_HOURS` | 12 | obnovovací token bez zapamätania |
 | `COOKIE_SECURE`, `COOKIE_DOMAIN` | false / – | cookie obnovovacieho tokenu |
 | `ALLOW_REGISTRATION` | true | východisko, kým ho správca v appke nezmení |
 | `BRICKECONOMY_DAILY_LIMIT` | 90 | vlastný strop pod oficiálnych 100 |
@@ -166,9 +167,23 @@ docs/superpowers/specs/  tieto dokumenty
 **Tokeny.**
 
 - Prístupový JWT platí 15 minút a drží sa len v pamäti prehliadača.
-- Obnovovací token platí 30 dní a je v httpOnly cookie. V databáze je jeho
-  sha256. Pri každom použití sa vymení a starý sa odvolá; odhlásenie ho
-  odvolá tiež.
+- Obnovovací token je v httpOnly cookie, v databáze je jeho sha256. Pri
+  každom použití sa vymení a starý sa odvolá; odhlásenie ho zmaže.
+- **Zapamätať si prihlásenie na tomto počítači** (políčko pri prihlásení
+  aj registrácii, predvolene nie, `remember` v tele): trvalé cookie na
+  30 dní. Bez neho session cookie bez Max-Age, ktoré zanikne so zatvorením
+  prehliadača, a token na serveri platí 12 hodín, lebo prehliadač s obnovou
+  kariet vráti aj session cookie. Režim je v `refresh_tokens.remember`,
+  obnova ho zdedí a platnosť posunie (kĺzavé: aktívne používanie
+  neodhlási). Tokeny spred zavedenia sú bez zapamätania. Vypršané tokeny
+  všetkých účtov sa mažú pri vydaní nového.
+- Zmena hesla zmaže všetky tokeny účtu, teda aj zapamätané prihlásenia
+  na iných počítačoch. Prehliadač, v ktorom sa heslo zmenilo, dostane nový
+  token bez zapamätania (session cookie) a ostane prihlásený do zatvorenia.
+  Zmazanie účtu zmaže tokeny s ostatnými údajmi.
+- Trvalé cookie vznikne len na výslovnú voľbu: zaškrtnutie políčka je
+  súhlas s ním, lištu netreba. Zásady ho opisujú v tabuľke cookies
+  a v Ako dlho.
 - Klient pri 401 raz skúsi obnovenie a potom pošle na prihlásenie.
 - Súbory na stiahnutie (CSV, fotky) preto idú cez klienta ako blob, nie
   obyčajným odkazom: odkaz by odišiel bez tokenu.

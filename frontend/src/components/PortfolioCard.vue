@@ -159,8 +159,8 @@
   <v-card border class="pa-4 h-100 d-flex flex-column" flat>
     <div class="d-flex align-start ga-3 flex-wrap mb-2">
       <div>
-        <div class="text-h6">{{ t('dashboard.chartTitle') }}</div>
-        <div class="text-caption text-medium-emphasis">{{ t('dashboard.chartHint') }}</div>
+        <div class="text-title-large font-weight-medium">{{ t('dashboard.chartTitle') }}</div>
+        <div class="text-body-small text-medium-emphasis">{{ t('dashboard.chartHint') }}</div>
       </div>
 
       <v-spacer />

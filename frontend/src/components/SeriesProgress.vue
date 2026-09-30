@@ -37,13 +37,13 @@
 <template>
   <v-card border class="h-100 d-flex flex-column" flat>
     <v-card-item>
-      <v-card-title class="text-h6 pa-0">{{ t('dashboard.seriesProgress') }}</v-card-title>
+      <v-card-title class="text-title-large font-weight-medium pa-0">{{ t('dashboard.seriesProgress') }}</v-card-title>
     </v-card-item>
 
     <div class="px-4 pb-4 d-flex flex-column ga-4">
       <div v-for="row in rows" :key="row.series_num">
         <div class="d-flex align-center ga-2">
-          <span class="text-body-2 font-weight-medium text-truncate">{{ row.name }}</span>
+          <span class="text-body-medium font-weight-medium text-truncate">{{ row.name }}</span>
           <v-spacer />
 
           <v-chip
@@ -55,7 +55,7 @@
             variant="tonal"
           >{{ t('dashboard.seriesDone') }}</v-chip>
 
-          <span v-else class="text-body-2 text-no-wrap">
+          <span v-else class="text-body-medium text-no-wrap">
             {{ t('dashboard.seriesOf', { owned: row.owned, total: row.total }) }}
             <span class="series-missing-count font-weight-medium">
               · {{ t('dashboard.seriesMissingPlural', row.missingCount, { named: { count: row.missingCount } }) }}
@@ -77,7 +77,7 @@
             :title="missing.name"
           />
 
-          <span v-if="row.missing.length > THUMBS" class="text-caption text-medium-emphasis">
+          <span v-if="row.missing.length > THUMBS" class="text-body-small text-medium-emphasis">
             +{{ row.missing.length - THUMBS }}
           </span>
 

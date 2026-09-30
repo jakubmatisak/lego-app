@@ -260,7 +260,7 @@
       <!-- Zúžené: len logo v strede, rovnako ako ikony položiek pod ním. -->
       <div class="d-flex align-center ga-3" :class="rail ? 'justify-center' : 'px-4'" style="height: 64px">
         <v-icon color="primary" icon="mdi-toy-brick" size="28" />
-        <span v-if="!rail" class="text-h6 font-weight-bold text-no-wrap">{{ t('app.name') }}</span>
+        <span v-if="!rail" class="text-title-large font-weight-bold text-no-wrap">{{ t('app.name') }}</span>
       </div>
 
       <v-list density="comfortable" nav>
@@ -291,7 +291,7 @@
                 >{{ item.alert }}</v-chip>
 
                 <!-- Odsadené od okraja zvýrazneného riadku, inak sa naň lepí. -->
-                <span v-else class="text-caption text-medium-emphasis me-2">{{ item.badge }}</span>
+                <span v-else class="text-body-small text-medium-emphasis me-2">{{ item.badge }}</span>
               </template>
             </v-list-item>
           </template>
@@ -308,7 +308,7 @@
                 size="18"
               />
 
-              <div class="text-caption">
+              <div class="text-body-small">
                 <div>{{ prices.running ? t('prices.refreshing') : t('prices.refreshDone') }}</div>
 
                 <div v-if="prices.running" class="font-weight-medium">
@@ -341,7 +341,7 @@
       <v-app-bar-title>
         <div class="d-flex align-center ga-2">
           <v-icon v-if="mobile" color="primary" icon="mdi-toy-brick" size="24" />
-          <span class="text-h6">{{ pageTitle }}</span>
+          <span class="text-title-large font-weight-medium">{{ pageTitle }}</span>
         </div>
       </v-app-bar-title>
 
@@ -411,7 +411,7 @@
           @click="toggleTheme"
         />
 
-        <v-btn class="text-body-2" variant="text" @click="switchLocale">
+        <v-btn class="text-body-medium" variant="text" @click="switchLocale">
           {{ locale.toUpperCase() }}
         </v-btn>
       </template>
@@ -420,7 +420,7 @@
         <template #activator="{ props: menuProps }">
           <v-btn class="me-2" icon v-bind="menuProps">
             <v-avatar color="primary" size="36">
-              <span class="text-body-2">{{ auth.initials }}</span>
+              <span class="text-body-medium">{{ auth.initials }}</span>
             </v-avatar>
           </v-btn>
         </template>

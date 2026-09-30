@@ -29,32 +29,32 @@
 
 <template>
   <v-card border class="pa-4 h-100 d-flex flex-column ga-3" flat>
-    <div class="text-h6">{{ t('insights.forecastTitle') }}</div>
+    <div class="text-title-large font-weight-medium">{{ t('insights.forecastTitle') }}</div>
 
     <template v-if="summary.forecast_sample > 0">
       <div>
-        <div class="text-caption text-medium-emphasis">{{ t('insights.forecastToday') }}</div>
-        <div class="text-h5 font-weight-medium">{{ money(summary.forecast_base, { decimals: 0 }) }}</div>
+        <div class="text-body-small text-medium-emphasis">{{ t('insights.forecastToday') }}</div>
+        <div class="text-headline-small font-weight-medium">{{ money(summary.forecast_base, { decimals: 0 }) }}</div>
       </div>
 
       <div class="d-flex ga-4">
         <div v-for="row in rows" :key="row.label" class="flex-grow-1">
-          <div class="text-caption text-medium-emphasis">{{ row.label }}</div>
-          <div class="text-h6 font-weight-medium">{{ money(row.value, { decimals: 0 }) }}</div>
+          <div class="text-body-small text-medium-emphasis">{{ row.label }}</div>
+          <div class="text-title-large font-weight-medium">{{ money(row.value, { decimals: 0 }) }}</div>
 
           <div
             v-if="row.pct !== null"
-            class="text-caption font-weight-medium"
+            class="text-body-small font-weight-medium"
             :class="row.pct >= 0 ? 'text-positive' : 'text-negative'"
           >{{ percent(row.pct, { decimals: 0 }) }}</div>
         </div>
       </div>
 
-      <div class="text-caption text-medium-emphasis mt-auto">
+      <div class="text-body-small text-medium-emphasis mt-auto">
         {{ t('insights.forecastNote', { sample: summary.forecast_sample, sealed: summary.forecast_sealed }) }}
       </div>
     </template>
 
-    <div v-else class="text-body-2 text-medium-emphasis">{{ t('insights.forecastEmpty') }}</div>
+    <div v-else class="text-body-medium text-medium-emphasis">{{ t('insights.forecastEmpty') }}</div>
   </v-card>
 </template>

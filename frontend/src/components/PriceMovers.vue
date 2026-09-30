@@ -21,7 +21,7 @@
   <v-card border class="h-100 d-flex flex-column" flat>
     <v-card-item class="pb-2">
       <div class="d-flex align-center ga-3">
-        <v-card-title class="text-h6 pa-0">{{ t('dashboard.movers') }}</v-card-title>
+        <v-card-title class="text-title-large font-weight-medium pa-0">{{ t('dashboard.movers') }}</v-card-title>
 
         <v-btn-toggle
           v-model="windowDays"
@@ -43,11 +43,11 @@
         :key="mover.catalog_num"
         :to="{ name: 'set-detail', params: { num: mover.catalog_num } }"
       >
-        <v-list-item-title class="text-body-2 font-weight-medium">
+        <v-list-item-title class="text-body-medium font-weight-medium">
           {{ mover.name }}
         </v-list-item-title>
 
-        <v-list-item-subtitle class="text-caption">
+        <v-list-item-subtitle class="text-body-small">
           {{ exactMoney(mover.price_then) }} → {{ exactMoney(mover.price_now) }}
         </v-list-item-subtitle>
 
@@ -64,7 +64,7 @@
       </v-list-item>
     </v-list>
 
-    <v-card-text v-else class="text-body-2 text-medium-emphasis">
+    <v-card-text v-else class="text-body-medium text-medium-emphasis">
       {{ t('dashboard.moversEmpty') }}
     </v-card-text>
   </v-card>

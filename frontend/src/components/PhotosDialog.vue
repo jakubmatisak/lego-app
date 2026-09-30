@@ -130,7 +130,7 @@
         </div>
 
         <template v-else>
-          <div v-if="photos.length === 0" class="text-body-2 text-medium-emphasis">
+          <div v-if="photos.length === 0" class="text-body-medium text-medium-emphasis">
             {{ t('photos.empty') }}
           </div>
 
@@ -170,7 +170,7 @@
           @click="input?.click()"
         >{{ t('photos.add') }}</v-btn>
 
-        <span class="text-caption text-medium-emphasis ms-2">{{ t('photos.hint') }}</span>
+        <span class="text-body-small text-medium-emphasis ms-2">{{ t('photos.hint') }}</span>
 
         <v-spacer />
         <v-btn variant="text" @click="open = false">{{ t('common.close') }}</v-btn>

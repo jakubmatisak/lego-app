@@ -17,7 +17,7 @@
 </script>
 
 <template>
-  <div class="key-hint d-flex align-center ga-2 flex-wrap text-body-2">
+  <div class="key-hint d-flex align-center ga-2 flex-wrap text-body-medium">
     <v-icon color="primary" icon="mdi-key-plus" size="small" />
     <span class="text-medium-emphasis">{{ text }}</span>
 

@@ -102,6 +102,6 @@
       @click:close="emit('update', null)"
     >{{ t('scope.active', { label: scope.label }) }}</v-chip>
 
-    <span v-if="scope" class="text-caption text-medium-emphasis">{{ t('scope.note') }}</span>
+    <span v-if="scope" class="text-body-small text-medium-emphasis">{{ t('scope.note') }}</span>
   </div>
 </template>

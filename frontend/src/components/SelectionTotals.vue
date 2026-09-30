@@ -37,7 +37,7 @@
 </script>
 
 <template>
-  <div v-if="totals && (totals.owned > 0 || totals.sold > 0)" class="selection-totals text-body-2">
+  <div v-if="totals && (totals.owned > 0 || totals.sold > 0)" class="selection-totals text-body-medium">
     <template v-if="totals.owned > 0">
       <span>
         <span class="text-medium-emphasis me-1">{{ t('totals.purchased') }}</span>

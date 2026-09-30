@@ -152,7 +152,7 @@
             variant="outlined"
           />
 
-          <div class="text-caption text-medium-emphasis pt-2" style="flex: 1; min-width: 200px">
+          <div class="text-body-small text-medium-emphasis pt-2" style="flex: 1; min-width: 200px">
             <div>{{ priceNote }}</div>
 
             <div v-if="range">

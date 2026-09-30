@@ -16,6 +16,7 @@ from lego_api.models import (
     ItemPhoto,
     PriceCheck,
     PriceSnapshot,
+    RefreshToken,
     SavedView,
     ShareLink,
     User,
@@ -98,6 +99,7 @@ async def test_deleting_my_account_removes_everything(
             PriceCheck,
             PriceSnapshot,
             ApiCall,
+            RefreshToken,
         ):
             assert await _count(session, model, me["id"]) == 0, model.__name__
     assert list(tmp_path.iterdir()) == []
@@ -159,6 +161,17 @@ def test_privacy_version_covers_backups_before_update() -> None:
     from lego_api.config import Settings
 
     assert Settings().privacy_version >= "2026-09-30.2"
+
+
+def test_privacy_version_covers_remembered_login() -> None:
+    """Zásady od 2026-09-30.4 hovoria, že cookie prihlásenia trvá do zatvorenia prehliadača.
+
+    Na 30 dní len so zaškrtnutým „Zapamätať si prihlásenie“. Predtým malo
+    30 dní vždy; bez vyššej verzie by používatelia zmenu nezbadali.
+    """
+    from lego_api.config import Settings
+
+    assert Settings().privacy_version >= "2026-09-30.4"
 
 
 async def test_operator_contact_is_public_for_the_privacy_page(client: AsyncClient) -> None:

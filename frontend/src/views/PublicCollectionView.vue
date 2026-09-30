@@ -74,11 +74,11 @@
             <v-icon color="primary" icon="mdi-toy-brick" size="36" />
 
             <div>
-              <div class="text-h5 font-weight-medium">
+              <div class="text-headline-small font-weight-medium">
                 {{ data.owner }}
               </div>
 
-              <div class="text-body-2 text-medium-emphasis">
+              <div class="text-body-medium text-medium-emphasis">
                 <template v-if="data.kind === 'wishlist'">
                   {{ t('public.wishlistSubtitle') }} ·
                   {{ t('collection.setsPlural', data.set_count, { named: { count: data.set_count } }) }}
@@ -109,16 +109,16 @@
 
           <div v-if="data.show_values && data.kind !== 'wishlist'" class="d-flex ga-6 mt-4 flex-wrap">
             <div>
-              <div class="text-caption text-medium-emphasis">{{ t('dashboard.invested') }}</div>
-              <div class="text-h6">{{ exactMoney(data.invested) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('dashboard.invested') }}</div>
+              <div class="text-title-large font-weight-medium">{{ exactMoney(data.invested) }}</div>
             </div>
 
             <!-- Bez jedinej ceny pomlčka, nie 0 €; pri čiastočnej počet kusov bez ceny. -->
             <div>
-              <div class="text-caption text-medium-emphasis">{{ t('dashboard.marketValue') }}</div>
-              <div class="text-h6">{{ exactMoney(data.market_value) }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ t('dashboard.marketValue') }}</div>
+              <div class="text-title-large font-weight-medium">{{ exactMoney(data.market_value) }}</div>
 
-              <div v-if="(data.price_missing ?? 0) > 0" class="text-caption text-medium-emphasis">
+              <div v-if="(data.price_missing ?? 0) > 0" class="text-body-small text-medium-emphasis">
                 {{ t('totals.noPrice', { count: data.price_missing }) }}
               </div>
             </div>
@@ -159,13 +159,13 @@
                 <SetImage :alt="wish.name" rounded="0" :size="150" :src="imageSrc(wish.image_url) ?? undefined" />
 
                 <div class="pa-3">
-                  <div class="text-body-2 font-weight-medium text-truncate">{{ wish.name }}</div>
+                  <div class="text-body-medium font-weight-medium text-truncate">{{ wish.name }}</div>
 
-                  <div class="text-caption text-medium-emphasis">
+                  <div class="text-body-small text-medium-emphasis">
                     {{ wish.catalog_num }}<span v-if="wish.theme"> · {{ wish.theme }}</span><span v-if="wish.year"> · {{ wish.year }}</span>
                   </div>
 
-                  <div v-if="data.show_values && wish.market_price" class="text-body-2 mt-1">
+                  <div v-if="data.show_values && wish.market_price" class="text-body-medium mt-1">
                     {{ exactMoney(wish.market_price) }}
                   </div>
                 </div>
@@ -202,19 +202,19 @@
                 </div>
 
                 <div class="pa-3">
-                  <div class="text-body-2 font-weight-medium text-truncate">{{ item.name }}</div>
+                  <div class="text-body-medium font-weight-medium text-truncate">{{ item.name }}</div>
 
-                  <div class="text-caption text-medium-emphasis">
+                  <div class="text-body-small text-medium-emphasis">
                     {{ item.catalog_num }}<span v-if="item.year"> · {{ item.year }}</span>
                   </div>
 
                   <!-- Server pošle null, keď cenu nemá ani jeden kus; reťazec „0.00“ by prešiel. -->
                   <template v-if="data.show_values">
-                    <div v-if="item.market_total !== null && item.market_total !== undefined" class="text-body-2 mt-1">
+                    <div v-if="item.market_total !== null && item.market_total !== undefined" class="text-body-medium mt-1">
                       {{ exactMoney(item.market_total) }}
                     </div>
 
-                    <div v-else class="text-body-2 mt-1 text-medium-emphasis">
+                    <div v-else class="text-body-medium mt-1 text-medium-emphasis">
                       {{ t('collection.unknownPrice') }}
                     </div>
                   </template>
@@ -223,7 +223,7 @@
             </v-col>
           </v-row>
 
-          <div class="d-flex align-center ga-2 mt-6 text-caption text-medium-emphasis">
+          <div class="d-flex align-center ga-2 mt-6 text-body-small text-medium-emphasis">
             <v-icon icon="mdi-toy-brick" size="18" />
 
             <span>

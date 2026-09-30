@@ -17,8 +17,8 @@
 
 <template>
   <v-card border class="pa-4 d-flex flex-column ga-2" flat>
-    <div class="text-subtitle-1 font-weight-medium">{{ t('formMemory.title') }}</div>
-    <div class="text-body-2 text-medium-emphasis">{{ t('formMemory.intro') }}</div>
+    <div class="text-body-large font-weight-medium">{{ t('formMemory.title') }}</div>
+    <div class="text-body-medium text-medium-emphasis">{{ t('formMemory.intro') }}</div>
 
     <v-switch
       v-for="field in FORM_FIELDS"
@@ -31,6 +31,6 @@
       @update:model-value="value => memory.setRemember(field, Boolean(value))"
     />
 
-    <div class="text-caption text-medium-emphasis">{{ t('formMemory.where') }}</div>
+    <div class="text-body-small text-medium-emphasis">{{ t('formMemory.where') }}</div>
   </v-card>
 </template>

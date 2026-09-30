@@ -10,7 +10,7 @@ ostávajú v evidencii, takže vidíš aj to, koľko si na predaji naozaj zarobi
 
 Appka vznikla pre zberateľa, ktorý mal zbierku v tabuľke a chcel vedieť, čo
 má, kde to má a koľko to dnes stojí. Nie je to obchod ani burza, len evidencia.
-Aktuálna verzia je **1.0.0**.
+Aktuálna verzia je **1.0.1**.
 
 - **Stránka projektu:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (zdroj v [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))
@@ -105,6 +105,10 @@ Aktuálna verzia je **1.0.0**.
 
 - Viac účtov na jednej inštancii, každý so svojou zbierkou a kľúčmi.
   Registráciu otvára a zatvára správca v appke.
+- **Zapamätať si prihlásenie na tomto počítači**: so zaškrtnutým políčkom
+  ostaneš prihlásený aj po zatvorení prehliadača, 30 dní od poslednej
+  návštevy. Bez neho prihlásenie skončí so zatvorením prehliadača alebo
+  po 12 hodinách bez návštevy. Zmena hesla odhlási všetky zariadenia.
 - Rozhranie po slovensky aj po anglicky, svetlý a tmavý režim, telefón aj
   počítač. Nastavenia zobrazenia sa pamätajú pri účte.
 - Prehľad spotreby volaní cudzích služieb a prepínače, čo sa z ktorej
@@ -368,8 +372,9 @@ Nie je to právna rada, len to, ako appka rieši podmienky služieb (k septembru
   všetkých údajov a zmazanie účtu v Nastaveniach → Účet. Fotky sa ukladajú
   zmenšené a bez polohy GPS. Zásady spomínajú aj zálohy pri aktualizácii;
   po zmene ich textu appka každému účtu ukáže oznámenie, kým ho nepotvrdí.
-  Appka používa len nevyhnutné cookie na prihlásenie, bez analytiky
-  a reklamy, takže lišta so súhlasom netreba.
+  Appka používa len nevyhnutné cookie na prihlásenie (na 30 dní, len keď
+  si používateľ zaškrtne zapamätanie), bez analytiky a reklamy, takže lišta
+  so súhlasom netreba.
 
 Čo zostáva na prevádzkovateľovi:
 
@@ -402,7 +407,7 @@ actually made on each sale.
 The app was built for a collector who kept everything in a spreadsheet and
 wanted to know what he has, where it is and what it is worth today. It is not
 a shop or a marketplace, just a record of the collection. The current version
-is **1.0.0**.
+is **1.0.1**.
 
 - **Project website:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (source at [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))
@@ -511,6 +516,10 @@ The app's interface is available in Slovak and English.*
 
 - Several accounts on one instance, each with its own collection and keys.
   The administrator opens and closes registration in the app.
+- **Remember me on this computer**: with the box ticked you stay signed in
+  after closing the browser, for 30 days since your last visit. Without it,
+  the sign-in ends when the browser closes or after 12 hours without a visit.
+  Changing the password signs out every device.
 - Slovak and English interface, light and dark mode, phone and desktop.
   Display settings are stored with the account.
 - An overview of calls made to external services, and switches for what may
@@ -787,8 +796,9 @@ of the services it uses (as of September 2026). The details are in the
   account deletion in Settings → Account. Photos are stored shrunk and without
   GPS location. The policy also mentions the update backups; when its text
   changes, every account sees a notice until it confirms it. The app only
-  uses the cookie strictly needed for signing in, with no analytics or ads,
-  so no consent banner is required.
+  uses the cookie strictly needed for signing in (kept for 30 days only when
+  the user ticks "remember me"), with no analytics or ads, so no consent
+  banner is required.
 
 What remains up to the operator:
 

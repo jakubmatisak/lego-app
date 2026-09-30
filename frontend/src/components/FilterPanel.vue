@@ -104,7 +104,7 @@
         <v-expansion-panel-title>{{ t('filters.categories') }}</v-expansion-panel-title>
 
         <v-expansion-panel-text>
-          <div v-if="(facets?.category ?? []).length === 0" class="text-caption text-medium-emphasis mb-2">
+          <div v-if="(facets?.category ?? []).length === 0" class="text-body-small text-medium-emphasis mb-2">
             {{ t('filters.noCategories') }}
           </div>
 
@@ -160,7 +160,7 @@
 
         <v-expansion-panel-text class="d-flex flex-column ga-3">
           <div>
-            <div class="text-caption text-medium-emphasis mb-1">{{ t('filters.bought') }}</div>
+            <div class="text-body-small text-medium-emphasis mb-1">{{ t('filters.bought') }}</div>
 
             <FilterRange
               :from="f.bought_from"
@@ -174,7 +174,7 @@
           </div>
 
           <div>
-            <div class="text-caption text-medium-emphasis mb-1">{{ t('filters.purchasePrice') }}</div>
+            <div class="text-body-small text-medium-emphasis mb-1">{{ t('filters.purchasePrice') }}</div>
 
             <FilterRange
               :from="f.price_min"
@@ -189,7 +189,7 @@
           </div>
 
           <div>
-            <div class="text-caption text-medium-emphasis mb-1">{{ t('filters.marketValue') }}</div>
+            <div class="text-body-small text-medium-emphasis mb-1">{{ t('filters.marketValue') }}</div>
 
             <FilterRange
               :from="f.value_min"
@@ -204,7 +204,7 @@
           </div>
 
           <div v-if="(facets?.place ?? []).length > 0">
-            <div class="text-caption text-medium-emphasis mb-1">{{ t('filters.place') }}</div>
+            <div class="text-body-small text-medium-emphasis mb-1">{{ t('filters.place') }}</div>
 
             <FilterOption
               v-for="option in facets?.place ?? []"
@@ -318,7 +318,7 @@
             />
           </div>
 
-          <div class="text-caption text-medium-emphasis mt-3 mb-1">{{ t('filters.retired') }}</div>
+          <div class="text-body-small text-medium-emphasis mt-3 mb-1">{{ t('filters.retired') }}</div>
 
           <v-btn-toggle
             v-model="retiredModel"

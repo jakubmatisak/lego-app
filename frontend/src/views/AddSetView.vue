@@ -521,9 +521,9 @@
       prominent
       variant="tonal"
     >
-      <div class="text-subtitle-1 font-weight-bold">{{ t('add.alreadyOwned') }}</div>
+      <div class="text-body-large font-weight-bold">{{ t('add.alreadyOwned') }}</div>
 
-      <div class="text-body-2">
+      <div class="text-body-medium">
         {{ t('add.alreadyOwnedDetail', {
           count: t('collection.pieces', { count: ownership.owned_count }),
           locations: ownership.locations.join(', ') || '—',
@@ -548,8 +548,8 @@
       variant="tonal"
     >
       <div class="text-high-emphasis">
-        <div class="text-subtitle-2">{{ t('add.noCatalogTitle') }}</div>
-        <div class="text-body-2">{{ t('add.noCatalogText') }}</div>
+        <div class="text-title-small">{{ t('add.noCatalogTitle') }}</div>
+        <div class="text-body-medium">{{ t('add.noCatalogText') }}</div>
       </div>
 
       <v-btn
@@ -593,7 +593,7 @@
         >{{ t('add.find') }}</v-btn>
       </div>
 
-      <div class="text-caption text-medium-emphasis">
+      <div class="text-body-small text-medium-emphasis">
         <v-icon class="me-1" icon="mdi-barcode-scan" size="small" />{{ t('scan.wedgeReady') }}. {{ t('scan.wedgeHint') }}
       </div>
 
@@ -616,7 +616,7 @@
           :text="t('keyHint.barcode')"
         />
 
-        <div v-if="eanCachedAt" class="text-caption mt-1">
+        <div v-if="eanCachedAt" class="text-body-small mt-1">
           {{ t('scan.cached', { date: shortDate(eanCachedAt) }) }}
         </div>
 
@@ -647,7 +647,7 @@
 
       <!-- Bez API kľúčov alebo pri neznámom sete sa set zadá ručne. -->
       <v-card v-if="manualOpen" class="pa-3 d-flex flex-column ga-3" color="surface-variant" flat>
-        <div class="text-subtitle-1">{{ t('add.manualTitle') }}</div>
+        <div class="text-body-large">{{ t('add.manualTitle') }}</div>
         <v-text-field v-model="manual.name" autofocus :label="t('add.manualName')" />
 
         <v-row dense>
@@ -700,9 +700,9 @@
           <div class="flex-grow-1" style="min-width: 240px">
             <div class="d-flex align-start ga-2">
               <div>
-                <div class="text-h6">{{ found.name }}</div>
+                <div class="text-title-large font-weight-medium">{{ found.name }}</div>
 
-                <div class="text-body-2 text-medium-emphasis">
+                <div class="text-body-medium text-medium-emphasis">
                   {{ found.catalog_num }}<span v-if="found.theme"> · {{ found.theme }}</span>
                   <span v-if="found.year"> · {{ found.year }}</span>
                 </div>
@@ -720,23 +720,23 @@
 
             <v-row class="mt-1" dense>
               <v-col cols="6" sm="3">
-                <div class="text-caption text-medium-emphasis">{{ t('detail.parts') }}</div>
-                <div class="text-body-2 font-weight-medium">{{ count(found.num_parts) }}</div>
+                <div class="text-body-small text-medium-emphasis">{{ t('detail.parts') }}</div>
+                <div class="text-body-medium font-weight-medium">{{ count(found.num_parts) }}</div>
               </v-col>
 
               <v-col cols="6" sm="3">
-                <div class="text-caption text-medium-emphasis">{{ t('detail.minifigs') }}</div>
-                <div class="text-body-2 font-weight-medium">{{ count(found.num_minifigs) }}</div>
+                <div class="text-body-small text-medium-emphasis">{{ t('detail.minifigs') }}</div>
+                <div class="text-body-medium font-weight-medium">{{ count(found.num_minifigs) }}</div>
               </v-col>
 
               <v-col cols="6" sm="3">
-                <div class="text-caption text-medium-emphasis">{{ t('detail.rrp') }}</div>
-                <div class="text-body-2 font-weight-medium">{{ exactMoney(found.rrp_eur) }}</div>
+                <div class="text-body-small text-medium-emphasis">{{ t('detail.rrp') }}</div>
+                <div class="text-body-medium font-weight-medium">{{ exactMoney(found.rrp_eur) }}</div>
               </v-col>
 
               <v-col cols="6" sm="3">
-                <div class="text-caption text-medium-emphasis">{{ t('collection.status.owned') }}</div>
-                <div class="text-body-2 font-weight-medium">{{ ownership?.owned_count ?? 0 }}</div>
+                <div class="text-body-small text-medium-emphasis">{{ t('collection.status.owned') }}</div>
+                <div class="text-body-medium font-weight-medium">{{ ownership?.owned_count ?? 0 }}</div>
               </v-col>
             </v-row>
           </div>
@@ -748,9 +748,9 @@
     <v-card v-if="isSeries" border class="pa-4 d-flex flex-column ga-3" flat>
       <div class="d-flex align-center ga-3 flex-wrap">
         <div>
-          <div class="text-h6">{{ t('add.seriesTitle') }}</div>
+          <div class="text-title-large font-weight-medium">{{ t('add.seriesTitle') }}</div>
 
-          <div class="text-body-2 text-medium-emphasis">
+          <div class="text-body-medium text-medium-emphasis">
             {{ t('add.seriesHint', { count: found?.members?.length ?? 0 }) }}
           </div>
         </div>
@@ -789,7 +789,7 @@
             flat
           >
             <SetImage :alt="member.name" rounded="md" :size="72" :src="imageSrc(member.image_url) ?? undefined" />
-            <div class="text-caption mt-1 text-truncate">{{ member.name }}</div>
+            <div class="text-body-small mt-1 text-truncate">{{ member.name }}</div>
 
             <div class="d-flex align-center justify-center ga-1 mt-1">
               <v-btn
@@ -800,7 +800,7 @@
                 @click="bump(member.catalog_num, -1)"
               />
 
-              <span class="text-body-2 font-weight-medium" style="min-width: 18px">
+              <span class="text-body-medium font-weight-medium" style="min-width: 18px">
                 {{ memberCounts[member.catalog_num] ?? 0 }}
               </span>
 
@@ -816,13 +816,13 @@
         </v-col>
       </v-row>
 
-      <div v-if="!sealedBag" class="text-body-2 text-medium-emphasis">
+      <div v-if="!sealedBag" class="text-body-medium text-medium-emphasis">
         {{ t('add.selectedCount', { count: totalPieces }) }}
       </div>
     </v-card>
 
     <v-card v-if="found" border class="pa-4 d-flex flex-column ga-4" flat>
-      <div class="text-h6">{{ t('add.yourData') }}</div>
+      <div class="text-title-large font-weight-medium">{{ t('add.yourData') }}</div>
 
       <v-row dense>
         <v-col v-if="!isSeries || sealedBag" cols="12" md="3" sm="4">
@@ -876,7 +876,7 @@
       </v-row>
 
       <div>
-        <div class="text-body-2 text-medium-emphasis mb-2">{{ t('purpose.label') }}</div>
+        <div class="text-body-medium text-medium-emphasis mb-2">{{ t('purpose.label') }}</div>
 
         <v-chip-group v-model="purpose" column filter>
           <v-chip
@@ -890,7 +890,7 @@
       </div>
 
       <div>
-        <div class="text-body-2 text-medium-emphasis mb-2">{{ t('add.flags') }}</div>
+        <div class="text-body-medium text-medium-emphasis mb-2">{{ t('add.flags') }}</div>
 
         <v-chip-group v-model="flags" column filter multiple>
           <v-chip
@@ -914,7 +914,7 @@
     </v-card>
 
     <div v-if="found" class="d-flex align-center ga-3 flex-wrap">
-      <span class="text-body-2 text-medium-emphasis">
+      <span class="text-body-medium text-medium-emphasis">
         {{ t('add.willCreate', {
           count: t('collection.pieces', { count: totalPieces }),
           total: totalCost !== null ? money(totalCost) : '—',

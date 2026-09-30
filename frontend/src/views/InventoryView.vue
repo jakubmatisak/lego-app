@@ -108,9 +108,9 @@
         </div>
 
         <header class="mb-4">
-          <h1 class="text-h5 font-weight-bold">{{ t('inventory.title') }}</h1>
+          <h1 class="text-headline-small font-weight-bold">{{ t('inventory.title') }}</h1>
 
-          <div class="text-body-2">
+          <div class="text-body-medium">
             {{ t('inventory.owner') }}: {{ auth.user?.display_name || auth.user?.email }}
             · {{ t('inventory.subtitle', { date: shortDate(today) }) }}
             · {{ t('collection.piecesPlural', pieces.length, { named: { count: pieces.length } }) }}

@@ -411,7 +411,7 @@
           <v-progress-circular v-if="starting" class="scan-spinner" color="white" indeterminate />
         </div>
 
-        <div class="text-caption text-medium-emphasis">{{ t('scan.hint') }}</div>
+        <div class="text-body-small text-medium-emphasis">{{ t('scan.hint') }}</div>
 
         <v-alert v-if="photoError" density="compact" type="info" variant="tonal">{{ photoError }}</v-alert>
 

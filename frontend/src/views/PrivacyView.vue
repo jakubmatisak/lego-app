@@ -31,7 +31,7 @@
         'Tvoja zbierka: kusy, kúpne a predajné ceny, dátumy, umiestnenie, poznámky, zoznam Chcem, kategórie, uložené pohľady, odkazy na pozretie, overené ceny a ručne zadané ceny.',
         'Tvoje fotky kusov. Pri nahratí sa zmenšia a zmažú sa z nich údaje fotoaparátu vrátane polohy GPS.',
         'Kľúče k službám, ktoré si sám vložíš (Rebrickable, Brickset, BrickEconomy). Ukladajú sa zašifrované a nikdy sa nezobrazia celé.',
-        'Záznam volaní cudzích služieb (čo, kedy, s akým výsledkom) a prihlasovacie tokeny, oboje 30 dní.',
+        'Záznam volaní cudzích služieb (čo, kedy, s akým výsledkom) 30 dní a prihlasovacie tokeny najviac 30 dní (pozri Ako dlho).',
       ],
     },
     {
@@ -45,7 +45,8 @@
     {
       title: 'Ako dlho',
       body: [
-        'Údaje účtu a zbierky, kým účet nezmažeš. Záznam volaní a tokeny 30 dní.',
+        'Údaje účtu a zbierky, kým účet nezmažeš. Záznam volaní 30 dní.',
+        'Prihlásenie do zatvorenia prehliadača, na serveri najviac 12 hodín bez použitia. Keď pri prihlásení zaškrtneš Zapamätať si prihlásenie, 30 dní od posledného použitia. Odhlásenie ho zruší hneď.',
         'Pred každou aktualizáciou appky na inú verziu sa celá databáza zálohuje na server do priečinka backups. Uchováva sa 5 posledných záloh, staršie sa mažú. Údaje zmazaného účtu v nich môžu ostať, kým sa zálohy neprestriedajú.',
       ],
     },
@@ -77,7 +78,7 @@
         'Your collection: pieces, purchase and sale prices, dates, location, notes, wishlist, categories, saved views, share links, price checks and manually entered prices.',
         'Your photos of pieces. On upload they are shrunk and camera data including the GPS location is removed.',
         'Keys to services you add yourself (Rebrickable, Brickset, BrickEconomy). They are stored encrypted and never shown in full.',
-        'A log of calls to external services (what, when, with what result) and sign-in tokens, both for 30 days.',
+        'A log of calls to external services (what, when, with what result) for 30 days and sign-in tokens for at most 30 days (see How long).',
       ],
     },
     {
@@ -91,7 +92,8 @@
     {
       title: 'How long',
       body: [
-        'Account and collection data until you delete the account. Call log and tokens 30 days.',
+        'Account and collection data until you delete the account. Call log 30 days.',
+        'Sign-in until you close the browser, on the server at most 12 hours without use. If you tick Remember me when signing in, 30 days since last use. Signing out ends it at once.',
         'Before every update of the app to another version, the whole database is backed up on the server to the backups folder. The last 5 backups are kept, older ones are deleted. Data of a deleted account may remain in them until the backups rotate out.',
       ],
     },
@@ -118,7 +120,7 @@
   const sections = computed(() => (locale.value === 'sk' ? SK : EN))
 
   const storage = computed(() => [
-    { name: 'lego_refresh', kind: 'cookie', purpose: t('privacy.storage.refresh'), lasts: t('privacy.storage.days30') },
+    { name: 'lego_refresh', kind: 'cookie', purpose: t('privacy.storage.refresh'), lasts: t('privacy.storage.refreshLasts') },
     { name: 'lego-theme', kind: 'localStorage', purpose: t('privacy.storage.theme'), lasts: t('privacy.storage.untilCleared') },
     { name: 'lego-hide-prices', kind: 'localStorage', purpose: t('privacy.storage.hidePrices'), lasts: t('privacy.storage.untilCleared') },
     { name: 'moje-kocky.camera', kind: 'localStorage', purpose: t('privacy.storage.camera'), lasts: t('privacy.storage.untilCleared') },
@@ -135,13 +137,13 @@
           {{ t('common.back') }}
         </v-btn>
 
-        <h1 class="text-h4 mb-1">{{ t('privacy.title') }}</h1>
-        <div class="text-caption text-medium-emphasis mb-4">{{ t('privacy.version', { version }) }}</div>
+        <h1 class="text-headline-large mb-1">{{ t('privacy.title') }}</h1>
+        <div class="text-body-small text-medium-emphasis mb-4">{{ t('privacy.version', { version }) }}</div>
 
         <v-card border class="pa-4 mb-4" flat>
-          <div class="text-subtitle-1 font-weight-medium mb-1">{{ t('privacy.operator') }}</div>
+          <div class="text-body-large font-weight-medium mb-1">{{ t('privacy.operator') }}</div>
 
-          <div v-if="operatorName || operatorEmail" class="text-body-1">
+          <div v-if="operatorName || operatorEmail" class="text-body-large">
             {{ operatorName }}<span v-if="operatorName && operatorEmail">, </span>
             <a v-if="operatorEmail" :href="`mailto:${operatorEmail}`">{{ operatorEmail }}</a>
           </div>
@@ -150,16 +152,16 @@
         </v-card>
 
         <section v-for="section in sections" :key="section.title" class="mb-5">
-          <h2 class="text-h6 mb-2">{{ section.title }}</h2>
+          <h2 class="text-title-large font-weight-medium mb-2">{{ section.title }}</h2>
 
           <ul class="ps-5">
-            <li v-for="line in section.body" :key="line" class="text-body-1 mb-1">{{ line }}</li>
+            <li v-for="line in section.body" :key="line" class="text-body-large mb-1">{{ line }}</li>
           </ul>
         </section>
 
         <section class="mb-5">
-          <h2 class="text-h6 mb-2">{{ t('privacy.cookiesTitle') }}</h2>
-          <p class="text-body-1 mb-3">{{ t('privacy.cookiesIntro') }}</p>
+          <h2 class="text-title-large font-weight-medium mb-2">{{ t('privacy.cookiesTitle') }}</h2>
+          <p class="text-body-large mb-3">{{ t('privacy.cookiesIntro') }}</p>
 
           <v-table density="compact">
             <thead>

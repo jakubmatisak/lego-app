@@ -46,6 +46,8 @@ class RegisterRequest(BaseModel):
     display_name: str | None = Field(default=None, max_length=120)
     #: Používateľ si prečítal zásady ochrany súkromia (povinné).
     accept_privacy: bool = False
+    #: Zapamätať si prihlásenie na tomto počítači (ako pri prihlásení).
+    remember: bool = False
 
 
 class DeleteAccountRequest(BaseModel):
@@ -56,6 +58,8 @@ class DeleteAccountRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    #: Zapamätať si prihlásenie: cookie na 30 dní, inak do zatvorenia prehliadača.
+    remember: bool = False
 
 
 class TokenResponse(BaseModel):

@@ -583,6 +583,21 @@ v pamäti, nie cookie, takže `<a href="/api/v1/...">` odíde bez neho a stiahne
 sa 401. Sťahuje sa cez klienta a blob (`components/ExportCsvButton.vue`).
 CSV začína BOM, inak Excel rozbije diakritiku.
 
+**Zapamätanie prihlásenia volí používateľ políčkom.** „Zapamätať si
+prihlásenie na tomto počítači“ je pri prihlásení aj registrácii, predvolene
+nezaškrtnuté, a posiela `remember`. So zapamätaním je `lego_refresh` trvalé
+cookie na `refresh_token_days` (30), bez neho session cookie bez Max-Age
+a token na serveri platí `refresh_session_hours` (12 h): prehliadač
+s obnovou kariet vráti aj session cookie. Režim je v `refresh_tokens.remember`,
+obnova tokenu ho zdedí a platnosť posunie (kĺzavé). Tokeny spred stĺpca sú
+bez zapamätania, inak by kĺzavých 30 dní ostalo trvalých naveky. Vypršané
+tokeny všetkých účtov maže `_issue_refresh`, zásady sľubujú najviac 30 dní.
+Odhlásenie token zmaže (nielen zruší), zmazanie účtu tiež (`_OWNED`). Zmena
+hesla (`_end_logins`) zmaže všetky tokeny účtu, aj na iných počítačoch;
+tento prehliadač dostane nový token bez zapamätania (session cookie), takže
+sa nemusí hneď prihlasovať, no zapamätanie treba zaškrtnúť znova.
+Zmena trvania = text zásad (Ako dlho, tabuľka cookies) a `privacy_version`.
+
 **Filter Zbierky si pamätá účet, nie prehliadač.** `users.preferences`
 (JSON, kľúč `collection`) cez `/auth/me/preferences`, v prehliadači
 `stores/preferences.ts` s oneskoreným ukladaním. Príchod bez filtra v adrese
@@ -643,6 +658,16 @@ pravidlo je v `plugins/i18n.ts`, kľúče končia na `Plural` a volajú sa cez
 Čísla formátuje `utils/format.ts`. Tisíce oddeľuje nezlomiteľná medzera, aby
 sa suma nezlomila do dvoch riadkov. Desatinná čiarka, znak eura za číslom.
 
+## Triedy písma sú z Vuetify 4
+
+Vuetify 4 nemá `text-caption`, `text-body-2`, `text-h6` a ostatné triedy
+z Vuetify 3; trieda bez štýlu nič nehlási a text ostane veľký ako rodič.
+Používaj `text-body-small` (namiesto caption), `text-body-medium` (body-2),
+`text-body-large` (body-1, subtitle-1), `text-title-small` (subtitle-2),
+`text-title-large` (h6, s `font-weight-medium`), `text-headline-small` (h5),
+`text-headline-large` (h4) a `text-label-medium text-uppercase` (overline).
+Stráži to `utils/typography.spec.ts`.
+
 ## Vlastné komponenty treba importovať
 
 Vuetify komponenty sa doťahujú samé, tie moje nie. Chýbajúci import sa
@@ -651,7 +676,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 593 testov, frontend 229. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 607 testov, frontend 237. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá

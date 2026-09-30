@@ -127,7 +127,7 @@
           />
         </div>
 
-        <div class="text-caption text-medium-emphasis mt-n2">{{ t('sell.costsHint') }}</div>
+        <div class="text-body-small text-medium-emphasis mt-n2">{{ t('sell.costsHint') }}</div>
 
         <v-alert
           v-if="profit !== null"
