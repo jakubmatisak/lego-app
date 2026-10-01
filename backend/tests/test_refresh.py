@@ -646,3 +646,160 @@ async def test_bare_figure_is_not_planned(session, fast_settings) -> None:
 
     assert plan.targets == []
     assert plan.skipped_fresh == 0
+
+
+# --- tlačidlo v hornej lište: stav „beží“ už v odpovedi, počet z dialógu ------
+
+
+async def test_limit_caps_the_run(session, sessionmaker_, fast_settings) -> None:
+    """Počet z dialógu je strop tejto obnovy, popri zvyšku kvóty a dávke účtu."""
+    await _seed(session, catalog_nums=[f"{i}-1" for i in range(10)])
+    provider = FakeProvider()
+    state = await refresh_prices(sessionmaker_, 1, fast_settings, provider, limit=3)
+    assert len(provider.calls) == 3
+    assert state.running is False
+
+
+async def test_limit_replaces_the_server_default_batch(
+    session, sessionmaker_, fast_settings
+) -> None:
+    """Používateľ si počet vybral sám, predvolený strop servera ho neskráti."""
+    fast_settings.price_refresh_budget = 2
+    await _seed(session, catalog_nums=[f"{i}-1" for i in range(10)])
+    provider = FakeProvider()
+    await refresh_prices(sessionmaker_, 1, fast_settings, provider, limit=5)
+    assert len(provider.calls) == 5
+
+
+async def test_limit_keeps_the_account_batch_and_quota(
+    session, sessionmaker_, fast_settings
+) -> None:
+    """Strop dávky z Nastavení a zvyšok kvóty platia aj s počtom z dialógu."""
+    from lego_api.services.fetch_policy import FetchPolicy
+
+    await _seed(session, catalog_nums=[f"{i}-1" for i in range(10)])
+    provider = FakeProvider()
+    provider.policy = FetchPolicy(price_batch=4)
+    await refresh_prices(sessionmaker_, 1, fast_settings, provider, limit=8)
+    assert len(provider.calls) == 4
+
+    reset_state()
+    poor = FakeProvider(budget=2)
+    await refresh_prices(sessionmaker_, 1, fast_settings, poor, limit=8, force=True)
+    assert len(poor.calls) == 2
+
+
+async def test_claim_is_taken_once() -> None:
+    """Druhé kliknutie počas behu nespustí druhú dávku."""
+    first = await refresh_module.claim(1)
+    assert first is not None and first.running is True
+    assert await refresh_module.claim(1) is None
+
+
+async def test_claimed_run_with_nothing_to_do_releases_the_state(
+    session, sessionmaker_, fast_settings
+) -> None:
+    """Obnova, ktorá nemá čo ťahať, stav „beží“ vždy uvoľní."""
+    await _seed(session, catalog_nums=["10294-1"])
+    session.add(_snapshot("10294-1", hours_ago=1))
+    session.add(_snapshot("10294-1", hours_ago=1, condition=PriceCondition.USED))
+    await session.commit()
+    assert await refresh_module.claim(1) is not None
+    provider = FakeProvider()
+    state = await refresh_prices(sessionmaker_, 1, fast_settings, provider, claimed=True)
+    assert provider.calls == []
+    assert state.running is False
+    assert state.finished_at is not None
+
+
+def _endpoint_provider(monkeypatch) -> list[str]:
+    from lego_api.providers.brickeconomy import BrickEconomyProvider
+
+    calls: list[str] = []
+
+    async def get_market(self, num, kind, *, cap):
+        calls.append(num)
+        return _market(num, kind=kind)
+
+    monkeypatch.setattr(BrickEconomyProvider, "enabled", property(lambda self: True))
+    monkeypatch.setattr(BrickEconomyProvider, "remaining_calls", lambda self: 50)
+    monkeypatch.setattr(BrickEconomyProvider, "get_market", get_market)
+    return calls
+
+
+async def _owned(sessionmaker_, auth_client, nums: list[str]) -> None:
+    async with sessionmaker_() as s:
+        for num in nums:
+            s.add(CatalogItem(catalog_num=num, name=num, kind=CatalogKind.SET))
+        await s.commit()
+    for num in nums:
+        response = await auth_client.post("/items", json={"catalog_num": num})
+        assert response.status_code == 201, response.text
+
+
+async def test_refresh_all_answers_running(auth_client, sessionmaker_, monkeypatch) -> None:
+    """Odpoveď 202 už hovorí „beží“, inak by rozhranie obnovu hneď prestalo sledovať.
+
+    Úloha na pozadí sa spúšťa až po odpovedi, takže stav si musí zabrať
+    samotná požiadavka. Po dávke je stav znova voľný.
+    """
+    calls = _endpoint_provider(monkeypatch)
+    await _owned(sessionmaker_, auth_client, ["10294-1", "75192-1"])
+
+    response = await auth_client.post("/prices/refresh-all")
+
+    assert response.status_code == 202
+    assert response.json()["running"] is True
+    assert sorted(calls) == ["10294-1", "75192-1"]
+    after = (await auth_client.get("/prices/refresh-status")).json()
+    assert after["running"] is False
+    assert after["updated"] == 2
+
+
+async def test_refresh_all_with_nothing_to_do_ends(auth_client, sessionmaker_, monkeypatch) -> None:
+    calls = _endpoint_provider(monkeypatch)
+
+    response = await auth_client.post("/prices/refresh-all")
+
+    assert response.json()["running"] is True
+    assert calls == []
+    assert (await auth_client.get("/prices/refresh-status")).json()["running"] is False
+
+
+async def test_refresh_all_while_running_starts_nothing(
+    auth_client, sessionmaker_, monkeypatch
+) -> None:
+    calls = _endpoint_provider(monkeypatch)
+    await _owned(sessionmaker_, auth_client, ["10294-1"])
+    me = (await auth_client.get("/auth/me")).json()
+    refresh_module.get_state(me["id"]).running = True
+
+    response = await auth_client.post("/prices/refresh-all")
+
+    assert response.json()["running"] is True
+    assert calls == []
+    assert refresh_module.get_state(me["id"]).running is True
+
+
+async def test_refresh_all_limit(auth_client, sessionmaker_, monkeypatch) -> None:
+    calls = _endpoint_provider(monkeypatch)
+    await _owned(sessionmaker_, auth_client, ["1-1", "2-1", "3-1"])
+
+    assert (await auth_client.post("/prices/refresh-all?limit=0")).status_code == 422
+    assert (await auth_client.post("/prices/refresh-all?limit=2")).status_code == 202
+    assert len(calls) == 2
+
+
+async def test_refresh_status_reports_the_daily_limit(auth_client, settings, monkeypatch) -> None:
+    """Dialóg ukáže tie isté čísla ako karta limitov (GET /usage)."""
+    _endpoint_provider(monkeypatch)
+    monkeypatch.setattr(
+        "lego_api.providers.brickeconomy.BrickEconomyProvider.remaining_calls",
+        lambda self: settings.brickeconomy_daily_limit - 7,
+    )
+    status_ = (await auth_client.get("/prices/refresh-status")).json()
+    usage = (await auth_client.get("/usage")).json()
+    [card] = [p for p in usage["providers"] if p["provider"] == "brickeconomy"]
+
+    assert status_["calls_limit"] == card["limit"] == settings.brickeconomy_daily_limit
+    assert status_["calls_used"] == card["used"] == 7

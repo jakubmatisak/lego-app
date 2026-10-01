@@ -20,6 +20,7 @@ from lego_api.models import (
 )
 from lego_api.providers.brickeconomy import BrickEconomyProvider, QuotaExhausted
 from lego_api.routers.catalog import catalog_detail
+from lego_api.routers.usage import brickeconomy_used
 from lego_api.schemas import (
     CatalogOut,
     ManualPriceRequest,
@@ -44,7 +45,7 @@ from lego_api.services.pricing import (
     store_miss,
 )
 from lego_api.services.purchase_fill import fill_purchase_prices
-from lego_api.services.refresh import RefreshState, get_state, refresh_prices
+from lego_api.services.refresh import claim, get_state, refresh_prices
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -52,8 +53,16 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 WINDOWS = (30, 90, 365)
 
 
-def _status(state: RefreshState, provider: BrickEconomyProvider) -> RefreshStatusOut:
+#: Najväčší počet volaní, ktorý si dialóg obnovy môže vypýtať.
+MAX_REFRESH_LIMIT = 1000
+
+
+async def _status(
+    session, user_id: int, settings: Settings, provider: BrickEconomyProvider
+) -> RefreshStatusOut:
+    state = get_state(user_id)
     left = provider.remaining_calls() if provider.enabled else 0
+    used = await brickeconomy_used(session, user_id, settings, provider) if provider.enabled else 0
     return RefreshStatusOut(
         running=state.running,
         pending=state.pending,
@@ -64,14 +73,16 @@ def _status(state: RefreshState, provider: BrickEconomyProvider) -> RefreshStatu
         calls_left=left,
         quota_exhausted=provider.enabled and left <= 0,
         skipped_fresh=state.skipped_fresh,
+        calls_limit=settings.brickeconomy_daily_limit,
+        calls_used=used,
     )
 
 
 @router.get("/refresh-status", response_model=RefreshStatusOut)
 async def refresh_status(
-    user: CurrentUser, settings: SettingsDep, keys: CurrentKeys
+    user: CurrentUser, session: SessionDep, settings: SettingsDep, keys: CurrentKeys
 ) -> RefreshStatusOut:
-    return _status(get_state(user.id), BrickEconomyProvider.for_user(settings, keys))
+    return await _status(session, user.id, settings, BrickEconomyProvider.for_user(settings, keys))
 
 
 @router.post("/refresh-all", response_model=RefreshStatusOut, status_code=status.HTTP_202_ACCEPTED)
@@ -82,6 +93,7 @@ async def refresh_all(
     settings: SettingsDep,
     keys: CurrentKeys,
     num: str | None = None,
+    limit: int | None = None,
 ) -> RefreshStatusOut:
     """Obnoví ceny na pozadí.
 
@@ -89,22 +101,34 @@ async def refresh_all(
     to ručná obnova jednej položky z detailu, pri sérii jej figúrok, a tá
     vek snímky nepozerá: používateľ chce cenu teraz. Jedno volanie na
     položku a zvyšok kvóty platia v oboch prípadoch.
+
+    ``limit`` je počet z dialógu obnovy (najviac toľko volaní). Stav „beží“
+    sa zaberie ešte pred odpoveďou, úloha na pozadí štartuje až po nej;
+    druhé kliknutie počas behu druhú dávku nespustí.
     """
+    # Literal ani Query(ge=) na čísle z adresy nie, rozsah sa kontroluje tu.
+    if limit is not None and not 1 <= limit <= MAX_REFRESH_LIMIT:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, f"limit musí byť 1 až {MAX_REFRESH_LIMIT}"
+        )
     provider = BrickEconomyProvider.for_user(settings, keys)
     if provider.enabled and provider.remaining_calls() > 0:
-        background.add_task(
-            refresh_prices,
-            get_sessionmaker(),
-            user.id,
-            settings,
-            provider,
-            num,
-            num is not None,
-        )
+        if await claim(user.id) is not None:
+            background.add_task(
+                refresh_prices,
+                get_sessionmaker(),
+                user.id,
+                settings,
+                provider,
+                num,
+                num is not None,
+                limit,
+                True,
+            )
     elif keys.policy.auto_purchase_price:
         # Kvóta je minutá, doplnenie kúpnej ceny z katalógu je zadarmo.
         await fill_purchase_prices(session, user.id, only=num)
-    return _status(get_state(user.id), provider)
+    return await _status(session, user.id, settings, provider)
 
 
 #: Koľko naposledy overených setov si účet pamätá.

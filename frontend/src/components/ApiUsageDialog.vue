@@ -42,6 +42,7 @@
   const NAMES: Record<string, string> = {
     brickeconomy: 'BrickEconomy',
     brickset: 'Brickset',
+    ecb: 'ECB',
     eurostat: 'Eurostat',
     rebrickable: 'Rebrickable',
     upcitemdb: 'UPCitemdb',

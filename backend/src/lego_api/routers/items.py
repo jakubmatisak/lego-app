@@ -37,6 +37,7 @@ from lego_api.schemas import (
     SuggestionsOut,
     ValuedItemOut,
 )
+from lego_api.services import currency
 from lego_api.services.bulk import BulkChanges, apply_changes, check_flags, pick_items
 from lego_api.services.catalog import CatalogService
 from lego_api.services.collection import (
@@ -62,6 +63,7 @@ from lego_api.services.portfolio import (
     value_items,
 )
 from lego_api.services.purchase import split_total
+from lego_api.services.set_parts import delete_checks, missing_by_item
 from lego_api.services.sorting import SORT_KEYS, Group, sort_groups, sort_items
 from lego_api.services.wishlist import DroppedWish, drop_bought
 
@@ -211,6 +213,7 @@ async def list_items(
 ) -> list[ValuedItemOut]:
     _, valued, ctx = await _filtered(session, user, f)
     valued = sort_items(valued, sort, direction)
+    parts_missing = await missing_by_item(session, user.id)
 
     return [
         ValuedItemOut(
@@ -224,6 +227,7 @@ async def list_items(
             ),
             cagr_pct=v.cagr_pct(),
             categories=ctx.categories_by_item.get(v.item.id, []),
+            missing_parts=parts_missing.get(v.item.id, 0),
         )
         for v in valued
     ]
@@ -246,6 +250,7 @@ async def list_grouped(
         grouped = group_by_catalog([v.item for v in valued])
 
     by_id = {v.item.id: v for v in valued}
+    parts_missing = await missing_by_item(session, user.id)
     rows: list[tuple[Group, GroupedItemOut]] = []
     for key, group in grouped.items():
         owned = [i for i in group if i.status == ItemStatus.OWNED]
@@ -294,6 +299,7 @@ async def list_grouped(
                     # Skupina ako jeden celok (doba držania vážená vkladom), nie priemer.
                     cagr_pct=collection_cagr([by_id[i.id] for i in owned])[0],
                     categories=ctx.categories_by_item.get(group[0].id, []),
+                    missing_parts=sum(parts_missing.get(i.id, 0) for i in owned),
                 ),
             )
         )
@@ -323,6 +329,19 @@ async def list_locations(user: CurrentUser, session: SessionDep) -> list[str]:
 async def list_suggestions(user: CurrentUser, session: SessionDep) -> SuggestionsOut:
     """Už použité hodnoty pre našepkávače: kde uložené, kde kúpené, kanál predaja."""
     return SuggestionsOut(**await known_suggestions(session, user.id))
+
+
+async def _in_euro(
+    session, keys: UserKeys, code: str | None, original: Decimal | None, day: date | None
+) -> tuple[str | None, Decimal | None, Decimal | None]:
+    """Suma v cudzej mene na eurá kurzom ECB zo dňa ``day`` (mena, pôvodná, eurá)."""
+    try:
+        return await currency.convert(session, keys.policy, code, original, day)
+    except currency.RateUnavailable as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Kurz ECB sa teraz nepodarilo zistiť. Zadaj cenu v eurách alebo to skús neskôr.",
+        ) from exc
 
 
 def _created(items: list[CollectionItem], dropped: dict[str, DroppedWish]) -> list[ItemCreatedOut]:
@@ -362,6 +381,16 @@ async def create_items(
         unidentified = True
         price_variant = price_variant or PriceVariant.SEALED
 
+    bought_in, original, price_eur = None, None, payload.purchase_price_eur
+    if payload.purchase_price_original is not None:
+        bought_in, original, price_eur = await _in_euro(
+            session,
+            keys,
+            payload.purchase_currency,
+            payload.purchase_price_original,
+            payload.purchase_date,
+        )
+
     created: list[CollectionItem] = []
     for _ in range(payload.quantity):
         item = CollectionItem(
@@ -371,7 +400,9 @@ async def create_items(
             price_variant=price_variant,
             unidentified=unidentified,
             flags=flags,
-            purchase_price_eur=payload.purchase_price_eur,
+            purchase_price_eur=price_eur,
+            purchase_currency=bought_in,
+            purchase_price_original=original,
             purchase_date=payload.purchase_date,
             purchase_place=payload.purchase_place,
             location=payload.location,
@@ -409,11 +440,20 @@ async def create_series_items(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
 
     pieces = sum(member.quantity for member in payload.members)
+    bought_in, original, unit_eur = None, None, payload.purchase_price_eur
+    if payload.purchase_price_original is not None and payload.purchase_total_eur is None:
+        bought_in, original, unit_eur = await _in_euro(
+            session,
+            keys,
+            payload.purchase_currency,
+            payload.purchase_price_original,
+            payload.purchase_date,
+        )
     # Cena za celú sériu sa rozpočíta na kusy, inak platí cena za kus.
     prices = (
         split_total(payload.purchase_total_eur, pieces)
         if payload.purchase_total_eur is not None
-        else [payload.purchase_price_eur] * pieces
+        else [unit_eur] * pieces
     )
 
     created: list[CollectionItem] = []
@@ -427,6 +467,8 @@ async def create_series_items(
                 price_variant=payload.price_variant,
                 flags=flags,
                 purchase_price_eur=prices[len(created)],
+                purchase_currency=bought_in,
+                purchase_price_original=original,
                 purchase_date=payload.purchase_date,
                 purchase_place=payload.purchase_place,
                 location=payload.location,
@@ -510,10 +552,42 @@ async def bulk_update(
 
 @router.patch("/items/{item_id}", response_model=ItemOut)
 async def update_item(
-    item_id: int, payload: ItemUpdateRequest, user: CurrentUser, session: SessionDep
+    item_id: int,
+    payload: ItemUpdateRequest,
+    user: CurrentUser,
+    session: SessionDep,
+    keys: CurrentKeys,
 ) -> CollectionItem:
     item = await _owned_item(session, user.id, item_id)
     data = payload.model_dump(exclude_unset=True)
+    day = data.get("purchase_date", item.purchase_date)
+    if {"purchase_currency", "purchase_price_original"} & data.keys():
+        # Kúpa v cudzej mene: eurá sú prepočet kurzom zo dňa kúpy.
+        code = data.pop("purchase_currency", item.purchase_currency)
+        original = data.pop("purchase_price_original", item.purchase_price_original)
+        if original is None:
+            data["purchase_currency"], data["purchase_price_original"] = None, None
+            if "purchase_price_original" in payload.model_fields_set:
+                # Vymazaná suma v mene = kus bez kúpnej ceny.
+                data["purchase_price_eur"] = None
+        else:
+            (
+                data["purchase_currency"],
+                data["purchase_price_original"],
+                data["purchase_price_eur"],
+            ) = await _in_euro(session, keys, code, original, day)
+    elif "purchase_price_eur" in data:
+        # Suma zadaná v eurách: pôvodná mena už neplatí.
+        data["purchase_currency"], data["purchase_price_original"] = None, None
+    elif (
+        "purchase_date" in data
+        and item.purchase_currency is not None
+        and item.purchase_price_original is not None
+    ):
+        # Iný deň kúpy = iný kurz.
+        _, _, data["purchase_price_eur"] = await _in_euro(
+            session, keys, item.purchase_currency, item.purchase_price_original, day
+        )
     if "flags" in data and data["flags"] is not None:
         try:
             data["flags"] = validate_flags(data["flags"])
@@ -544,6 +618,7 @@ async def delete_item(
     for photo in photos:
         (Path(settings.photos_dir) / photo.filename).unlink(missing_ok=True)
         await session.delete(photo)
+    await delete_checks(session, [item_id])
     await session.delete(item)
     await session.commit()
 
@@ -574,13 +649,20 @@ async def identify_item(
 
 @router.post("/items/{item_id}/sell", response_model=ItemOut)
 async def sell_item(
-    item_id: int, payload: SellRequest, user: CurrentUser, session: SessionDep
+    item_id: int, payload: SellRequest, user: CurrentUser, session: SessionDep, keys: CurrentKeys
 ) -> CollectionItem:
     item = await _owned_item(session, user.id, item_id)
     if item.status == ItemStatus.SOLD:
         raise HTTPException(status.HTTP_409_CONFLICT, "Tento kus je už označený ako predaný")
+    sold_in, original, price_eur = None, None, payload.sold_price_eur
+    if payload.sale_price_original is not None:
+        sold_in, original, price_eur = await _in_euro(
+            session, keys, payload.sale_currency, payload.sale_price_original, payload.sold_date
+        )
     item.status = ItemStatus.SOLD
-    item.sold_price_eur = payload.sold_price_eur
+    item.sold_price_eur = price_eur
+    item.sale_currency = sold_in
+    item.sale_price_original = original
     item.sold_date = payload.sold_date
     item.sold_via = payload.sold_via
     item.sold_fees_eur = payload.sold_fees_eur
@@ -596,6 +678,8 @@ async def unsell_item(item_id: int, user: CurrentUser, session: SessionDep) -> C
     item = await _owned_item(session, user.id, item_id)
     item.status = ItemStatus.OWNED
     item.sold_price_eur = None
+    item.sale_currency = None
+    item.sale_price_original = None
     item.sold_date = None
     item.sold_via = None
     item.sold_fees_eur = None

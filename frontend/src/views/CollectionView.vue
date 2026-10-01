@@ -30,8 +30,11 @@
   import ExportCsvButton from '@/components/ExportCsvButton.vue'
   import FiguresElsewhere from '@/components/FiguresElsewhere.vue'
   import FilterPanel from '@/components/FilterPanel.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import SelectionTotals from '@/components/SelectionTotals.vue'
   import SetCard from '@/components/SetCard.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { createSelection } from '@/composables/useSelection'
   import { useAuthStore } from '@/stores/auth'
   import { defaultDir, groupingFrom, SORT_KEYS, useCollectionStore } from '@/stores/collection'
@@ -70,15 +73,27 @@
     // Predvolený smer sa nepamätá, nech adresa ostane krátka.
     collection.sortDir = next === defaultDir(collection.sort) ? null : next
   }
-  async function reloadData (): Promise<void> {
+  /** Kusy, karty a počty panela; chybu načítania kusov hlási store sám. */
+  async function reloadData (): Promise<boolean> {
     await Promise.all([
       collection.loadItems(),
       collection.loadGrouped(),
       filterStore.loadFacets(collection.statusFilter),
     ])
+    return collection.error === null
   }
 
-  const reload = useDebounceFn(reloadData, 250)
+  /**
+   * Prvé načítanie ukáže kostru, zmena filtra a Obnoviť stránku nechajú
+   * staré karty na obrazovke (usePageLoad). Prázdny stav až po odpovedi.
+   */
+  const page = usePageLoad(reloadData, { notify: false })
+  const reload = useDebounceFn(() => page.run(), 250)
+  /** Kostra v tvare zobrazenia: tabuľka, riadky kusov alebo karty setov. */
+  const skeletonKind = computed(() => {
+    if (tableView.value) return 'table'
+    return collection.grouping === 'item' ? 'rows' : 'cards'
+  })
 
   /** Adresa pre súčasný filter a zobrazenie; predvolené hodnoty sa vynechajú. */
   function routeQuery (): LocationQueryRaw {
@@ -268,7 +283,7 @@
   }
 
   async function onCategoriesChanged (): Promise<void> {
-    await reloadData()
+    await page.run()
   }
 
   /**
@@ -305,7 +320,7 @@
     // a uložený stav účtu to majú zabudnúť tiež.
     if (hasStaleKeys(route.query, routeQuery())) syncRoute()
     await Promise.all([filterStore.loadCategories(), filterStore.loadViews()])
-    await reloadData()
+    await page.run()
     collection.loadLocations()
     if (!collection.summary) collection.loadDashboard()
   })
@@ -479,7 +494,10 @@
 
       <!-- Na širokej obrazovke sa posúva len táto časť, filtre a ovládanie stoja. -->
       <div class="collection-results" :class="{ 'collection-results--table': tableView && wide }">
-        <v-progress-linear v-if="collection.loading" color="primary" indeterminate />
+        <!-- Kým server neodpovedal, kostra; prázdny stav až po odpovedi. -->
+        <PageSkeleton v-if="page.initial" :kind="skeletonKind" />
+
+        <LoadFailed v-else-if="page.error" :loading="page.loading" @retry="page.run()" />
 
         <v-empty-state
           v-else-if="isEmpty"
@@ -555,7 +573,7 @@
           :selection="selection"
           :total="collection.grouping === 'item' ? collection.items.length : collection.grouped.length"
           :unit="collection.grouping === 'item' ? 'pieces' : 'sets'"
-          @done="reloadData"
+          @done="page.run()"
         />
       </div>
     </div>

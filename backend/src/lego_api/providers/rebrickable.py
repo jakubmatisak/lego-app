@@ -34,6 +34,9 @@ _PAGE_SIZE = 1000
 #: Zoznam všetkých tém je veľký a Rebrickable ho posiela pomaly, bežný
 #: limit 10 s nestačí. Týka sa to len sťahovania sérií na pozadí.
 _SLOW_TIMEOUT = 45.0
+#: Poistka proti nekonečnému stránkovaniu; aj Titanic (9 090 dielikov) má
+#: niečo vyše tisíc riadkov, teda dve stránky.
+_MAX_PAGES = 20
 _NUMBERED = re.compile(r"^(\d+)-(\d+)$")
 
 
@@ -100,6 +103,9 @@ class RebrickableProvider:
         self._policy = policy or FetchPolicy()
         # Témy sa menia raz za rok, stačí ich držať v pamäti procesu.
         self._theme_cache: dict[int, dict] = {}
+        #: Posledné volanie dostalo odpoveď (aj 404). False = výpadok, 5xx,
+        #: 429: taký výsledok sa nepamätá, skúsi sa nabudúce.
+        self.last_answered = True
 
     @classmethod
     def for_user(cls, settings: Settings, keys: UserKeys) -> "RebrickableProvider":
@@ -130,16 +136,19 @@ class RebrickableProvider:
         status: int | None = None
         ok = False
         try:
+            self.last_answered = False
             response = await client.get(url, headers=self._headers(), params=params)
             status = response.status_code
             if response.status_code == 404:
                 ok = True
+                self.last_answered = True
                 return None
             response.raise_for_status()
             data = response.json()
             ok = True
+            self.last_answered = True
             return data
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, ValueError) as exc:
             log.warning("Rebrickable zlyhal pre %s: %s", url, exc)
             return None
         finally:
@@ -215,6 +224,98 @@ class RebrickableProvider:
                 )
             )
         return members
+
+    # --- diely a alternatívne stavby -----------------------------------------
+
+    async def _all_pages(self, url: str, params: dict, cap: Cap) -> list[dict] | None:
+        """Všetky stránky zoznamu. ``next`` je celá adresa ďalšej stránky.
+
+        404 na prvej stránke = Rebrickable set nepozná, teda prázdny zoznam.
+        Výpadok kdekoľvek = None, polovičný zoznam sa neuloží. Ďalšia stránka
+        mimo Rebrickable sa nevolá, kľúč by odišiel na cudziu adresu.
+        """
+        rows: list[dict] = []
+        next_url: str = url
+        next_params: dict | None = params
+        for _page in range(_MAX_PAGES):
+            data = await self._get(next_url, params=next_params, cap=cap)
+            if data is None:
+                return [] if self.last_answered and not rows else None
+            rows.extend(data.get("results") or [])
+            following = data.get("next")
+            if not following:
+                return rows
+            if not str(following).startswith(f"{BASE_URL}/"):
+                log.warning("Rebrickable poslal ďalšiu stránku mimo svojej adresy: %s", following)
+                return None
+            next_url, next_params = str(following), None
+        return None
+
+    async def get_set_parts(self, num: str) -> list[dict] | None:
+        """Dieliky setu podľa čísla a farby, náhradné zvlášť. None = výpadok.
+
+        Ten istý dielik v tej istej farbe môže prísť v dvoch riadkoch
+        (rôzne časti inventára); sčítajú sa, kontrola úplnosti ide podľa
+        trojice číslo, farba, náhradný.
+        """
+        if not self.enabled:
+            return None
+        rows = await self._all_pages(
+            f"{BASE_URL}/sets/{num}/parts/", {"page_size": _PAGE_SIZE}, Cap.REBRICKABLE_PARTS
+        )
+        if rows is None:
+            return None
+        merged: dict[tuple[str, int, bool], dict] = {}
+        for row in rows:
+            part = row.get("part") or {}
+            color = row.get("color") or {}
+            part_num = part.get("part_num")
+            color_id = color.get("id")
+            if not part_num or color_id is None:
+                continue
+            key = (str(part_num), int(color_id), bool(row.get("is_spare")))
+            quantity = int(row.get("quantity") or 0)
+            if key in merged:
+                merged[key]["quantity"] += quantity
+                continue
+            merged[key] = {
+                "part_num": key[0],
+                "name": part.get("name") or key[0],
+                "color_id": key[1],
+                "color_name": color.get("name") or "",
+                "color_rgb": color.get("rgb"),
+                "is_trans": bool(color.get("is_trans")),
+                "quantity": quantity,
+                "is_spare": key[2],
+                "image_url": part.get("part_img_url"),
+                "element_id": row.get("element_id"),
+            }
+        return list(merged.values())
+
+    async def get_set_alternates(self, num: str) -> list[dict] | None:
+        """Alternatívne stavby (MOC) z dielikov setu. None = výpadok."""
+        if not self.enabled:
+            return None
+        rows = await self._all_pages(
+            f"{BASE_URL}/sets/{num}/alternates/",
+            {"page_size": _PAGE_SIZE},
+            Cap.REBRICKABLE_ALTERNATES,
+        )
+        if rows is None:
+            return None
+        return [
+            {
+                "set_num": row["set_num"],
+                "name": row.get("name") or row["set_num"],
+                "year": row.get("year"),
+                "num_parts": row.get("num_parts"),
+                "image_url": row.get("moc_img_url"),
+                "url": row.get("moc_url"),
+                "designer_name": row.get("designer_name"),
+            }
+            for row in rows
+            if row.get("set_num")
+        ]
 
     async def list_series_themes(self, parent_name: str) -> list[SeriesTheme] | None:
         """Všetky témy pod „Collectible Minifigures“, jedným volaním.

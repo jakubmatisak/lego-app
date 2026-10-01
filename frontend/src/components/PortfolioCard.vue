@@ -13,6 +13,7 @@
   import { api } from '@/api/client'
   import DateField from '@/components/DateField.vue'
   import PortfolioChart from '@/components/PortfolioChart.vue'
+  import { onPageReload } from '@/composables/usePageLoad'
   import { useCollectionStore } from '@/stores/collection'
 
   type Preset = '1m' | '3m' | '6m' | '1y' | 'ytd' | 'all' | 'custom'
@@ -111,14 +112,19 @@
     loadingDaily.value = false
   }, { immediate: true })
 
-  // Prepínač dnešných peňazí: denný rad sa musí stiahnuť znova.
-  watch(() => [collection.real, collection.scope], async () => {
+  /** Denný rad znova, ak už bol stiahnutý; týždenný prichádza s Prehľadom. */
+  async function reloadDaily (): Promise<void> {
     if (daily.value === null) return
     const { data } = await api.GET('/stats/timeline', {
       params: { query: { step: 'day', ...collection.statsQuery() } },
     })
     daily.value = data ?? []
-  })
+  }
+
+  // Prepínač dnešných peňazí: denný rad sa musí stiahnuť znova.
+  watch(() => [collection.real, collection.scope], reloadDaily)
+  // Tlačidlo Obnoviť stránku v hornej lište.
+  onPageReload(reloadDaily)
 
   const points = computed(() => (useDaily.value && daily.value ? daily.value : props.weekly))
 

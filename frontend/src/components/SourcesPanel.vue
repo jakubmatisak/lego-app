@@ -11,7 +11,9 @@
   import { onMounted, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api, errorMessage } from '@/api/client'
+  import LoadFailed from '@/components/LoadFailed.vue'
   import SourceCard from '@/components/SourceCard.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { createSources } from '@/composables/useSources'
   import { useAuthStore } from '@/stores/auth'
   import { useNotifyStore } from '@/stores/notify'
@@ -34,21 +36,35 @@
     if (message) notify.error(message)
   })
 
-  async function load (): Promise<void> {
+  async function load (): Promise<boolean> {
     const { data, error: err } = await api.GET('/auth/me/sources', {})
-    if (err || !data) {
-      notify.error(err, t('sources.loadFailed'))
-      return
-    }
+    if (err || !data) return false
     state.set(data.sources)
+    return true
   }
 
-  onMounted(load)
+  /** Kým server neodpovedal, kostra kariet; chyba so Skúsiť znova (usePageLoad). */
+  const page = usePageLoad(load)
+
+  onMounted(() => page.run())
 </script>
 
 <template>
   <div class="d-flex flex-column ga-4">
     <div class="text-body-medium text-medium-emphasis">{{ t('sources.intro') }}</div>
+
+    <template v-if="page.initial">
+      <v-card v-for="n in 3" :key="n" border flat>
+        <v-skeleton-loader type="heading, list-item-two-line@2" />
+      </v-card>
+    </template>
+
+    <LoadFailed
+      v-else-if="page.error"
+      :loading="page.loading"
+      :message="t('sources.loadFailed')"
+      @retry="page.run()"
+    />
 
     <SourceCard
       v-for="source in sources"
@@ -56,7 +72,7 @@
       :source="source"
       @auto-purchase="on => state.setAutoPurchase(on)"
       @batch="value => state.setBatch(value)"
-      @key-changed="load"
+      @key-changed="page.run()"
       @reserve="(provider, value) => state.setReserve(provider, value)"
       @toggle="(cap, enabled) => state.toggle(cap, enabled)"
     />

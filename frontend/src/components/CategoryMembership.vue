@@ -8,6 +8,7 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api } from '@/api/client'
+  import { onPageReload } from '@/composables/usePageLoad'
   import { useNotifyStore } from '@/stores/notify'
 
   const props = defineProps<{ num: string }>()
@@ -42,6 +43,8 @@
 
   watch(() => props.num, load)
   onMounted(load)
+  // Tlačidlo Obnoviť stránku v hornej lište.
+  onPageReload(load)
 
   defineExpose({ reload: load })
 </script>

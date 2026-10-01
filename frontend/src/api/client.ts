@@ -105,11 +105,52 @@ const authMiddleware: Middleware = {
   },
 }
 
+/**
+ * Zmeny, po ktorých neplatia čísla v ponuke (súhrn zbierky): kusy, Chcem
+ * a potvrdený či vrátený import. Fotka kusu ani náhľad importu nie.
+ */
+const COLLECTION_CHANGES = [
+  // Fotky a kontrola úplnosti počty v ponuke nemenia.
+  /^\/items(\/|$)(?!.*\/(photos|part-checks)$)/,
+  /^\/wishlist(\/|$)/,
+  /^\/imports\/\{import_id\}\/(commit|undo)$/,
+]
+
+const collectionListeners = new Set<() => void>()
+
+/**
+ * Odber úspešných zmien zbierky alebo Chcem, nech už ich spravila ktorákoľvek
+ * obrazovka. Jediné miesto, odkiaľ sa obnovuje súhrn za počtami v ponuke,
+ * takže nová obrazovka na to nemôže zabudnúť. Vráti odhlásenie.
+ */
+export function onCollectionChanged (listener: () => void): () => void {
+  collectionListeners.add(listener)
+  return () => collectionListeners.delete(listener)
+}
+
+export function changesCollection (method: string, schemaPath: string): boolean {
+  return method !== 'GET' && COLLECTION_CHANGES.some(pattern => pattern.test(schemaPath))
+}
+
+const changesMiddleware: Middleware = {
+  onResponse ({ request, response, schemaPath }) {
+    if (response.ok && changesCollection(request.method, schemaPath)) {
+      for (const listener of collectionListeners) {
+        listener()
+      }
+    }
+    return response
+  },
+}
+
 export const api = createClient<paths>({
   baseUrl: API_BASE,
   credentials: 'include',
 })
 
+// Odpovede prechádzajú middleware od posledného: zmeny vidia až výsledok po
+// prípadnom zopakovaní požiadavky s novým tokenom.
+api.use(changesMiddleware)
 api.use(authMiddleware)
 
 /** Vytiahne zrozumiteľnú hlášku z odpovede FastAPI. */

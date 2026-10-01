@@ -58,16 +58,70 @@ function group (formatted: string): string {
   return formatted.replace(/[\u202F\u2009 ]/g, NBSP)
 }
 
-export function money (
+/**
+ * Mena zobrazenia (Nastavenia → Zobrazenie, `preferences.display.currency`).
+ * Ukladá sa všetko v eurách; tu sa suma len prepočíta dnešným kurzom ECB,
+ * aj pri histórii a grafe, takže zisk v percentách sa nemení. Kurz posiela
+ * server (`GET /rates/{mena}`, na verejnom odkaze v odpovedi), nastavuje
+ * ho `composables/useDisplayCurrency.ts`. Je to ref ako `pricesHidden`:
+ * grafy ho majú v možnostiach, aby sa prekreslili.
+ */
+export type CurrencyCode = 'EUR' | 'CZK' | 'USD' | 'GBP' | 'PLN' | 'HUF' | 'CHF'
+export const CURRENCIES: CurrencyCode[] = ['EUR', 'CZK', 'USD', 'GBP', 'PLN', 'HUF', 'CHF']
+const SYMBOLS: Record<CurrencyCode, string> = {
+  EUR: '€',
+  CZK: 'Kč',
+  USD: '$',
+  GBP: '£',
+  PLN: 'zł',
+  HUF: 'Ft',
+  CHF: 'CHF',
+}
+
+export interface DisplayCurrency {
+  code: CurrencyCode
+  /** Koľko jednotiek meny je jedno euro. */
+  rate: number
+  /** Deň kurzu (RRRR-MM-DD); pri eure prázdny. */
+  day: string | null
+}
+
+export const displayCurrency = ref<DisplayCurrency>({ code: 'EUR', rate: 1, day: null })
+
+export function isCurrency (value: unknown): value is CurrencyCode {
+  return typeof value === 'string' && (CURRENCIES as string[]).includes(value)
+}
+
+export function setDisplayCurrency (code: CurrencyCode, rate: number, day: string | null): void {
+  displayCurrency.value = code === 'EUR' || !(rate > 0)
+    ? { code: 'EUR', rate: 1, day: null }
+    : { code, rate, day }
+}
+
+export function currencySymbol (code: CurrencyCode = displayCurrency.value.code): string {
+  return SYMBOLS[code]
+}
+
+/** Suma v eurách v mene zobrazenia (číslo, na grafy). */
+export function toDisplay (eur: number): number {
+  return eur * displayCurrency.value.rate
+}
+
+/**
+ * Suma, ktorá už je v mene `currency` (predvolene v mene zobrazenia), bez
+ * prepočtu: pôvodná cena kúpy v korunách, hodnoty na osi grafu.
+ */
+export function amount (
   value: string | number | null | undefined,
-  options: { decimals?: number, sign?: boolean } = {},
+  options: { decimals?: number, sign?: boolean, currency?: CurrencyCode } = {},
 ): string {
   const number = toNumber(value)
   if (number === null) {
     return '—'
   }
+  const symbol = currencySymbol(options.currency)
   if (pricesHidden.value) {
-    return `•••${NBSP}€`
+    return `•••${NBSP}${symbol}`
   }
   const decimals = options.decimals ?? (Math.abs(number) >= 1000 ? 0 : 2)
   const formatted = group(
@@ -77,7 +131,28 @@ export function money (
     }).format(Math.abs(number)),
   )
   const prefix = options.sign && number > 0 ? '+' : (number < 0 ? '−' : '')
-  return `${prefix}${formatted}${NBSP}€`
+  return `${prefix}${formatted}${NBSP}${symbol}`
+}
+
+/** Suma v eurách z API, v mene zobrazenia. Každá suma v appke ide cez ňu. */
+export function money (
+  value: string | number | null | undefined,
+  options: { decimals?: number, sign?: boolean } = {},
+): string {
+  const number = toNumber(value)
+  return amount(number === null ? null : toDisplay(number), options)
+}
+
+/** Kurz ako číslo „24,95“: aspoň dve desatinné miesta, najviac štyri. */
+export function rateNumber (rate: number): string {
+  return group(
+    new Intl.NumberFormat('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(rate),
+  )
+}
+
+/** Kurz ako „1 € = 24,32 Kč“. */
+export function rateText (code: CurrencyCode, rate: number): string {
+  return `1${NBSP}€ = ${rateNumber(rate)}${NBSP}${SYMBOLS[code]}`
 }
 
 export function exactMoney (value: string | number | null | undefined): string {

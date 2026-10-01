@@ -124,3 +124,13 @@ describe('zmena hesla v tomto prehliadači', () => {
     expect(server.seen.filter(s => s.path === '/api/v1/auth/refresh')).toEqual([])
   })
 })
+
+describe('čo mení počty v ponuke', () => {
+  it('kontrola úplnosti a fotky kusu nie, úprava kusu áno', async () => {
+    const { changesCollection } = await import('./client')
+
+    expect(changesCollection('PUT', '/items/{item_id}/part-checks')).toBe(false)
+    expect(changesCollection('POST', '/items/{item_id}/photos')).toBe(false)
+    expect(changesCollection('PATCH', '/items/{item_id}')).toBe(true)
+  })
+})

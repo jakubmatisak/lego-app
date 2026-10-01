@@ -32,3 +32,25 @@ export function priceValue (raw: string | null | undefined): string | null {
   const value = parse(raw)
   return value === null ? null : String(value)
 }
+
+/**
+ * Kúpna cena aj s menou (Kúpu a predaj zadávať aj v inej mene). V eurách
+ * platí to isté ako `priceChange`; v cudzej mene ide mena a pôvodná suma
+ * a eurá z nich prepočíta server. Návrat z cudzej meny na euro pošle sumu
+ * v eurách vždy, inak by mena pri kuse ostala.
+ */
+export function purchaseChange (
+  saved: { eur: string | null | undefined, currency: string | null | undefined, original: string | null | undefined },
+  currency: string,
+  draft: string,
+): Record<string, string | null> {
+  const before = saved.currency ?? 'EUR'
+  if (currency === 'EUR') {
+    return before === 'EUR' ? priceChange(saved.eur, draft) : { purchase_price_eur: priceValue(draft) }
+  }
+  const value = priceValue(draft)
+  if (before === currency && parse(saved.original) === parse(value)) {
+    return {}
+  }
+  return { purchase_currency: currency, purchase_price_original: value }
+}

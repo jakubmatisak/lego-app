@@ -9,6 +9,7 @@
   import { onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api } from '@/api/client'
+  import SourceCredit from '@/components/SourceCredit.vue'
   import { imageSrc } from '@/utils/imageSrc'
 
   const props = defineProps<{ num: string, name: string }>()
@@ -48,9 +49,7 @@
       </button>
     </div>
 
-    <div class="text-body-small text-medium-emphasis">
-      <a href="https://brickset.com" rel="noopener" target="_blank">{{ t('detail.galleryCredit') }}</a>
-    </div>
+    <SourceCredit href="https://brickset.com" :text="t('detail.galleryCredit')" />
 
     <v-dialog v-model="open" max-width="1100">
       <v-card>

@@ -13,7 +13,10 @@
   import { useRouter } from 'vue-router'
   import { api, errorMessage } from '@/api/client'
   import CardGrid from '@/components/CardGrid.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import SeriesBar from '@/components/SeriesBar.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { arrangeThemes } from '@/utils/themeList'
 
   const { t } = useI18n()
@@ -22,7 +25,7 @@
   const mine = ref<ThemeRow[]>([])
   const all = ref<ThemeRow[]>([])
   const enabled = ref(true)
-  const loading = ref(true)
+  /** Text chyby (Brickset neodpovedá), pre LoadFailed. */
   const error = ref<string | null>(null)
   const picked = ref<string | null>(null)
 
@@ -35,30 +38,32 @@
     all.value.map(row => ({ value: row.theme, title: `${row.theme} (${row.set_count})` })),
   )
 
-  async function load (): Promise<void> {
+  async function load (): Promise<boolean> {
     const { data, error: err } = await api.GET('/themes', {})
-    loading.value = false
     if (err || !data) {
       error.value = errorMessage(err, t('themes.loadFailed'))
-      return
+      return false
     }
+    error.value = null
     mine.value = data.mine
     all.value = data.all
     enabled.value = data.provider_enabled
+    return true
   }
+
+  /** Prvé načítanie kostra, Obnoviť stránku nad starými kartami (usePageLoad). */
+  const page = usePageLoad(load)
 
   function open (theme: string | null): void {
     if (theme) router.push({ name: 'theme', params: { theme } })
   }
 
-  onMounted(load)
+  onMounted(() => page.run())
 </script>
 
 <template>
   <div class="d-flex flex-column ga-4">
-    <v-alert v-if="error" type="error" variant="tonal">{{ error }}</v-alert>
-
-    <v-alert v-if="!loading && !enabled" icon="mdi-key-outline" type="info" variant="tonal">
+    <v-alert v-if="page.loaded && !enabled" icon="mdi-key-outline" type="info" variant="tonal">
       {{ t('themes.needsKey') }}
       <template #append>
         <v-btn size="small" :to="{ name: 'settings', query: { tab: 'data' } }" variant="text">
@@ -80,7 +85,10 @@
       @update:model-value="open"
     />
 
-    <v-progress-linear v-if="loading" color="primary" indeterminate />
+    <!-- Kým server neodpovedal, kostra; „Zatiaľ žiadne série“ až po odpovedi. -->
+    <PageSkeleton v-if="page.initial" kind="cards" />
+
+    <LoadFailed v-else-if="page.error" :loading="page.loading" :message="error" @retry="page.run()" />
 
     <template v-else-if="enabled">
       <div class="d-flex align-center flex-wrap ga-2">

@@ -11,8 +11,10 @@
   import { useI18n } from 'vue-i18n'
   import { useDisplay } from 'vuetify'
   import { api, errorMessage } from '@/api/client'
+  import LoadFailed from '@/components/LoadFailed.vue'
   import PriceHistoryChart from '@/components/PriceHistoryChart.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { useScanCodes } from '@/scanner/useScanCodes'
   import { useAuthStore } from '@/stores/auth'
   import { isBarcode } from '@/utils/barcode'
@@ -59,10 +61,18 @@
     { key: 'actions', title: '', width: 56, sortable: false },
   ])
 
-  async function loadChecks (): Promise<void> {
-    const { data } = await api.GET('/prices/checks', {})
-    checks.value = data ?? []
+  async function loadChecks (): Promise<boolean> {
+    const { data, error } = await api.GET('/prices/checks', {})
+    if (error || !data) return false
+    checks.value = data
+    return true
   }
+
+  /**
+   * Naposledy overené: kým server neodpovedal, kostra riadkov, nie „Zatiaľ
+   * si nič neoveroval“ (usePageLoad). Obnoviť stránku nad starými riadkami.
+   */
+  const page = usePageLoad(loadChecks)
 
   function reset (): void {
     found.value = null
@@ -172,7 +182,7 @@
   // Skeny z čítačky ostávajú na tejto obrazovke, neotvárajú Pridať set.
   useScanCodes(code => check(code))
 
-  onMounted(loadChecks)
+  onMounted(() => page.run())
 </script>
 
 <template>
@@ -355,9 +365,17 @@
         item-value="catalog.catalog_num"
         :items="checks"
         :items-per-page="-1"
+        :loading="page.initial"
         :no-data-text="t('check.recentEmpty')"
         @click:row="(_: unknown, row: { item: Check }) => showStored(row.item.catalog.catalog_num)"
       >
+        <template #loading>
+          <v-skeleton-loader type="table-row-divider@6" />
+        </template>
+
+        <template v-if="page.error" #no-data>
+          <LoadFailed :loading="page.loading" @retry="page.run()" />
+        </template>
 
         <template #[`item.year`]="{ item }">{{ item.catalog.year ?? '—' }}</template>
         <template #[`item.new`]="{ item }">{{ money(item.new_value) }}</template>

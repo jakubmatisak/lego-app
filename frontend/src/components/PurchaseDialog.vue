@@ -13,13 +13,16 @@
   import { useI18n } from 'vue-i18n'
   import { api, errorMessage } from '@/api/client'
   import { CONDITIONS } from '@/api/types'
+  import CurrencySelect from '@/components/CurrencySelect.vue'
   import DateField from '@/components/DateField.vue'
   import PlaceFields from '@/components/PlaceFields.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { useEuroPreview } from '@/composables/useDisplayCurrency'
+  import { foreignEntryOn } from '@/composables/useDisplayPrefs'
   import { useFormMemory } from '@/composables/useFormMemory'
   import { useCollectionStore } from '@/stores/collection'
   import { useNotifyStore } from '@/stores/notify'
-  import { toNumber } from '@/utils/format'
+  import { type CurrencyCode, currencySymbol, toNumber } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
 
   const open = defineModel<boolean>({ required: true })
@@ -38,7 +41,11 @@
   const quantity = ref(1)
   const condition = ref<ItemCondition>('new_sealed')
   const price = ref('')
+  /** Mena kúpy (Kúpu a predaj zadávať aj v inej mene); eurá prepočíta server. */
+  const currency = ref<CurrencyCode>('EUR')
   const purchaseDate = ref('')
+  const showCurrency = computed(() => foreignEntryOn() || currency.value !== 'EUR')
+  const pricePreview = useEuroPreview(price, currency, purchaseDate)
   const place = ref<string | null>('')
   const location = ref<string | null>('')
   const box = ref<string | null>('')
@@ -79,7 +86,9 @@
         price_variant: isFigure.value ? (condition.value === 'new_sealed' ? 'sealed' : 'complete') : null,
         // Nový set v krabici má spravidla krabicu aj návod, figúrka nič z toho.
         flags: isFigure.value || condition.value !== 'new_sealed' ? [] : ['has_box', 'has_manual'],
-        purchase_price_eur: unit === null ? null : String(unit),
+        ...(currency.value === 'EUR'
+          ? { purchase_price_eur: unit === null ? null : String(unit) }
+          : { purchase_currency: currency.value, purchase_price_original: unit === null ? null : String(unit) }),
         purchase_date: purchaseDate.value || null,
         purchase_place: (place.value ?? '').trim() || null,
         location: (location.value ?? '').trim() || null,
@@ -150,12 +159,14 @@
         </div>
 
         <div class="d-flex ga-3">
+          <CurrencySelect v-if="showCurrency" v-model="currency" />
+
           <v-text-field
             v-model="price"
-            :hint="t('add.perPiece')"
+            :hint="pricePreview.text.value ?? t('add.perPiece')"
             :label="t('add.purchasePrice')"
             persistent-hint
-            prefix="€"
+            :prefix="currencySymbol(currency)"
             type="number"
           />
 

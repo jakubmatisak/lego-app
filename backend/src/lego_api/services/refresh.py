@@ -78,6 +78,32 @@ def get_state(user_id: int) -> RefreshState:
     return _states.setdefault(user_id, RefreshState())
 
 
+def _start(state: RefreshState) -> None:
+    state.running = True
+    state.updated = 0
+    state.pending = 0
+    state.last_error = None
+    state.skipped_fresh = 0
+    state.started_at = datetime.now(UTC)
+    state.finished_at = None
+
+
+async def claim(user_id: int) -> RefreshState | None:
+    """Zaberie obnovu pre účet ešte pred odpoveďou; None = už beží.
+
+    Úloha z ``BackgroundTasks`` sa spustí až po odoslaní odpovede. Keby si
+    stav zabrala až ona, odpoveď aj hneď nasledujúci dotaz na stav by
+    hlásili „nebeží“ a rozhranie by obnovu prestalo sledovať. Zabratý stav
+    uvoľní ``refresh_prices(claimed=True)`` vždy, aj keď nemá čo ťahať.
+    """
+    state = get_state(user_id)
+    async with _state_lock:
+        if state.running:
+            return None
+        _start(state)
+    return state
+
+
 def reset_state() -> None:
     """Testy si vynútia čistý stav."""
     _states.clear()
@@ -112,6 +138,7 @@ async def collect_targets(
     only: str | None = None,
     force: bool = False,
     fingerprint: str | None = None,
+    batch: int | None = None,
 ) -> RefreshPlan:
     """Zoznam položiek, ktoré používateľ naozaj potrebuje obnoviť.
 
@@ -132,6 +159,9 @@ async def collect_targets(
     ``force`` vynechá poistku na vek. Používa ju len ručná obnova jednej
     položky z detailu: používateľ chce cenu teraz a vie, čo to stojí.
     Strop dávky, zvyšok kvóty a jedno volanie na položku platia aj vtedy.
+
+    ``batch`` je počet, ktorý si používateľ vybral v dialógu obnovy; nahradí
+    predvolený strop servera (``price_refresh_budget``), ``budget`` nie.
     """
     plan = RefreshPlan()
 
@@ -203,7 +233,7 @@ async def collect_targets(
     stale.sort(key=lambda pair: (-pair[1], pair[0].target.call_key()))
     ordered = [c.target for c in unknown] + [c.target for c, _ in stale]
 
-    cap = settings.price_refresh_budget
+    cap = settings.price_refresh_budget if batch is None else batch
     if budget is not None:
         cap = min(cap, budget)
     if len(ordered) > cap:
@@ -252,10 +282,15 @@ async def refresh_prices(
     provider: PriceProvider,
     only: str | None = None,
     force: bool = False,
+    limit: int | None = None,
+    claimed: bool = False,
 ) -> RefreshState:
     """Obnoví ceny pre jedného používateľa. Volá sa z BackgroundTasks.
 
     Bez ``only`` celú zbierku, s ním len jeden set alebo jednu sériu.
+    ``limit`` je počet volaní z dialógu obnovy (strop tohto behu popri
+    zvyšku kvóty, rezerve a dávke účtu). ``claimed``: stav už zabral
+    ``claim`` v požiadavke, tu sa len uvoľní.
     """
     api_log.set_user(user_id)
     # Obnova jedného setu z detailu je na požiadanie, celá zbierka je dávka.
@@ -264,16 +299,11 @@ async def refresh_prices(
     #: Odporúčané ceny z odpovedí tejto obnovy, na doplnenie kúpnej ceny.
     rrp_by_num: dict[str, Decimal] = {}
     state = get_state(user_id)
-    async with _state_lock:
-        if state.running:
-            return state
-        state.running = True
-        state.updated = 0
-        state.pending = 0
-        state.last_error = None
-        state.skipped_fresh = 0
-        state.started_at = datetime.now(UTC)
-        state.finished_at = None
+    if not claimed:
+        async with _state_lock:
+            if state.running:
+                return state
+            _start(state)
 
     try:
         if not provider.enabled:
@@ -294,6 +324,8 @@ async def refresh_prices(
                     budget -= policy.reserve_for("brickeconomy")
                 if policy.price_batch is not None:
                     budget = min(budget, policy.price_batch)
+            if limit is not None:
+                budget = min(budget, limit)
             if budget <= 0:
                 log.info("Zostala len rezerva kvóty, dávka sa preskakuje")
                 state.last_error = "reserve"
@@ -306,6 +338,7 @@ async def refresh_prices(
                 only=only,
                 force=force,
                 fingerprint=provider.fingerprint,
+                batch=limit,
             )
         state.skipped_fresh = plan.skipped_fresh
 

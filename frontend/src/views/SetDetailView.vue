@@ -18,19 +18,25 @@
   import ConditionChips from '@/components/ConditionChips.vue'
   import KeyHint from '@/components/KeyHint.vue'
   import ListingDialog from '@/components/ListingDialog.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import PhotosDialog from '@/components/PhotosDialog.vue'
   import PieceDialog from '@/components/PieceDialog.vue'
   import PriceHistoryChart from '@/components/PriceHistoryChart.vue'
   import PurchaseDialog from '@/components/PurchaseDialog.vue'
   import SellDialog from '@/components/SellDialog.vue'
+  import SetAlternatesCard from '@/components/SetAlternatesCard.vue'
   import SetGallery from '@/components/SetGallery.vue'
   import SetImage from '@/components/SetImage.vue'
+  import SetPartsCard from '@/components/SetPartsCard.vue'
+  import { originalPrice } from '@/composables/useDisplayCurrency'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { createSelection } from '@/composables/useSelection'
   import { useAuthStore } from '@/stores/auth'
   import { useCollectionStore } from '@/stores/collection'
   import { useNotifyStore } from '@/stores/notify'
   import { usePriceStore } from '@/stores/prices'
-  import { count, dateTime, exactMoney, money, percent, shortDate, toNumber } from '@/utils/format'
+  import { count, type CurrencyCode, dateTime, exactMoney, money, percent, shortDate, toNumber } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
   import { placeLabel } from '@/utils/place'
   import { isSeriesPage as isSeriesDetail } from '@/utils/series'
@@ -66,7 +72,7 @@
   const providerEnabled = computed(() =>
     Boolean(pricesN.value?.provider_enabled || pricesU.value?.provider_enabled),
   )
-  const loading = ref(true)
+  /** Text chyby načítania (napríklad „Set sa nenašiel“), pre LoadFailed. */
   const error = ref<string | null>(null)
 
   const priceCondition = ref<'N' | 'U'>('N')
@@ -309,24 +315,34 @@
     return rating ? rating.toLocaleString(locale.value === 'sk' ? 'sk-SK' : 'en-GB', { maximumFractionDigits: 1 }) : ''
   })
 
-  async function load (): Promise<void> {
-    loading.value = true
-    error.value = null
-    try {
-      const catalogRes = await api.GET('/catalog/{num}', { params: { path: { num: num.value } } })
-      if (catalogRes.error || !catalogRes.data) {
-        error.value = errorMessage(catalogRes.error, 'Set sa nenašiel')
-        return
-      }
-      catalog.value = catalogRes.data
-      await Promise.all([loadPrices(), loadPieces()])
-      galleryReady.value = false
-      fillFromBrickset().finally(() => {
-        galleryReady.value = true
-      })
-    } finally {
-      loading.value = false
+  /**
+   * Set, ceny a kusy z vlastného servera. Toto volá aj tlačidlo Obnoviť
+   * stránku, preto sem nepatrí doplnenie z Brickset (cudzia služba).
+   */
+  async function fetchDetail (): Promise<boolean> {
+    const catalogRes = await api.GET('/catalog/{num}', { params: { path: { num: num.value } } })
+    if (catalogRes.error || !catalogRes.data) {
+      error.value = errorMessage(catalogRes.error, 'Set sa nenašiel')
+      return false
     }
+    error.value = null
+    catalog.value = catalogRes.data
+    await Promise.all([loadPrices(), loadPieces()])
+    return true
+  }
+
+  /** Prvé načítanie kostra, Obnoviť stránku nad starými údajmi (usePageLoad). */
+  const page = usePageLoad(fetchDetail)
+
+  /** Otvorenie setu (aj iného z tej istej stránky): kostra, potom Brickset raz. */
+  async function load (): Promise<void> {
+    page.reset()
+    error.value = null
+    if (!(await page.run())) return
+    galleryReady.value = false
+    fillFromBrickset().finally(() => {
+      galleryReady.value = true
+    })
   }
 
   /** Obidva stavy z vlastného servera. Na zdroj cien sa tu nesiaha. */
@@ -360,6 +376,25 @@
    * Zbierka ju neukazuje, takže štítok odtiaľto do Zbierky neodkazuje.
    */
   const inFigures = computed(() => Boolean(catalog.value?.parent_num) || isSeriesPage.value)
+
+  /**
+   * Diely a alternatívne stavby z Rebrickable: len pri setoch (nie figúrky
+   * zo sérií ani séria) a len s vlastným kľúčom. Karty si dáta stiahnu samy
+   * až po rozbalení.
+   */
+  const isPlainSet = computed(() => catalog.value?.kind === 'set' && !inFigures.value)
+  const showParts = computed(() => isPlainSet.value && auth.can('rebrickable.parts'))
+  const showAlternates = computed(() => isPlainSet.value && auth.can('rebrickable.alternates'))
+  /** Kusy, ktoré sa dajú skontrolovať na úplnosť: tento set, nie predaný. */
+  const checkablePieces = computed(() =>
+    pieces.value.filter(p => p.catalog_num === num.value && p.status !== 'sold'),
+  )
+  const partsCard = ref<InstanceType<typeof SetPartsCard> | null>(null)
+
+  /** Uložená kontrola zmenila počet chýbajúcich: štítok pri kuse hneď sedí. */
+  function onPartsChecked (itemId: number, missing: number): void {
+    pieces.value = pieces.value.map(p => (p.id === itemId ? { ...p, missing_parts: missing } : p))
+  }
 
   /** Hromadná úprava vlastnených kusov série; rozsah pre server je séria. */
   const selection = createSelection({ items: () => owned.value.map(p => p.id) })
@@ -431,7 +466,9 @@
   }
 
   async function confirmSell (payload: {
-    sold_price_eur: string
+    sold_price_eur: string | null
+    sale_currency: CurrencyCode | null
+    sale_price_original: string | null
     sold_date: string
     sold_via: string | null
     sold_fees_eur: string | null
@@ -455,11 +492,10 @@
 </script>
 
 <template>
-  <div v-if="loading" class="d-flex justify-center pa-12">
-    <v-progress-circular color="primary" indeterminate />
-  </div>
+  <!-- Kostra v tvare detailu, kým server neodpovedal (usePageLoad). -->
+  <PageSkeleton v-if="page.initial" kind="detail" />
 
-  <v-alert v-else-if="error" type="error" variant="tonal">{{ error }}</v-alert>
+  <LoadFailed v-else-if="page.error" :loading="page.loading" :message="error" @retry="page.run()" />
 
   <div v-else-if="catalog" class="d-flex flex-column ga-4">
     <v-btn
@@ -787,6 +823,18 @@
                         size="small"
                         variant="tonal"
                       >{{ t('detail.unidentified') }}</v-chip>
+
+                      <!-- Z kontroly úplnosti; klik otvorí diely v režime kontroly tohto kusu. -->
+                      <v-chip
+                        v-if="item.missing_parts > 0"
+                        color="warning"
+                        data-test="piece-missing-parts"
+                        label
+                        prepend-icon="mdi-puzzle-remove-outline"
+                        size="small"
+                        variant="tonal"
+                        @click="partsCard?.startCheck(item.id)"
+                      >{{ t('parts.missingPlural', item.missing_parts, { named: { count: item.missing_parts } }) }}</v-chip>
                     </div>
 
                     <div class="d-flex flex-wrap ga-1">
@@ -838,6 +886,14 @@
                   <div v-if="item.purchase_real_eur" class="text-body-small text-medium-emphasis">
                     {{ t('inflation.paid', { amount: exactMoney(item.purchase_price_eur) }) }}
                   </div>
+
+                  <!-- Kúpa v cudzej mene: pôvodná suma a kurz, ktorým sa prepočítala. -->
+                  <div
+                    v-if="originalPrice(t, item.purchase_price_original, item.purchase_currency, item.purchase_price_eur, item.purchase_date)"
+                    class="text-body-small text-medium-emphasis"
+                  >
+                    {{ originalPrice(t, item.purchase_price_original, item.purchase_currency, item.purchase_price_eur, item.purchase_date) }}
+                  </div>
                 </div>
 
                 <div class="piece-cell piece-cell--value piece-amount">
@@ -846,6 +902,13 @@
                   </div>
 
                   <div class="text-body-large font-weight-medium">{{ pieceValue(item) }}</div>
+
+                  <div
+                    v-if="item.status === 'sold' && originalPrice(t, item.sale_price_original, item.sale_currency, item.sold_price_eur, item.sold_date)"
+                    class="text-body-small text-medium-emphasis"
+                  >
+                    {{ originalPrice(t, item.sale_price_original, item.sale_currency, item.sold_price_eur, item.sold_date) }}
+                  </div>
                 </div>
 
                 <div class="piece-cell piece-cell--profit piece-amount">
@@ -1164,6 +1227,22 @@
             </div>
           </template>
         </v-card>
+      </v-col>
+
+      <!-- Diely a stavby z Rebrickable; stiahnu sa až po rozbalení karty. -->
+      <v-col v-if="showParts" cols="12">
+        <SetPartsCard
+          :key="catalog.catalog_num"
+          ref="partsCard"
+          :num="catalog.catalog_num"
+          :num-parts="catalog.num_parts"
+          :pieces="checkablePieces"
+          @checked="onPartsChecked"
+        />
+      </v-col>
+
+      <v-col v-if="showAlternates" cols="12">
+        <SetAlternatesCard :key="catalog.catalog_num" :num="catalog.catalog_num" />
       </v-col>
     </v-row>
 

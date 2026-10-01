@@ -27,8 +27,10 @@ from lego_api.routers import (
     items,
     minifigs,
     misc,
+    parts,
     photos,
     prices,
+    rates,
     share,
     stats,
     themes,
@@ -161,11 +163,13 @@ def create_app() -> FastAPI:
     api.include_router(auth_router)
     api.include_router(catalog.router)
     api.include_router(items.router)
+    api.include_router(parts.router)
     api.include_router(photos.router)
     api.include_router(categories.router)
     api.include_router(prices.router)
     api.include_router(stats.router)
     api.include_router(share.router)
+    api.include_router(rates.router)
     api.include_router(minifigs.router)
     api.include_router(themes.router)
     api.include_router(usage.router)

@@ -22,13 +22,16 @@
   import { useI18n } from 'vue-i18n'
   import { CONDITIONS, FLAGS, PURPOSES, VARIANTS } from '@/api/types'
   import CategoryPicker from '@/components/CategoryPicker.vue'
+  import CurrencySelect from '@/components/CurrencySelect.vue'
   import DateField from '@/components/DateField.vue'
   import PlaceFields from '@/components/PlaceFields.vue'
   import { useCategoryPicker } from '@/composables/useCategoryPicker'
+  import { useEuroPreview } from '@/composables/useDisplayCurrency'
+  import { foreignEntryOn } from '@/composables/useDisplayPrefs'
   import { useCollectionStore } from '@/stores/collection'
   import { useNotifyStore } from '@/stores/notify'
-  import { toNumber } from '@/utils/format'
-  import { priceChange } from '@/utils/priceEdit'
+  import { type CurrencyCode, currencySymbol, isCurrency, toNumber } from '@/utils/format'
+  import { purchaseChange } from '@/utils/priceEdit'
 
   const open = defineModel<boolean>({ required: true })
   const props = defineProps<{ item: ValuedItem | null, locations?: string[] }>()
@@ -50,6 +53,8 @@
   const location = ref<string | null>('')
   const box = ref<string | null>('')
   const price = ref('')
+  /** Mena kúpy; v cudzej mene prepočíta eurá server kurzom zo dňa kúpy. */
+  const currency = ref<CurrencyCode>('EUR')
   const date = ref('')
   const place = ref<string | null>('')
   const note = ref('')
@@ -62,6 +67,11 @@
   const isMinifig = computed(() => props.item?.catalog.kind === 'minifig')
 
   const collection = useCollectionStore()
+  /** Výber meny pri cene: zapnutý v Nastaveniach, alebo kus už je v cudzej mene. */
+  const showCurrency = computed(() =>
+    foreignEntryOn() || currency.value !== 'EUR' || isCurrency(props.item?.purchase_currency),
+  )
+  const preview = useEuroPreview(price, currency, date)
 
   watch(open, isOpen => {
     if (isOpen && collection.purchasePlaces.length === 0) collection.loadLocations()
@@ -73,7 +83,11 @@
     purpose.value = item.purpose ?? null
     location.value = item.location ?? ''
     box.value = item.box ?? ''
-    price.value = String(toNumber(item.purchase_price_eur) ?? '')
+    // Kúpa v cudzej mene sa upravuje v nej, eurá sú len prepočet.
+    currency.value = isCurrency(item.purchase_currency) ? item.purchase_currency : 'EUR'
+    price.value = String(
+      toNumber(currency.value === 'EUR' ? item.purchase_price_eur : item.purchase_price_original) ?? '',
+    )
     date.value = item.purchase_date ?? ''
     place.value = item.purchase_place ?? ''
     note.value = item.note ?? ''
@@ -118,7 +132,15 @@
       // Prázdna krabica sa zmaže (server z prázdneho reťazca urobí null).
       box: (box.value ?? '').trim(),
       // Len zmenená cena; inak by sa zrušilo označenie doplnenej ceny.
-      ...priceChange(props.item?.purchase_price_eur, price.value),
+      ...purchaseChange(
+        {
+          eur: props.item.purchase_price_eur,
+          currency: props.item.purchase_currency,
+          original: props.item.purchase_price_original,
+        },
+        currency.value,
+        price.value,
+      ),
       purchase_date: date.value || null,
       purchase_place: (place.value ?? '').trim() || null,
       note: note.value.trim() || null,
@@ -205,13 +227,15 @@
         <PlaceFields v-model:box="box" v-model:location="location" variant="outlined" />
 
         <div class="d-flex ga-3 flex-wrap">
+          <CurrencySelect v-if="showCurrency" v-model="currency" variant="outlined" />
+
           <v-text-field
             v-model="price"
-            :hide-details="!item.purchase_price_auto"
-            :hint="item.purchase_price_auto ? t('purchaseAuto.dialogHint') : undefined"
+            :hide-details="!item.purchase_price_auto && !preview.text.value"
+            :hint="item.purchase_price_auto ? t('purchaseAuto.dialogHint') : preview.text.value"
             :label="t('piece.price')"
             persistent-hint
-            prefix="€"
+            :prefix="currencySymbol(currency)"
             :prepend-inner-icon="item.purchase_price_auto ? 'mdi-auto-fix' : undefined"
             style="min-width: 140px"
             type="number"

@@ -4,6 +4,7 @@
   import { onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api } from '@/api/client'
+  import { onPageReload } from '@/composables/usePageLoad'
   import { useCollectionStore } from '@/stores/collection'
   import { money, percent } from '@/utils/format'
 
@@ -19,6 +20,8 @@
 
   onMounted(load)
   watch(() => [collection.real, collection.scope], load)
+  // Tlačidlo Obnoviť stránku v hornej lište.
+  onPageReload(load)
 </script>
 
 <template>

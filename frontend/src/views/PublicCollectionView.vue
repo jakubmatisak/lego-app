@@ -9,15 +9,17 @@
   import { useI18n } from 'vue-i18n'
   import { useRoute } from 'vue-router'
   import { API_BASE } from '@/api/client'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import SetImage from '@/components/SetImage.vue'
-  import { count, exactMoney } from '@/utils/format'
+  import { usePageLoad } from '@/composables/usePageLoad'
+  import { count, exactMoney, isCurrency, setDisplayCurrency } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
 
   const route = useRoute()
   const { t } = useI18n()
 
   const data = ref<PublicCollection | null>(null)
-  const loading = ref(true)
   const notFound = ref(false)
 
   const themes = computed(() => {
@@ -37,29 +39,43 @@
     return data.value.items.filter(item => item.theme === activeTheme.value)
   })
 
-  onMounted(async () => {
-    try {
-      // Zámerne bez klienta s tokenom, táto stránka je anonymná.
-      const response = await fetch(`${API_BASE}/public/${route.params.token}`)
-      if (!response.ok) {
-        notFound.value = true
-        return
-      }
-      data.value = await response.json() as PublicCollection
-    } catch {
+  /**
+   * Odkaz neexistuje alebo bol zrušený (404, 410) je odpoveď: „Odkaz
+   * neplatí“. Výpadok siete či chyba servera nie: tie ukážu „Nepodarilo sa
+   * načítať“ so Skúsiť znova, nie tvrdenie, že odkaz neplatí.
+   */
+  async function load (): Promise<boolean> {
+    // Zámerne bez klienta s tokenom, táto stránka je anonymná.
+    const response = await fetch(`${API_BASE}/public/${route.params.token}`)
+    if (response.status === 404 || response.status === 410) {
       notFound.value = true
-    } finally {
-      loading.value = false
+      return true
     }
-  })
+    if (!response.ok) return false
+    data.value = await response.json() as PublicCollection
+    // Sumy v mene majiteľa: server pošle kód a kurz, pri vypnutých sumách nič.
+    const shown = data.value.currency
+    setDisplayCurrency(isCurrency(shown) ? shown : 'EUR', Number(data.value.rate ?? 1), null)
+    notFound.value = false
+    return true
+  }
+
+  /** Bez hornej lišty appky, k Obnoviť stránku sa neprihlasuje. */
+  const page = usePageLoad(load, { reload: false })
+
+  onMounted(() => page.run())
 </script>
 
 <template>
   <v-app>
     <v-main class="bg-background">
-      <div v-if="loading" class="d-flex justify-center pa-12">
-        <v-progress-circular color="primary" indeterminate />
+      <!-- Kostra hlavičky a kariet, kým server neodpovedal (usePageLoad). -->
+      <div v-if="page.initial" class="pa-6 d-flex flex-column ga-4">
+        <v-skeleton-loader type="list-item-avatar-two-line" />
+        <PageSkeleton kind="cards" />
       </div>
+
+      <LoadFailed v-else-if="page.error" :loading="page.loading" @retry="page.run()" />
 
       <v-empty-state
         v-else-if="notFound || !data"

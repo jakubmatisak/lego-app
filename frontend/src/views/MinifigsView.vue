@@ -21,8 +21,11 @@
   import { useRoute, useRouter } from 'vue-router'
   import { api, errorMessage } from '@/api/client'
   import CardGrid from '@/components/CardGrid.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import SeriesBar from '@/components/SeriesBar.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { imageSrc } from '@/utils/imageSrc'
   import { compareSeries, matchesState, seriesState } from '@/utils/seriesList'
 
@@ -44,7 +47,7 @@
 
   const series = ref<CmfSeries[]>([])
   const sync = ref<CmfSync | null>(null)
-  const loading = ref(true)
+  /** Chyba sťahovania sérií; chybu načítania zoznamu ukáže LoadFailed. */
   const error = ref<string | null>(null)
   const filter = ref<Filter>('all')
   const search = ref('')
@@ -55,17 +58,17 @@
   const sort = ref<Sort>('progress')
   let poll: ReturnType<typeof setTimeout> | null = null
 
-  async function load (): Promise<void> {
+  async function load (): Promise<boolean> {
     const { data, error: err } = await api.GET('/minifigs/series', {})
-    loading.value = false
-    if (err || !data) {
-      error.value = errorMessage(err, t('minifigs.loadFailed'))
-      return
-    }
+    if (err || !data) return false
     series.value = data.series
     sync.value = data.sync
     watchSync()
+    return true
   }
+
+  /** Prvé načítanie kostra, ďalšie (po sťahovaní, Obnoviť stránku) nad starými kartami. */
+  const page = usePageLoad(load)
 
   /** Kým sťahovanie beží, pýtať sa na stav; po dobehnutí načítať zoznam znova. */
   function watchSync (): void {
@@ -76,7 +79,7 @@
       if (!data) return
       const finished = sync.value?.running && !data.running
       sync.value = data
-      if (finished) await load()
+      if (finished) await page.run()
       else watchSync()
     }, 2000)
   }
@@ -211,7 +214,7 @@
 
   onMounted(() => {
     readRoute()
-    load()
+    page.run()
   })
   onBeforeUnmount(() => {
     if (poll !== null) clearTimeout(poll)
@@ -221,7 +224,7 @@
 <template>
   <div class="d-flex flex-column ga-4">
     <div class="d-flex align-center flex-wrap ga-2">
-      <span class="text-body-medium text-medium-emphasis">
+      <span v-if="page.loaded" class="text-body-medium text-medium-emphasis">
         {{ t(isMinifigs ? 'minifigs.summary' : 'minifigs.summaryOther', { figures, collecting: counts.collecting, complete: counts.complete }) }}
       </span>
 
@@ -372,7 +375,15 @@
       <v-btn v-if="hasFilters" size="small" variant="text" @click="clearFilters">{{ t('filters.clear') }}</v-btn>
     </div>
 
-    <v-progress-linear v-if="loading" color="primary" indeterminate />
+    <!-- Kým server neodpovedal, kostra; „Zatiaľ žiadne série“ až po odpovedi. -->
+    <PageSkeleton v-if="page.initial" kind="cards" />
+
+    <LoadFailed
+      v-else-if="page.error"
+      :loading="page.loading"
+      :message="t('minifigs.loadFailed')"
+      @retry="page.run()"
+    />
 
     <v-empty-state
       v-else-if="shown.length === 0"

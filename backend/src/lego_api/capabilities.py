@@ -14,6 +14,8 @@ from enum import StrEnum
 class Cap(StrEnum):
     REBRICKABLE_SET = "rebrickable.set"
     REBRICKABLE_SERIES_SYNC = "rebrickable.series_sync"
+    REBRICKABLE_PARTS = "rebrickable.parts"
+    REBRICKABLE_ALTERNATES = "rebrickable.alternates"
     BRICKSET_ON_ADD = "brickset.on_add"
     BRICKSET_BACKFILL = "brickset.backfill"
     BRICKSET_ON_DETAIL = "brickset.on_detail"
@@ -26,6 +28,7 @@ class Cap(StrEnum):
     BRICKECONOMY_PRICE_DETAIL = "brickeconomy.price_detail"
     UPCITEMDB_BARCODE = "upcitemdb.barcode"
     EUROSTAT_INFLATION = "eurostat.inflation"
+    ECB_RATES = "ecb.rates"
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +50,9 @@ class CapSpec:
 CAPABILITIES: dict[Cap, CapSpec] = {
     Cap.REBRICKABLE_SET: CapSpec("rebrickable", counted=False, required=True),
     Cap.REBRICKABLE_SERIES_SYNC: CapSpec("rebrickable", counted=False, background=True),
+    # Diely a alternatívne stavby v detaile setu: raz na set, až po rozbalení karty.
+    Cap.REBRICKABLE_PARTS: CapSpec("rebrickable", counted=False),
+    Cap.REBRICKABLE_ALTERNATES: CapSpec("rebrickable", counted=False),
     Cap.BRICKSET_ON_ADD: CapSpec("brickset", counted=True),
     Cap.BRICKSET_BACKFILL: CapSpec("brickset", counted=True, background=True),
     Cap.BRICKSET_ON_DETAIL: CapSpec("brickset", counted=True),
@@ -59,6 +65,9 @@ CAPABILITIES: dict[Cap, CapSpec] = {
     Cap.BRICKECONOMY_PRICE_DETAIL: CapSpec("brickeconomy", counted=True),
     Cap.UPCITEMDB_BARCODE: CapSpec("upcitemdb", counted=True, default_enabled=False),
     Cap.EUROSTAT_INFLATION: CapSpec("eurostat", counted=False, default_enabled=False),
+    # Kurzy pre menu zobrazenia: ťahajú sa, len keď si účet vyberie inú menu
+    # než euro alebo zadá sumu v cudzej mene, takže môžu byť predvolene zapnuté.
+    Cap.ECB_RATES: CapSpec("ecb", counted=False),
 }
 
 
@@ -77,4 +86,5 @@ PROVIDERS: dict[str, ProviderSpec] = {
     "brickeconomy": ProviderSpec(paid=True, needs_key=True, daily_limit=None),
     "upcitemdb": ProviderSpec(paid=False, needs_key=False, daily_limit=100),
     "eurostat": ProviderSpec(paid=False, needs_key=False, daily_limit=None),
+    "ecb": ProviderSpec(paid=False, needs_key=False, daily_limit=None),
 }

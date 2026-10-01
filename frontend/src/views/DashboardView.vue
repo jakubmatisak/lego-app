@@ -4,11 +4,13 @@
  * samostatné čísla a nikde sa nesčítavajú do jedného.
  */
   import type { Scope } from '@/utils/scope'
-  import { computed, onMounted } from 'vue'
+  import { computed, onMounted, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
   import BreakdownCard from '@/components/BreakdownCard.vue'
   import ForecastCard from '@/components/ForecastCard.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import PortfolioCard from '@/components/PortfolioCard.vue'
   import PriceMovers from '@/components/PriceMovers.vue'
   import SalesCard from '@/components/SalesCard.vue'
@@ -18,6 +20,7 @@
   import StatTile from '@/components/StatTile.vue'
   import ThemeDonut from '@/components/ThemeDonut.vue'
   import UnlockCard from '@/components/UnlockCard.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { useAuthStore } from '@/stores/auth'
   import { useCollectionStore } from '@/stores/collection'
   import { useFilterStore } from '@/stores/filters'
@@ -36,8 +39,14 @@
   const notify = useNotifyStore()
 
   const summary = computed(() => collection.dashboardSummary)
-  // Prázdna je zbierka, nie rozsah: rozsah bez kusov ukáže nuly, nie „pridaj prvý set“.
-  const isEmpty = computed(() => (collection.summary?.item_count ?? 0) === 0 && (collection.summary?.sold_count ?? 0) === 0)
+  /*
+   * Prázdna je zbierka, nie rozsah: rozsah bez kusov ukáže nuly, nie „pridaj
+   * prvý set“. Bez súhrnu (ešte neprišiel, alebo zlyhal) prázdna nie je.
+   */
+  const isEmpty = computed(() => {
+    const s = collection.summary
+    return s !== null && s.item_count === 0 && s.sold_count === 0
+  })
 
   const discountHint = computed(() => {
     const s = summary.value
@@ -91,6 +100,29 @@
     auth.hasPriceKey ? t('dashboard.priceSource') : t('dashboard.manualPrices'),
   )
 
+  /**
+   * Štatistiky Prehľadu aj súhrn za ponukou. Súhrn null po načítaní =
+   * server neodpovedal. Beh mohol predbehnúť novší (rozloženie, prepínač
+   * inflácie); jeho odpoveď sa zahodí, takže sa počká na ten novší.
+   */
+  async function loadStats (): Promise<boolean> {
+    await collection.loadDashboard()
+    if (collection.loading) {
+      await new Promise<void>(resolve => {
+        const stop = watch(() => collection.loading, busy => {
+          if (!busy) {
+            stop()
+            resolve()
+          }
+        })
+      })
+    }
+    return collection.summary !== null && collection.dashboardSummary !== null
+  }
+
+  /** Prvé načítanie kostra, ďalšie (rozsah, Obnoviť stránku) nad starými číslami. */
+  const page = usePageLoad(loadStats, { summary: true })
+
   onMounted(async () => {
     // Rozsah si pamätá účet; načíta sa pred štatistikami, nech sa neťahajú dvakrát.
     await Promise.all([
@@ -107,22 +139,23 @@
     }
     // Rovnaký rozsah ako doteraz: nový objekt by karty prinútil načítať znova.
     if (JSON.stringify(next) !== JSON.stringify(collection.scope)) collection.scope = next
-    collection.loadDashboard()
+    await page.run()
   })
 
   function setScope (next: Scope | null): void {
     collection.scope = next
     profile.save('dashboard', next ? { scope: next } : {})
-    collection.loadDashboard()
+    page.run()
   }
 </script>
 
 <template>
   <UnlockCard class="mb-4" />
 
-  <div v-if="collection.loading && !summary" class="d-flex justify-center pa-12">
-    <v-progress-circular color="primary" indeterminate />
-  </div>
+  <!-- Kým server neodpovedal, kostra, nie „Zatiaľ žiadne sety“ (usePageLoad). -->
+  <PageSkeleton v-if="page.initial" kind="dashboard" />
+
+  <LoadFailed v-else-if="page.error || !summary" :loading="page.loading" @retry="page.run()" />
 
   <v-empty-state
     v-else-if="isEmpty"

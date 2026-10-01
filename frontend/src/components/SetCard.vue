@@ -135,6 +135,17 @@
 
         <v-chip v-if="conditionLabel" label size="x-small" variant="tonal">{{ conditionLabel }}</v-chip>
 
+        <!-- Z kontroly úplnosti v detaile setu (bez náhradných dielikov). -->
+        <v-chip
+          v-if="!sold && (row.missing_parts ?? 0) > 0"
+          color="warning"
+          data-test="card-missing-parts"
+          label
+          prepend-icon="mdi-puzzle-remove-outline"
+          size="x-small"
+          variant="tonal"
+        >{{ t('parts.missingPlural', row.missing_parts, { named: { count: row.missing_parts } }) }}</v-chip>
+
         <v-chip
           v-if="locationLabel"
           label

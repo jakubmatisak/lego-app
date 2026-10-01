@@ -82,6 +82,12 @@ COLUMNS: dict[str, tuple[str, ...]] = {
         "price",
         "paid",
     ),
+    "purchase_currency": ("mena_kupy", "mena", "currency", "purchase_currency"),
+    "purchase_price_original": (
+        "kupna_cena_v_mene",
+        "cena_v_mene",
+        "purchase_price_original",
+    ),
     "purchase_date": (
         "datum_kupy",
         "datum_nakupu",
@@ -348,6 +354,7 @@ def parse_row(line: int, raw: dict[str, Any]) -> ParsedRow:
         row.errors.append("Vzorový riadok zo šablóny, zmaž ho.")
 
     v["purchase_price"] = money("purchase_price", "Kúpna cena")
+    _currency(row, raw)
     v["purchase_date"] = day("purchase_date", "Dátum kúpy")
     v["purchase_place"] = text("purchase_place", 160)
     v["location"] = text("location", 120)
@@ -418,6 +425,55 @@ def parse_row(line: int, raw: dict[str, Any]) -> ParsedRow:
     return row
 
 
+#: Znak meny pri sume („1 290 Kč“), ktorý suma nepotrebuje.
+_CURRENCY_MARK = re.compile(r"(?i)k[čc]|z[łl]|ft|chf|czk|usd|gbp|pln|huf|eur|[$£€]")
+
+
+def _currency(row: ParsedRow, raw: dict[str, Any]) -> None:
+    """Kúpa v cudzej mene: ``mena_kupy`` a ``kupna_cena_v_mene``.
+
+    Eurá sa prepočítajú až pri potvrdení kurzom zo dňa kúpy, a len keď
+    chýba ``kupna_cena_eur`` (export ju nesie, takže nahratý späť sa
+    nemení). Euro v stĺpci meny je obyčajná kúpna cena v eurách.
+    """
+    from lego_api.services.currency import EUR, SUPPORTED, normalize
+
+    v = row.values
+    v["purchase_currency"] = None
+    v["purchase_price_original"] = None
+    code_raw = raw.get("purchase_currency")
+    code: str | None = None
+    if not _blank(code_raw):
+        try:
+            code = normalize(_cell_text(code_raw))
+        except ValueError:
+            row.errors.append(
+                f"Menu „{_cell_text(code_raw)}“ nepoznám. Použi: {', '.join(SUPPORTED)}."
+            )
+            return
+    amount_raw = raw.get("purchase_price_original")
+    if _blank(amount_raw):
+        return
+    try:
+        cleaned = _CURRENCY_MARK.sub("", amount_raw) if isinstance(amount_raw, str) else amount_raw
+        amount = parse_money(cleaned)
+    except ValueError:
+        row.errors.append(f"Kúpna cena v mene: „{_cell_text(amount_raw)}“ nie je suma.")
+        return
+    if amount < 0:
+        row.errors.append("Kúpna cena v mene musí byť kladná.")
+        return
+    if code is None:
+        row.errors.append("Kúpna cena v mene potrebuje aj menu (stĺpec mena_kupy).")
+        return
+    if code == EUR:
+        if v["purchase_price"] is None:
+            v["purchase_price"] = str(amount)
+        return
+    v["purchase_currency"] = code
+    v["purchase_price_original"] = str(amount)
+
+
 def _check_consistency(row: ParsedRow) -> None:
     v = row.values
     if v["ownership"] == SOLD:
@@ -432,7 +488,12 @@ def _check_consistency(row: ParsedRow) -> None:
     if v["ownership"] == WISH:
         if v["quantity"] != 1:
             row.warnings.append("V Chcem je set najviac raz, počet sa ignoruje.")
-        bought = v["purchase_price"] or v["purchase_date"] or v["purchase_place"]
+        bought = (
+            v["purchase_price"]
+            or v["purchase_price_original"]
+            or v["purchase_date"]
+            or v["purchase_place"]
+        )
         if bought:
             row.warnings.append("Kúpne údaje sa pri Chcem ignorujú.")
     elif v["target_price"] is not None:

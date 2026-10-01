@@ -21,7 +21,7 @@
   import { useI18n } from 'vue-i18n'
   import { useTheme } from 'vuetify'
   import { CHART_COLORS } from '@/plugins/vuetify'
-  import { money, pricesHidden, toNumber } from '@/utils/format'
+  import { amount, displayCurrency, pricesHidden, toDisplay, toNumber } from '@/utils/format'
 
   ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend)
 
@@ -54,7 +54,8 @@
       const x = new Date(p.captured_at).getTime()
       const day = p.captured_at.slice(0, 10)
       const seen = byDay.get(day)
-      if (!seen || seen.x < x) byDay.set(day, { x, y })
+      // Body v mene zobrazenia, aby osi mali okrúhle sumy v nej.
+      if (!seen || seen.x < x) byDay.set(day, { x, y: toDisplay(y) })
     }
     return [...byDay.values()].toSorted((a, b) => a.x - b.x)
   }
@@ -84,7 +85,7 @@
    */
   const yDecimals = computed(() => {
     const ys = [...newSeries.value, ...usedSeries.value].map(p => p.y)
-    if (props.purchase !== null) ys.push(props.purchase)
+    if (props.purchase !== null) ys.push(toDisplay(props.purchase))
     return ys.length > 0 && Math.max(...ys) - Math.min(...ys) < 10 ? 2 : 0
   })
 
@@ -117,7 +118,10 @@
     if (props.purchase !== null) {
       datasets.push({
         label: t('detail.historyPurchase'),
-        data: [{ x: span.value.min, y: props.purchase }, { x: span.value.max, y: props.purchase }],
+        data: [
+          { x: span.value.min, y: toDisplay(props.purchase) },
+          { x: span.value.max, y: toDisplay(props.purchase) },
+        ],
         borderColor: CHART_COLORS.invested,
         backgroundColor: CHART_COLORS.invested,
         borderDash: [5, 4],
@@ -132,6 +136,8 @@
   const chartOptions = computed(() => ({
     // Nový objekt pri skrytí cien: graf prekreslí osi aj popisy so sumami.
     hiddenPrices: pricesHidden.value,
+    // Aj pri zmene meny zobrazenia: body sú prepočítané, osi v novej mene.
+    displayCurrency: displayCurrency.value.code,
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'nearest' as const, intersect: false },
@@ -146,7 +152,7 @@
           title: (items: { parsed: { x: number | null } }[]) =>
             items[0]?.parsed.x == null ? '' : dayFormat.format(new Date(items[0].parsed.x)),
           label: (ctx: { dataset: { label?: string }, parsed: { y: number | null } }) =>
-            `${ctx.dataset.label}: ${money(ctx.parsed.y)}`,
+            `${ctx.dataset.label}: ${amount(ctx.parsed.y)}`,
         },
       },
     },
@@ -169,7 +175,7 @@
         ticks: {
           color: textColor.value,
           font: { size: 10 },
-          callback: (value: string | number) => money(value, { decimals: yDecimals.value }),
+          callback: (value: string | number) => amount(value, { decimals: yDecimals.value }),
         },
       },
     },

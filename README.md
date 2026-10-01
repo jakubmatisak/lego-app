@@ -10,7 +10,7 @@ ostávajú v evidencii, takže vidíš aj to, koľko si na predaji naozaj zarobi
 
 Appka vznikla pre zberateľa, ktorý mal zbierku v tabuľke a chcel vedieť, čo
 má, kde to má a koľko to dnes stojí. Nie je to obchod ani burza, len evidencia.
-Aktuálna verzia je **1.0.1**.
+Aktuálna verzia je **1.1.0**.
 
 - **Stránka projektu:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (zdroj v [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))
@@ -57,6 +57,11 @@ Aktuálna verzia je **1.0.1**.
 - **Vlastné fotky kusu** (zmenšené do 1 MB, bez polohy GPS) a **súpis pre
   poistku** na tlač alebo do PDF.
 - **Galéria ďalších oficiálnych fotiek setu** z Brickset (dá sa vypnúť).
+- **Diely setu** z Rebrickable podľa farby, náhradné zvlášť, a **kontrola
+  úplnosti** každého kusu: zadáš, koľko dielika je, kus potom nesie štítok
+  „chýbajú N“ a zoznam chýbajúcich sa stiahne do CSV. **Čo ešte z neho
+  postavíš**: alternatívne stavby z dielikov setu s odkazom na Rebrickable.
+  Oboje sa stiahne raz na set, až keď kartu rozbalíš.
 
 **Pridávanie**
 
@@ -83,6 +88,10 @@ Aktuálna verzia je **1.0.1**.
   nevyplní. Cena odvodená z druhého stavu (postavený kus setu, ktorý sa ešte
   predáva) má znak ≈.
 - **V dnešných peniazoch**: prepočet kúpnych cien infláciou (HICP Slovensko).
+- **Mena zobrazenia**: sumy v eurách, korunách, dolároch, librách, zlotých,
+  forintoch alebo frankoch, prepočítané dnešným kurzom ECB. Ukladá sa ďalej
+  v eurách. Kúpu a predaj sa dá zadať aj v inej mene: na eurá sa prepočíta
+  kurzom zo dňa kúpy a pôvodná suma ostane pri kuse.
 - **Odhad hodnoty** kusov v krabici o 2 a 5 rokov.
 - **Kto sa hýbe**: zmena trhovej ceny za 30, 90 a 365 dní.
 - **Overiť cenu**: v obchode naskenuješ krabicu a hneď vidíš, čo to je, či to
@@ -231,24 +240,27 @@ dennú kvótu, nikto ju nemíňa niekomu inému.
 
 | Služba | Na čo je | Cena a limit | Kľúč |
 |---|---|---|---|
-| [Rebrickable](https://rebrickable.com/api/) | názvy, roky, dieliky, fotky, série, figúrky | zdarma, ~1 volanie/s | nastavenia účtu na rebrickable.com |
+| [Rebrickable](https://rebrickable.com/api/) | názvy, roky, dieliky, fotky, série, figúrky, zoznam dielov, alternatívne stavby | zdarma, ~1 volanie/s | nastavenia účtu na rebrickable.com |
 | [Brickset](https://brickset.com/article/52664/api-version-3-documentation) | pôvodná cena, čiarové kódy, popis, štítky, vlny sérií, ďalšie fotky setu | zdarma, 100 volaní/deň | [žiadosť o kľúč](https://brickset.com/tools/webservices/requestkey) |
 | [BrickEconomy](https://www.brickeconomy.com/api-reference) | trhová cena nového a použitého kusu, história, odhady | súčasť Premium, 100 volaní/deň | profil na brickeconomy.com |
 | [UPCitemdb](https://www.upcitemdb.com/) | záložné hľadanie podľa čiarového kódu | zdarma, bez kľúča, ~100 dotazov/deň na server | netreba, predvolene vypnuté |
 | [Eurostat](https://ec.europa.eu/eurostat/) | inflácia pre prepočet do dnešných peňazí | zdarma, bez kľúča | netreba, predvolene vypnuté |
+| [ECB](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html) | kurzy pre menu zobrazenia a kúpu v cudzej mene | zdarma, bez kľúča, najviac raz denne | netreba, len pri inej mene než euro |
 
 ### Ako sa šetria volania
 
 Nič sa nedeje samo od seba, nie je tu plánovač. Obnovu cien spúšťa tlačidlo
-v hornej lište a beží na pozadí. Denná kvóta BrickEconomy je 100 volaní,
-preto:
+v hornej lište a beží na pozadí. Pred spustením sa dialóg spýta, koľko cien
+obnoviť (predvolene 50, najviac toľko, koľko dnes ostáva) a ukáže, koľko
+volaní je dnes použitých. Denná kvóta BrickEconomy je 100 volaní, preto:
 
 1. Hromadná obnova sa nepýta na položku, na ktorú sa pýtala pred menej než
    týždňom (`PRICE_MAX_AGE_HOURS`), ani keď vtedy zdroj cenu nemal.
-2. Na jedno spustenie najviac 40 položiek (`PRICE_REFRESH_BUDGET`). Najprv
-   tie, ktorých cenu ešte nepoznáme (naposledy pridané prvé), potom od
-   najstaršej; zvyšok pri ďalšom.
-3. Platí zvyšok dennej kvóty (appka ráta s 90 zo 100,
+2. Na jedno spustenie najviac toľko položiek, koľko si vyberieš v dialógu
+   (bez neho 40, `PRICE_REFRESH_BUDGET`). Najprv tie, ktorých cenu ešte
+   nepoznáme (naposledy pridané prvé), potom od najstaršej; zvyšok pri
+   ďalšom.
+3. Platí zvyšok dennej kvóty (100 volaní, dá sa znížiť cez
    `BRICKECONOMY_DAILY_LIMIT`), po odpovedi 429 sa dávka zastaví.
 4. Jedno volanie na set: odpoveď nesie cenu nového aj použitého kusu
    a históriu, takže nový aj postavený kus sa obnovia spolu.
@@ -335,6 +347,9 @@ a zobrazujú sa len na nekomerčné informačné účely v súlade s pravidlami
   Appka z indexu počíta prepočet cien do dnešných peňazí; je to úprava dát,
   za ktorú Eurostat nezodpovedá
   ([podmienky opätovného použitia](https://ec.europa.eu/eurostat/help/copyright-notice)).
+- **Kurzy mien:** Zdroj: ECB, referenčné výmenné kurzy eura
+  ([eurofxref](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html)).
+  Appka nimi len prepočítava sumy, kurzy nemení.
 
 Kľúče k službám patria jednotlivým používateľom a ich použitie sa riadi
 podmienkami danej služby.
@@ -427,7 +442,7 @@ actually made on each sale.
 The app was built for a collector who kept everything in a spreadsheet and
 wanted to know what he has, where it is and what it is worth today. It is not
 a shop or a marketplace, just a record of the collection. The current version
-is **1.0.1**.
+is **1.1.0**.
 
 - **Project website:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (source at [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))
@@ -483,6 +498,12 @@ The app's interface is available in Slovak and English.*
   removed) and an **insurance inventory** to print or save as PDF.
 - **Gallery of additional official set pictures** from Brickset (can be
   switched off).
+- **Set parts** from Rebrickable by colour, spares listed apart, and a
+  **completeness check** for each piece: enter how many of a part you have,
+  the piece then carries a “N parts missing” label and the missing parts
+  list downloads as CSV. **What else you can build**: alternate builds from
+  the set's parts with a link to Rebrickable. Both are fetched once per set,
+  only when you expand the card.
 
 **Adding sets**
 
@@ -513,6 +534,11 @@ The app's interface is available in Slovak and English.*
   price blank. A price borrowed from the other condition (a built copy of a
   set that is still on sale) is marked with ≈.
 - **In today's money**: purchase prices adjusted for inflation (Slovak HICP).
+- **Display currency**: amounts in euros, koruna, dollars, pounds, złoty,
+  forint or francs, converted at today's ECB rate. Everything is still stored
+  in euros. Purchases and sales can be entered in another currency too: they
+  are converted at the rate of the purchase day and the original amount stays
+  with the piece.
 - **Value forecast** for sealed pieces 2 and 5 years ahead.
 - **Biggest movers**: change in market price over 30, 90 and 365 days.
 - **Check price**: scan a box in a shop and see right away what it is, whether
@@ -670,24 +696,27 @@ anyone else's.
 
 | Service | What it provides | Price and limit | Key |
 |---|---|---|---|
-| [Rebrickable](https://rebrickable.com/api/) | names, years, piece counts, pictures, themes, minifigures | free, ~1 call/s | account settings on rebrickable.com |
+| [Rebrickable](https://rebrickable.com/api/) | names, years, piece counts, pictures, themes, minifigures, parts lists, alternate builds | free, ~1 call/s | account settings on rebrickable.com |
 | [Brickset](https://brickset.com/article/52664/api-version-3-documentation) | original price, barcodes, description, tags, theme waves, additional set pictures | free, 100 calls/day | [request a key](https://brickset.com/tools/webservices/requestkey) |
 | [BrickEconomy](https://www.brickeconomy.com/api-reference) | market price new and used, history, forecasts | part of Premium, 100 calls/day | profile on brickeconomy.com |
 | [UPCitemdb](https://www.upcitemdb.com/) | fallback barcode lookup | free, no key, ~100 lookups/day per server | not needed, off by default |
 | [Eurostat](https://ec.europa.eu/eurostat/) | inflation for the today's-money conversion | free, no key | not needed, off by default |
+| [ECB](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html) | rates for the display currency and purchases in another currency | free, no key, at most once a day | not needed, only for a currency other than the euro |
 
 ### How calls are rationed
 
 Nothing happens on its own; there is no scheduler. A price refresh is started
-with the button in the top bar and runs in the background. BrickEconomy
-allows 100 calls a day, so:
+with the button in the top bar and runs in the background. Before it starts,
+a dialog asks how many prices to refresh (50 by default, at most what is left
+today) and shows how many calls were used today. BrickEconomy allows 100
+calls a day, so:
 
 1. A bulk refresh skips items it asked about less than a week ago
    (`PRICE_MAX_AGE_HOURS`), even when the source had no price then.
-2. At most 40 items per run (`PRICE_REFRESH_BUDGET`). Items with no known
-   price go first (most recently added first), then the oldest; the rest
-   wait for the next run.
-3. The remaining daily quota is respected (the app counts on 90 out of 100,
+2. At most as many items per run as you pick in the dialog (40 without it,
+   `PRICE_REFRESH_BUDGET`). Items with no known price go first (most
+   recently added first), then the oldest; the rest wait for the next run.
+3. The remaining daily quota is respected (100 calls, can be lowered with
    `BRICKECONOMY_DAILY_LIMIT`), and a 429 response stops the batch.
 4. One call per set: the response carries both the new and the used price
    plus the history, so sealed and built copies are refreshed together.
@@ -778,6 +807,9 @@ guidelines.
   The app uses the index to convert prices into today's money; this is a
   modification of the data for which Eurostat is not responsible
   ([reuse policy](https://ec.europa.eu/eurostat/help/copyright-notice)).
+- **Exchange rates:** Source: ECB, euro foreign exchange reference rates
+  ([eurofxref](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html)).
+  The app only converts amounts with them and does not alter the rates.
 
 Service keys belong to individual users, and their use is governed by the
 terms of each service.

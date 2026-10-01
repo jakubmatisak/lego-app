@@ -15,9 +15,12 @@
   import { api, errorMessage } from '@/api/client'
   import CardGrid from '@/components/CardGrid.vue'
   import GhostCard from '@/components/GhostCard.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import SeriesBar from '@/components/SeriesBar.vue'
   import SeriesPurchaseDialog from '@/components/SeriesPurchaseDialog.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { imageSrc } from '@/utils/imageSrc'
   import { memberShowFrom } from '@/utils/seriesList'
 
@@ -27,24 +30,29 @@
   const num = computed(() => String(route.params.num))
   const series = ref<CmfSeries | null>(null)
   const members = ref<CmfMember[]>([])
-  const loading = ref(true)
-  const error = ref<string | null>(null)
   /** Z Prehľadu („Ukázať chýbajúce“) prichádza `?show=missing`. */
   const show = ref(memberShowFrom(route.query.show))
   const allOpen = ref(false)
 
-  async function load (): Promise<void> {
+  /** Text chyby (napríklad neznáma séria), pre LoadFailed. */
+  const error = ref<string | null>(null)
+
+  async function load (): Promise<boolean> {
     const { data, error: err } = await api.GET('/minifigs/series/{series_num}', {
       params: { path: { series_num: num.value } },
     })
-    loading.value = false
     if (err || !data) {
       error.value = errorMessage(err, t('minifigs.loadFailed'))
-      return
+      return false
     }
+    error.value = null
     series.value = data.series
     members.value = data.members
+    return true
   }
+
+  /** Prvé načítanie kostra, po kúpe a Obnoviť stránku nad starými kartami. */
+  const page = usePageLoad(load)
 
   const ownedCount = computed(() => members.value.filter(m => m.owned > 0).length)
   const missingCount = computed(() => members.value.length - ownedCount.value)
@@ -53,8 +61,12 @@
     show.value === 'all' || (show.value === 'owned' ? m.owned > 0 : m.owned === 0),
   ))
 
-  watch(num, load)
-  onMounted(load)
+  // Iná séria: staré karty k nej nepatria, znova kostra.
+  watch(num, () => {
+    page.reset()
+    page.run()
+  })
+  onMounted(() => page.run())
 </script>
 
 <template>
@@ -70,8 +82,16 @@
       </v-btn>
     </div>
 
-    <v-alert v-if="error" type="error" variant="tonal">{{ error }}</v-alert>
-    <v-progress-linear v-if="loading" color="primary" indeterminate />
+    <!-- Kostra hlavičky a kariet, kým server neodpovedal (usePageLoad). -->
+    <template v-if="page.initial">
+      <v-card border flat>
+        <v-skeleton-loader type="list-item-avatar-three-line" />
+      </v-card>
+
+      <PageSkeleton :count="12" kind="cards" />
+    </template>
+
+    <LoadFailed v-else-if="page.error" :loading="page.loading" :message="error" @retry="page.run()" />
 
     <template v-else-if="series">
       <v-card border class="pa-4" flat>
@@ -162,7 +182,7 @@
         >{{ missingCount > 0 ? t('purchase.haveAll') : t('purchase.haveAllAgain') }}</v-btn>
       </div>
 
-      <SeriesPurchaseDialog v-model="allOpen" :members="members" :series="series" @saved="load" />
+      <SeriesPurchaseDialog v-model="allOpen" :members="members" :series="series" @saved="page.run()" />
 
       <CardGrid>
         <template v-for="member in shown" :key="member.catalog.catalog_num">
@@ -195,7 +215,7 @@
             </div>
           </v-card>
 
-          <GhostCard v-else :catalog="member.catalog" :wanted="member.wanted" @owned="load" />
+          <GhostCard v-else :catalog="member.catalog" :wanted="member.wanted" @owned="page.run()" />
         </template>
       </CardGrid>
     </template>

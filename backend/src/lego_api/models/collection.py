@@ -73,11 +73,18 @@ class CollectionItem(Base):
     #: Ručná zmena ceny ho zruší.
     purchase_price_auto: Mapped[bool] = mapped_column(default=False, server_default="0")
     purchase_date: Mapped[date | None] = mapped_column(default=None)
+    #: Kúpa v cudzej mene: kód meny a pôvodná suma. Suma v eurách
+    #: (`purchase_price_eur`) je z nich prepočítaná kurzom ECB zo dňa kúpy.
+    purchase_currency: Mapped[str | None] = mapped_column(String(3), default=None)
+    purchase_price_original: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), default=None)
     purchase_place: Mapped[str | None] = mapped_column(String(160), default=None)
 
     sold_price_eur: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), default=None)
     sold_date: Mapped[date | None] = mapped_column(default=None)
     sold_via: Mapped[str | None] = mapped_column(String(80), default=None)
+    #: Predaj v cudzej mene, rovnako ako kúpa (`sold_price_eur` je prepočet).
+    sale_currency: Mapped[str | None] = mapped_column(String(3), default=None)
+    sale_price_original: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), default=None)
     # Poplatky trhoviska a poštovné, ktoré platil predávajúci. Realizovaný
     # zisk je z nich čistý: predajná − poplatky − poštovné − kúpna.
     sold_fees_eur: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), default=None)

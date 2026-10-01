@@ -27,6 +27,25 @@ def _today_start() -> datetime:
     return datetime.combine(datetime.now(UTC).date(), time.min, tzinfo=UTC)
 
 
+async def brickeconomy_used(
+    session, user_id: int, settings: Settings, economy: BrickEconomyProvider
+) -> int:
+    """Dnešné volania BrickEconomy, ako ich ukazuje karta limitov.
+
+    Väčšie z dvoch čísel: zapísané volania účtu a počítadlo kľúča v procese.
+    Rovnako to ráta aj dialóg obnovy cien (``/prices/refresh-status``).
+    """
+    logged = await session.scalar(
+        select(func.count()).where(
+            ApiCall.provider == "brickeconomy",
+            ApiCall.at >= _today_start(),
+            ApiCall.counted.is_(True),
+            ApiCall.user_id == user_id,
+        )
+    )
+    return max(logged or 0, settings.brickeconomy_daily_limit - economy.remaining_calls())
+
+
 @router.get("", response_model=ApiUsageOut)
 async def usage(
     user: CurrentUser,
@@ -54,7 +73,7 @@ async def usage(
 
     economy = BrickEconomyProvider.for_user(settings, keys)
     economy_limit = settings.brickeconomy_daily_limit
-    economy_used = max(await count("brickeconomy", True), economy_limit - economy.remaining_calls())
+    economy_used = await brickeconomy_used(session, user.id, settings, economy)
 
     brickset = BricksetProvider.for_user(settings, keys)
     brickset_used = await count("brickset", True)
@@ -94,6 +113,13 @@ async def usage(
             provider="eurostat",
             enabled=True,
             used=await count("eurostat", False, counted_only=False),
+            limit=None,
+        ),
+        # Kurzy ECB pre menu zobrazenia: bez kľúča a bez limitu, raz denne.
+        ProviderUsageOut(
+            provider="ecb",
+            enabled=True,
+            used=await count("ecb", False, counted_only=False),
             limit=None,
         ),
     ]

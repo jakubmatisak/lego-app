@@ -4,7 +4,11 @@
  * Configures SASS variables and Vuetify overwrites
  */
 
-// https://vuetifyjs.com/features/sass-variables/`
-// @use 'vuetify/settings' with (
-//   $color-pack: false
-// );
+// https://vuetifyjs.com/features/sass-variables/
+//
+// Kostra načítania (v-skeleton-loader) farbí kosti cez `--v-border-opacity`.
+// Téma appky ju má 1 (okraje majú vlastnú farbu `--v-border-color`), takže
+// kosti by boli plné čierne; dostanú vlastnú jemnú priehľadnosť.
+@use 'vuetify/settings' with (
+  $skeleton-loader-text-background: rgba(var(--v-theme-on-surface), 0.08)
+);

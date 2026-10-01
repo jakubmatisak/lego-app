@@ -15,9 +15,11 @@ from lego_api.models.collection import (
     ItemStatus,
     PriceVariant,
 )
+from lego_api.models.exchange_rate import ExchangeRate
 from lego_api.models.facts import BrickEconomyFacts, BricksetFacts, SourceAccess
 from lego_api.models.imports import ImportBatch, ImportState
 from lego_api.models.inflation import InflationIndex
+from lego_api.models.parts import ItemPartCheck, SetAlternates, SetParts
 from lego_api.models.photo import ItemPhoto
 from lego_api.models.price import PriceCondition, PriceKind, PriceSnapshot
 from lego_api.models.price_check import PriceCheck
@@ -41,10 +43,12 @@ __all__ = [
     "BlindSeries",
     "CmfSeries",
     "CollectionItem",
+    "ExchangeRate",
     "ImportBatch",
     "ImportState",
     "InflationIndex",
     "ItemCondition",
+    "ItemPartCheck",
     "ItemPhoto",
     "ItemPurpose",
     "ItemStatus",
@@ -56,6 +60,8 @@ __all__ = [
     "PriceVariant",
     "RefreshToken",
     "SavedView",
+    "SetAlternates",
+    "SetParts",
     "SourceAccess",
     "ShareLink",
     "ThemeWave",

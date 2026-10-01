@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { count, exactMoney, money, percent, shortDate, toNumber, trendColor } from './format'
+import { amount, count, exactMoney, money, percent, rateText, setDisplayCurrency, setPricesHidden, shortDate, toDisplay, toNumber, trendColor } from './format'
 
 const NBSP = ' '
 
@@ -119,5 +119,42 @@ describe('skryté ceny pri štarte', () => {
     expect(storedPricesHidden()).toBe(true)
     setPricesHidden(false)
     expect(storedPricesHidden()).toBe(false)
+  })
+})
+
+describe('mena zobrazenia', () => {
+  afterEach(() => {
+    setDisplayCurrency('EUR', 1, null)
+    setPricesHidden(false)
+  })
+
+  it('sumy v eurách prepočíta dnešným kurzom a dá znak meny', () => {
+    setDisplayCurrency('CZK', 24.32, '2026-09-30')
+    expect(money('100')).toBe(`2${NBSP}432${NBSP}Kč`)
+    expect(exactMoney('10')).toBe(`243,20${NBSP}Kč`)
+    expect(money('-10', { sign: true })).toBe(`−243,20${NBSP}Kč`)
+    setDisplayCurrency('USD', 1.1734, '2026-09-30')
+    expect(exactMoney('100')).toBe(`117,34${NBSP}$`)
+  })
+
+  it('bez ceny pomlčka aj v cudzej mene, skryté ceny so znakom meny', () => {
+    setDisplayCurrency('GBP', 0.8731, null)
+    expect(money(null)).toBe('—')
+    setPricesHidden(true)
+    expect(money('100')).toBe(`•••${NBSP}£`)
+  })
+
+  it('suma už v mene sa neprepočítava', () => {
+    setDisplayCurrency('CZK', 24.32, null)
+    expect(amount(1290, { currency: 'CZK' })).toBe(`1${NBSP}290${NBSP}Kč`)
+    expect(amount(2432)).toBe(`2${NBSP}432${NBSP}Kč`)
+    expect(amount(1290, { currency: 'HUF', decimals: 0 })).toBe(`1${NBSP}290${NBSP}Ft`)
+    expect(toDisplay(100)).toBeCloseTo(2432)
+  })
+
+  it('kurz ako „1 € = 24,32 Kč“', () => {
+    expect(rateText('CZK', 24.32)).toBe(`1${NBSP}€ = 24,32${NBSP}Kč`)
+    expect(rateText('GBP', 0.8731)).toBe(`1${NBSP}€ = 0,8731${NBSP}£`)
+    expect(rateText('HUF', 391.68)).toBe(`1${NBSP}€ = 391,68${NBSP}Ft`)
   })
 })

@@ -37,8 +37,9 @@ class Settings(BaseSettings):
     # Každý používateľ má svoje vlastné, uložené zašifrované pri účte,
     # a teda aj vlastnú dennú kvótu volaní. Pozri services/keys.py.
 
-    #: Denná kvóta kľúča je 100 volaní. Zvyšok necháva priestor na ručnú obnovu.
-    brickeconomy_daily_limit: int = 90
+    #: Denná kvóta kľúča BrickEconomy je 100 volaní; appka ju využije celú.
+    #: Po odpovedi 429 sa dávka zastaví, takže prekročenie nič nepokazí.
+    brickeconomy_daily_limit: int = 100
 
     # Obnova cien pri prihlásení
     #: Hromadná obnova ťahá len ceny staršie než týždeň. Zdroj mení hodnoty
@@ -65,7 +66,7 @@ class Settings(BaseSettings):
     photos_per_item: int = 12
     #: Verzia zásad ochrany súkromia (frontend `/sukromie`). Po zmene textu
     #: zvýšiť; prihlásený používateľ uvidí jednorazové oznámenie.
-    privacy_version: str = "2026-09-30.5"
+    privacy_version: str = "2026-10-01.1"
 
     # Ostatné
     cors_origins: str = "http://localhost:3000,http://localhost:5173"

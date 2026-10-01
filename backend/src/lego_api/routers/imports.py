@@ -142,12 +142,18 @@ async def get_import(
 
 @router.post("/{import_id}/commit", response_model=ImportOut)
 async def commit_import(
-    import_id: int, payload: ImportCommitRequest, user: CurrentUser, session: SessionDep
+    import_id: int,
+    payload: ImportCommitRequest,
+    user: CurrentUser,
+    session: SessionDep,
+    keys: CurrentKeys,
 ) -> ImportOut:
     """Vytvorí kusy a položky Chcem, všetko naraz v jednej transakcii."""
     batch = await _own(session, user.id, import_id)
     try:
-        batch = await importer.commit(session, user.id, batch, set(payload.include_duplicates))
+        batch = await importer.commit(
+            session, user.id, batch, set(payload.include_duplicates), policy=keys.policy
+        )
     except importer.ImportNotReady as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return _out(batch)

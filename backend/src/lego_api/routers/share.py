@@ -16,6 +16,7 @@ from lego_api.auth.deps import CurrentUser, SessionDep
 from lego_api.auth.security import new_share_token
 from lego_api.config import get_settings
 from lego_api.models import ItemStatus, ShareLink, User
+from lego_api.routers.rates import rate_text
 from lego_api.schemas import (
     PublicCollectionOut,
     PublicItemOut,
@@ -24,9 +25,10 @@ from lego_api.schemas import (
     ShareOut,
     ShareUpdateRequest,
 )
+from lego_api.services import currency
 from lego_api.services.access import public_visibility
 from lego_api.services.filters import fold
-from lego_api.services.keys import keys_of
+from lego_api.services.keys import UserKeys, keys_of
 from lego_api.services.portfolio import ZERO, load_items, load_snapshots, value_items
 from lego_api.services.wishlist import wishlist_prices
 
@@ -77,6 +79,17 @@ async def revoke_share_link(link_id: int, user: CurrentUser, session: SessionDep
     await session.commit()
 
 
+async def _owner_currency(session, owner: User, keys: UserKeys) -> tuple[str, str]:
+    """Mena zobrazenia majiteľa a jej dnešný kurz; bez kurzu ostane euro."""
+    display = (owner.preferences or {}).get("display") or {}
+    try:
+        code = currency.normalize(display.get("currency")) or currency.EUR
+        rate = await currency.current_rate(session, keys.policy, code)
+    except (ValueError, currency.RateUnavailable):
+        return currency.EUR, rate_text(currency.ONE)
+    return rate.currency, rate_text(rate.rate)
+
+
 def _chosen(link: ShareLink, catalog_num: str, parent_num: str | None) -> bool:
     """Patrí set do odkazu? Bez výberu všetko; pri sérii stačí jej číslo."""
     if not link.catalog_nums:
@@ -116,10 +129,15 @@ async def public_collection(token: str, session: SessionDep) -> PublicCollection
     owner_name = owner.display_name or owner.email.split("@")[0]
     # Verejnosť nesmie vidieť dáta z osobných licencií (Brickset, BrickEconomy);
     # sumy len z kúpnych a ručne zadaných cien majiteľa.
-    visibility.use(public_visibility(owner, keys_of(owner, get_settings())))
+    owner_keys = keys_of(owner, get_settings())
+    visibility.use(public_visibility(owner, owner_keys))
+    # Sumy v mene majiteľa: server pošle kód a kurz, pri vypnutých sumách nič.
+    shown_in = await _owner_currency(session, owner, owner_keys) if link.show_values else None
 
     if link.kind == "wishlist":
         result = await _public_wishlist(session, link, owner_name)
+        if shown_in is not None:
+            result.currency, result.rate = shown_in
         await session.commit()
         return result
 
@@ -186,6 +204,8 @@ async def public_collection(token: str, session: SessionDep) -> PublicCollection
         result.invested = invested
         result.market_value = market
         result.price_missing = missing
+    if shown_in is not None:
+        result.currency, result.rate = shown_in
 
     await session.commit()
     return result

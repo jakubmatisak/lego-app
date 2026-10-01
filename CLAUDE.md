@@ -189,6 +189,12 @@ cez `_decimal`, ktoré zahadzuje nulu a mínus ako neplatnú cenu.
 **Hromadná obnova raz za týždeň, ručná hneď.** `price_max_age_hours` je 168.
 `POST /prices/refresh-all?num=` je ručná obnova z detailu a vek snímky
 nepozerá (`force`); strop dávky a zvyšok kvóty platia aj pre ňu.
+Hromadná obnova z hornej lišty ide cez dialóg `RefreshPricesDialog.vue`
+(„Chcete obnoviť ceny?“, počet predvolene 50, najviac zvyšok dňa) a posiela
+`?limit=`, ktorý nahradí predvolený strop `price_refresh_budget`; zvyšok
+kvóty, rezerva a `price_batch` účtu platia ďalej. Riadok „Dnes použité X
+zo 100“ berie `calls_used`/`calls_limit` z `refresh-status`, rátané tou istou
+`routers/usage.py::brickeconomy_used` ako karta limitov.
 Vek je čas od posledného volania vlastného kľúča, s cenou aj bez nej
 (`pricing.last_attempts`: `source_access` čísla a `miss:{číslo}`, k tomu
 `price_misses`), alebo od novšej ručnej ceny. Poradie v `collect_targets`:
@@ -454,9 +460,12 @@ sety sú v `price_checks` pri účte; `/prices/checks` je v routeri pred
 
 **Obnova cien nemá plánovač a nespúšťa ju prihlásenie.** Spúšťa ju výhradne
 používateľ tlačidlom v hornej lište (`POST /prices/refresh-all`), ďalej to
-beží cez `BackgroundTasks`. Poistky sú v `services/refresh.py`: vek
-posledného volania, strop na dávku, zvyšok dennej kvóty, jedno volanie na
-položku a zámok proti súbehu. Do stropu idú najprv neznáme ceny.
+beží cez `BackgroundTasks`. Stav „beží“ zaberá už požiadavka
+(`refresh.claim`), úloha ho len uvoľní (`claimed=True`): úloha štartuje až
+po odpovedi a bez toho by 202 aj ďalší `refresh-status` hlásili „nebeží“,
+takže prvé kliknutie akoby nič nespravilo. Frontend berie stav z odpovede.
+Poistky sú v `services/refresh.py`: vek posledného volania, strop na dávku,
+zvyšok dennej kvóty, jedno volanie na položku a zámok proti súbehu. Do stropu idú najprv neznáme ceny.
 
 **Registráciu otvára správca v appke, nie `.env`.** Stav je v tabuľke
 `app_settings` (`services/app_settings.py`); `ALLOW_REGISTRATION` platí,
@@ -492,6 +501,30 @@ set bez `brickset_id` sa najprv raz opýta cez getSets. Prepínač
 `brickset.images` vypne galériu aj volanie. Obrázky sa načítavajú priamo
 z Brickset s „Image(s) courtesy of Brickset.com“; detail pýta galériu až
 po doplnení z Brickset, inak by išli dve getSets naraz.
+
+**Diely a stavby z Rebrickable raz na set.** `GET /catalog/{num}/parts`
+(`/sets/{num}/parts/?page_size=1000`, aj ďalšie stránky cez `next`, len na
+adresu Rebrickable, inak by kľúč odišiel inam) a `/catalog/{num}/alternates`
+(`/sets/{num}/alternates/`) ťahajú len karty v detaile setu po rozbalení
+(`SetPartsCard.vue`, `SetAlternatesCard.vue`), nikdy pri otvorení stránky
+ani Obnoviť stránku. Schopnosti `rebrickable.parts` a `rebrickable.alternates`.
+Pamäť je spoločná pre katalóg (`set_parts`, `set_alternates`: zoznam v JSON
+a `fetched_at`), obnova najskôr po 90 dňoch (`services/set_parts.py::load`);
+prázdny zoznam (404, žiadne stavby) sa pamätá, výpadok
+(`provider.last_answered` je False) nie: starý zoznam ostane, bez neho 502
+a karta ukáže `LoadFailed`. Vidí ich len účet s vlastným kľúčom
+(`visibility.current().rebrickable`), rozhranie cez `auth.can(...)`. Len sety
+(`set_parts.applies_to`: nie figúrky zo sérií, séria ani minifigúrka; podľa
+`base_*`, lebo viditeľné `parent_num` bez kľúča chýba). Počty do nadpisov dáva
+`/catalog/{num}/parts-summary` z pamäte, von nevolá. Kontrola úplnosti je
+údaj účtu: `item_part_checks` (kus, číslo, farba, náhradný, `missing`), len
+nenulové odchýlky, dielik a počet sa overia proti uloženému zoznamu. Štítok
+„chýbajú N“ (`missing_parts` v `/items` aj `/items/grouped`) ráta len
+bežné dieliky, chýbajúci náhradný set neúplným nerobí. Maže sa so
+zmazaným kusom (`delete_checks` v `DELETE /items` aj vo vrátení importu),
+je v `_OWNED` aj v exporte účtu. PUT kontroly počty v ponuke neobnovuje
+(`COLLECTION_CHANGES` ju vynecháva ako fotky). Zoznam chýbajúcich je CSV
+s BOM cez klienta a blob (`/items/{id}/missing-parts.csv`).
 
 **Témy a vlny sú z Brickset.** `getThemes` a `getYears` sa do limitu
 nerátajú, vlna (téma + rok) je jedno `getSets` a ukladá sa do `theme_waves`
@@ -570,6 +603,34 @@ alebo `notify.error`; vlastný `v-snackbar` v komponente nie. Tlačidlo
 v oznámení (Späť) drží store podľa `data-notice`, lebo vlastnosti správy
 idú rovno do `v-snackbar` a funkcia by skončila ako atribút v HTML.
 Chyba poľa formulára ostáva pri poli.
+
+**Načítavanie nie je prázdny stav.** Kým server neodpovedal, stránka ukáže
+kostru (`components/PageSkeleton.vue`: dlaždice a grafy Prehľadu, karty,
+riadky, tabuľka, detail setu), nie „Zatiaľ žiadne sety“ ani nuly, inak to
+vyzerá, že zbierka zmizla. Prázdny stav až po odpovedi, chyba prvého
+načítania je `LoadFailed.vue` („Nepodarilo sa načítať“ so Skúsiť znova).
+Stav drží `composables/usePageLoad.ts`: načítanie vráti `false` (alebo
+vyhodí), keď zlyhalo, `{ data }` bez kontroly `error` by chybu zmenilo na
+prázdny zoznam. Opakované načítanie (filter, rozsah, Obnoviť stránku) nechá
+staré dáta a rozsvieti len pruh pod hornou lištou (`pageBusy`); chyba vtedy
+ide do oznámenia. Iný obsah na tej istej trase (iný set, séria, rok)
+začína `reset()`, teda znova kostrou. Počty v ponuke bez súhrnu nie sú 0,
+ale nič (`undefined`). Tlačidlo Obnoviť stránku v hornej lište (na telefóne
+v menu účtu) volá `reloadPage`: každý `usePageLoad` sa prihlási sám, karta
+s vlastným načítaním cez `onPageReload(load)`, a súhrn za ponukou sa
+dotiahne, keď ho nenačíta stránka (Prehľad má `summary: true`). Prihlasujú
+sa len GET na vlastný server; doplnenie z Brickset, obnova cien ani iné
+volanie von do neho nepatria. Kosti `v-skeleton-loader` farbí
+`styles/settings.scss` (téma má `border-opacity` 1, kosti by boli čierne).
+
+**Čísla v ponuke obnovuje klient, nie obrazovka.** Úspešná zmena kusov,
+Chcem alebo potvrdený či vrátený import (`api/client.ts::changesMiddleware`,
+`COLLECTION_CHANGES`) zavolá odberateľov `onCollectionChanged`; store
+zbierky po 250 ms načíta `/stats/summary` (`loadSummary`). Obrazovka, ktorá
+medzitým zavolá `refreshAll`/`loadDashboard`, plánované načítanie zruší,
+takže súhrn nejde dvakrát. Kedysi to musela robiť každá obrazovka sama a Mám
+ju či srdiečko na chýbajúcej figúrke ponuku neobnovili. Nová cesta, ktorá
+mení počty, = riadok v `COLLECTION_CHANGES`, nie volanie v komponente.
 
 **Pamäť formulára je pri účte.** `preferences.form` (`remember`, `last`),
 `composables/useFormMemory.ts`. Zapisujú sa všetky polia po každom
@@ -670,6 +731,25 @@ Riadok súčtov nad kartami Zbierky (`FacetsOut.totals`) ukazuje reálny zisk
 len pri zapnutom prepínači inflácie. Testy majú `inflation_enabled`
 vypnuté, aby nešli na sieť; `test_inflation.py` si ho zapína.
 
+**Mena je len zobrazenie.** Ukladá sa všetko v eurách. Menu zobrazenia
+(`preferences.display.currency`, EUR, CZK, USD, GBP, PLN, HUF, CHF) prepočíta
+len `utils/format.ts`: `money`/`exactMoney` násobia dnešným kurzom
+(`displayCurrency`, nastaví `composables/useDisplayCurrency.ts` z
+`GET /rates/{mena}`), aj históriu a grafy, takže percentá sa nemenia.
+`amount` formátuje sumu, ktorá už v mene je (os grafu, pôvodná cena); grafy
+majú body cez `toDisplay` a menu v možnostiach ako `pricesHidden`. Kurzy sú
+z ECB priamo (`services/currency.py`): prvýkrát `eurofxref-hist.zip`, potom
+raz denne `eurofxref-daily.xml` (diera nad týždeň = znova celý rad), do
+`exchange_rates`, len keď ich niekto potrebuje; schopnosť `ecb.rates`, po
+chybe hodinu pokoj, víkend berie posledný kurz pred ním. Kúpa či predaj v
+cudzej mene (voľba „Kúpu a predaj zadávať aj v inej mene“, `CurrencySelect`)
+pošle `purchase_currency` + `purchase_price_original` (`sale_*`), eurá
+prepočíta server kurzom zo dňa kúpy (bez dátumu najnovším) do
+`purchase_price_eur`; zmena dátumu prepočíta znova, suma v eurách menu zruší.
+Inflácia počíta v eurách, výsledok sa len prepočíta. Export ostáva v eurách,
+import, šablóna aj export majú `mena_kupy` a `kupna_cena_v_mene`; verejný
+odkaz nesie `currency` a `rate` majiteľa, pri vypnutých sumách nič.
+
 **Import nepýta ceny ani Brickset.** `services/importer.py` dohľadáva
 neznáme čísla cez `CatalogService` s vypnutým Brickset: bežné `resolve` volá
 aj `getSets` a stovky setov by minuli jeho denný limit. Nič sa neuloží, kým
@@ -718,7 +798,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 656 testov, frontend 257. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 708 testov, frontend 308. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá

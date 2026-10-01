@@ -38,9 +38,12 @@ from lego_api.models import (
 )
 from lego_api.models.base import utcnow
 from lego_api.providers.brickset import BricksetProvider
+from lego_api.services import currency
 from lego_api.services.catalog import CatalogService
+from lego_api.services.fetch_policy import FetchPolicy
 from lego_api.services.import_file import OWNED, SOLD, WISH, ParsedFile
 from lego_api.services.keys import UserKeys
+from lego_api.services.set_parts import delete_checks
 from lego_api.services.wishlist import added_at, drop_bought
 
 log = logging.getLogger(__name__)
@@ -276,7 +279,7 @@ async def classify(session: AsyncSession, user_id: int, batch: ImportBatch) -> N
                         for i in items
                         if i.catalog_num == num
                         and i.purchase_date == _day(row["purchase_date"])
-                        and i.purchase_price_eur == _money(row["purchase_price"])
+                        and _same_purchase(i, row)
                     ]
                 if same:
                     row["duplicate_of"] = len(same)
@@ -302,6 +305,37 @@ async def classify(session: AsyncSession, user_id: int, batch: ImportBatch) -> N
     batch.rows = rows
 
 
+def _same_purchase(item: CollectionItem, row: dict) -> bool:
+    """Rovnaká kúpna cena; riadok len so sumou v cudzej mene sa porovná v nej."""
+    original = row.get("purchase_price_original")
+    if row["purchase_price"] is None and original is not None:
+        return item.purchase_currency == row.get(
+            "purchase_currency"
+        ) and item.purchase_price_original == _money(original)
+    return item.purchase_price_eur == _money(row["purchase_price"])
+
+
+async def _foreign_prices(
+    session: AsyncSession, policy: FetchPolicy, rows: list[dict]
+) -> dict[int, Decimal]:
+    """Eurá pre riadky s kúpou len v cudzej mene, kurzom ECB zo dňa kúpy."""
+    out: dict[int, Decimal] = {}
+    for row in rows:
+        code, original = row.get("purchase_currency"), row.get("purchase_price_original")
+        if row["purchase_price"] is not None or code is None or original is None:
+            continue
+        try:
+            _, _, eur = await currency.convert(
+                session, policy, code, Decimal(original), _day(row["purchase_date"])
+            )
+        except currency.RateUnavailable as exc:
+            raise ImportNotReady(
+                f"Kurz ECB pre {code} sa teraz nepodarilo zistiť. Skús import potvrdiť neskôr."
+            ) from exc
+        out[row["line"]] = eur
+    return out
+
+
 def _pieces(count: int) -> str:
     if count == 1:
         return "je 1 taký kus"
@@ -318,13 +352,21 @@ class ImportNotReady(ValueError):
 
 
 async def commit(
-    session: AsyncSession, user_id: int, batch: ImportBatch, include_duplicates: set[int]
+    session: AsyncSession,
+    user_id: int,
+    batch: ImportBatch,
+    include_duplicates: set[int],
+    policy: FetchPolicy | None = None,
 ) -> ImportBatch:
     """Vytvorí kusy a položky Chcem. Riadky s chybou sa preskočia."""
     if batch.state != ImportState.READY:
         raise ImportNotReady(
             "Import už prebehol." if batch.state != ImportState.LOOKING_UP else "Ešte sa dohľadáva."
         )
+    # Kurzy pred zápisom: stiahnutie potvrdí session, kusy ešte nesmú byť v nej.
+    converted = await _foreign_prices(
+        session, policy or FetchPolicy(user_id=user_id), [r for r in batch.rows if not r["errors"]]
+    )
     await classify(session, user_id, batch)
 
     pieces: list[CollectionItem] = []
@@ -359,7 +401,9 @@ async def commit(
                     condition=ItemCondition(row["condition"]),
                     unidentified=row["unidentified"],
                     flags=row["flags"],
-                    purchase_price_eur=_money(row["purchase_price"]),
+                    purchase_price_eur=converted.get(row["line"], _money(row["purchase_price"])),
+                    purchase_currency=row.get("purchase_currency"),
+                    purchase_price_original=_money(row.get("purchase_price_original")),
                     purchase_date=_day(row["purchase_date"]),
                     purchase_place=row["purchase_place"],
                     location=row["location"],
@@ -412,6 +456,7 @@ async def undo(
         for photo in photos:
             (Path(settings.photos_dir) / photo.filename).unlink(missing_ok=True)
             await session.delete(photo)
+        await delete_checks(session, [i.id for i in items])
     for item in items:
         await session.delete(item)
     await session.execute(

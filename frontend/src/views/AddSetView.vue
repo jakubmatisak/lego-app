@@ -34,11 +34,14 @@
   import { CONDITIONS, FLAGS, PURPOSES } from '@/api/types'
   import BarcodeScanner from '@/components/BarcodeScanner.vue'
   import CategoryPicker from '@/components/CategoryPicker.vue'
+  import CurrencySelect from '@/components/CurrencySelect.vue'
   import DateField from '@/components/DateField.vue'
   import KeyHint from '@/components/KeyHint.vue'
   import PlaceFields from '@/components/PlaceFields.vue'
   import SetImage from '@/components/SetImage.vue'
   import { useCategoryPicker } from '@/composables/useCategoryPicker'
+  import { useEuroPreview } from '@/composables/useDisplayCurrency'
+  import { foreignEntryOn } from '@/composables/useDisplayPrefs'
   import { useFormMemory } from '@/composables/useFormMemory'
   import { useWishlistReturn } from '@/composables/useWishlistReturn'
   import { droppedWishes, saveWithFollowups, undoCreated } from '@/scanner/saveFlow'
@@ -50,7 +53,17 @@
   import { useNotifyStore } from '@/stores/notify'
   import { useScannerStore } from '@/stores/scanner'
   import { isBarcode } from '@/utils/barcode'
-  import { count, exactMoney, isoDate, money, shortDate, toNumber } from '@/utils/format'
+  import {
+    amount,
+    count,
+    type CurrencyCode,
+    currencySymbol,
+    exactMoney,
+    isoDate,
+    money,
+    shortDate,
+    toNumber,
+  } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
   import { afterSaveRoute } from '@/utils/series'
 
@@ -89,7 +102,11 @@
   const quantity = ref(1)
   const condition = ref<ItemCondition>('new_sealed')
   const price = ref('')
+  /** Mena kúpy (Kúpu a predaj zadávať aj v inej mene); eurá prepočíta server. */
+  const currency = ref<CurrencyCode>('EUR')
   const purchaseDate = ref(isoDate())
+  const showCurrency = computed(() => foreignEntryOn() || currency.value !== 'EUR')
+  const pricePreview = useEuroPreview(price, currency, purchaseDate)
   const place = ref<string | null>('')
   const location = ref<string | null>('')
   const box = ref<string | null>('')
@@ -333,7 +350,13 @@
     const shared = {
       condition: condition.value,
       flags: flags.value,
-      purchase_price_eur: price.value ? String(toNumber(price.value)) : null,
+      // V cudzej mene ide pôvodná suma, eurá z nej prepočíta server kurzom zo dňa kúpy.
+      ...(currency.value === 'EUR'
+        ? { purchase_price_eur: price.value ? String(toNumber(price.value)) : null }
+        : {
+          purchase_currency: currency.value,
+          purchase_price_original: price.value ? String(toNumber(price.value)) : null,
+        }),
       purchase_date: purchaseDate.value || null,
       purchase_place: (place.value ?? '').trim() || null,
       location: (location.value ?? '').trim() || null,
@@ -846,14 +869,18 @@
         </v-col>
 
         <v-col cols="12" md="5" sm="4">
-          <v-text-field
-            v-model="price"
-            :hint="t('add.perPiece')"
-            :label="t('add.purchasePrice')"
-            persistent-hint
-            prefix="€"
-            type="number"
-          />
+          <div class="d-flex ga-3">
+            <CurrencySelect v-if="showCurrency" v-model="currency" />
+
+            <v-text-field
+              v-model="price"
+              :hint="pricePreview.text.value ?? t('add.perPiece')"
+              :label="t('add.purchasePrice')"
+              persistent-hint
+              :prefix="currencySymbol(currency)"
+              type="number"
+            />
+          </div>
         </v-col>
       </v-row>
 
@@ -917,7 +944,7 @@
       <span class="text-body-medium text-medium-emphasis">
         {{ t('add.willCreate', {
           count: t('collection.pieces', { count: totalPieces }),
-          total: totalCost !== null ? money(totalCost) : '—',
+          total: totalCost === null ? '—' : (currency === 'EUR' ? money(totalCost) : amount(totalCost, { currency })),
         }) }}
       </span>
 

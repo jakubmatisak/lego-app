@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, PlainSerializer, model_validator
 
 from lego_api.models import (
     CatalogKind,
@@ -31,6 +31,10 @@ def _to_cents(value: Decimal | None) -> str | None:
 
 #: Peňažná suma. V JSON je to reťazec s dvomi desatinnými miestami.
 Money = Annotated[Decimal, PlainSerializer(_to_cents, return_type=str | None)]
+
+#: Meny na zobrazenie aj na zadanie kúpy či predaja (kurzy ECB,
+#: ``services/currency.py::SUPPORTED``). Ukladá sa vždy v eurách.
+CurrencyCode = Literal["EUR", "CZK", "USD", "GBP", "PLN", "HUF", "CHF"]
 
 
 class ORMModel(BaseModel):
@@ -210,6 +214,10 @@ class ItemCreateRequest(BaseModel):
     unidentified: bool = False
     flags: list[str] = Field(default_factory=list)
     purchase_price_eur: Money | None = None
+    #: Kúpa v cudzej mene: eurá prepočíta server kurzom ECB zo dňa kúpy
+    #: (bez dátumu najnovším) a ``purchase_price_eur`` z klienta nepoužije.
+    purchase_currency: CurrencyCode | None = None
+    purchase_price_original: Money | None = Field(default=None, ge=0)
     purchase_date: date | None = None
     purchase_place: str | None = Field(default=None, max_length=160)
     location: str | None = Field(default=None, max_length=120)
@@ -232,6 +240,9 @@ class ItemBulkCreateRequest(BaseModel):
     price_variant: PriceVariant | None = None
     flags: list[str] = Field(default_factory=list)
     purchase_price_eur: Money | None = None
+    #: Cena za kus v cudzej mene, ako pri ``POST /items``.
+    purchase_currency: CurrencyCode | None = None
+    purchase_price_original: Money | None = Field(default=None, ge=0)
     #: Zaplatené spolu za všetky kusy, napríklad celá séria naraz. Rozpočíta sa
     #: na kusy na centy presne a má prednosť pred cenou za kus.
     purchase_total_eur: Money | None = None
@@ -246,7 +257,10 @@ class ItemUpdateRequest(BaseModel):
     condition: ItemCondition | None = None
     price_variant: PriceVariant | None = None
     flags: list[str] | None = None
+    #: Suma v eurách zruší menu kúpy; mena s pôvodnou sumou eurá prepočíta.
     purchase_price_eur: Money | None = None
+    purchase_currency: CurrencyCode | None = None
+    purchase_price_original: Money | None = Field(default=None, ge=0)
     purchase_date: date | None = None
     purchase_place: str | None = Field(default=None, max_length=160)
     location: str | None = Field(default=None, max_length=120)
@@ -291,13 +305,23 @@ class IdentifyRequest(BaseModel):
 
 
 class SellRequest(BaseModel):
-    sold_price_eur: Money = Field(gt=0)
+    #: Predajná cena v eurách, alebo v cudzej mene (``sale_currency`` a
+    #: ``sale_price_original``), ktorú server prepočíta kurzom zo dňa predaja.
+    sold_price_eur: Money | None = Field(default=None, gt=0)
+    sale_currency: CurrencyCode | None = None
+    sale_price_original: Money | None = Field(default=None, gt=0)
     sold_date: date
     sold_via: str | None = Field(default=None, max_length=80)
     #: Poplatky trhoviska a poštovné, ktoré platil predávajúci. Z realizovaného
     #: zisku sa odpočítajú, aby bol čistý.
     sold_fees_eur: Money | None = Field(default=None, ge=0)
     sold_shipping_eur: Money | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _has_price(self) -> "SellRequest":
+        if self.sold_price_eur is None and self.sale_price_original is None:
+            raise ValueError("Predaj potrebuje predajnú cenu.")
+        return self
 
 
 class ItemOut(ORMModel):
@@ -311,9 +335,14 @@ class ItemOut(ORMModel):
     purchase_price_eur: Money | None
     #: Kúpna cena doplnená z odporúčanej, nie zadaná ručne.
     purchase_price_auto: bool = False
+    #: Kúpa v cudzej mene; ``purchase_price_eur`` je jej prepočet.
+    purchase_currency: str | None = None
+    purchase_price_original: Money | None = None
     purchase_date: date | None
     purchase_place: str | None
     sold_price_eur: Money | None
+    sale_currency: str | None = None
+    sale_price_original: Money | None = None
     sold_date: date | None
     sold_via: str | None
     sold_fees_eur: Money | None = None
@@ -354,6 +383,8 @@ class ValuedItemOut(ItemOut):
     cagr_pct: float | None = None
     #: Vlastné kategórie setu, ku ktorému kus patrí.
     categories: list[int] = Field(default_factory=list)
+    #: Koľko dielikov kusu chýba podľa kontroly úplnosti (bez náhradných).
+    missing_parts: int = 0
 
 
 class GroupedItemOut(BaseModel):
@@ -377,6 +408,8 @@ class GroupedItemOut(BaseModel):
     #: Ročný výnos vlastnených kusov ako celku; pod rok držania prázdne.
     cagr_pct: float | None = None
     categories: list[int] = Field(default_factory=list)
+    #: Chýbajúce dieliky vlastnených kusov podľa kontroly úplnosti (bez náhradných).
+    missing_parts: int = 0
 
 
 # --- ceny -------------------------------------------------------------------
@@ -465,6 +498,10 @@ class RefreshStatusOut(BaseModel):
     calls_left: int = 0
     quota_exhausted: bool = False
     skipped_fresh: int = 0
+    #: Denný limit appky pre BrickEconomy (``brickeconomy_daily_limit``) a
+    #: dnes použité volania; tie isté čísla ako karta limitov (``/usage``).
+    calls_limit: int = 0
+    calls_used: int = 0
 
 
 # --- štatistiky -------------------------------------------------------------
@@ -710,8 +747,20 @@ class PublicCollectionOut(BaseModel):
     market_value: Money | None = None
     #: Kusy bez trhovej ceny; None pri vypnutých sumách.
     price_missing: int | None = None
+    #: Mena zobrazenia majiteľa a jej kurz (1 € = rate); pri vypnutých sumách nič.
+    currency: CurrencyCode | None = None
+    rate: str | None = None
     items: list[PublicItemOut]
     wishes: list[PublicWishOut] = Field(default_factory=list)
+
+
+class RateOut(BaseModel):
+    """Kurz eura od ECB: 1 € = ``rate`` jednotiek meny, zo dňa ``day``."""
+
+    currency: CurrencyCode
+    rate: str
+    day: date
+    source: Literal["ECB"] = "ECB"
 
 
 # --- prevádzka --------------------------------------------------------------
@@ -1137,6 +1186,9 @@ class ImportRowOut(BaseModel):
     flags: list[str]
     unidentified: bool
     purchase_price: Money | None
+    #: Kúpa v cudzej mene; eurá sa dopočítajú pri potvrdení.
+    purchase_currency: str | None = None
+    purchase_price_original: Money | None = None
     purchase_date: date | None
     purchase_place: str | None
     sold_price: Money | None

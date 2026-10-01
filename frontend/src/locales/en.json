@@ -20,7 +20,8 @@
     "expand": "Expand menu",
     "hidePrices": "Hide prices",
     "showPrices": "Show prices",
-    "priceCheck": "Check price"
+    "priceCheck": "Check price",
+    "reload": "Reload page"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -317,7 +318,7 @@
     "tabs": {
       "account": "Account",
       "sharing": "Sharing",
-      "language": "Language",
+      "language": "Language & currency",
       "data": "Data",
       "users": "Users",
       "app": "Application",
@@ -449,7 +450,15 @@
     "providerOff": "No BrickEconomy key, prices are entered manually",
     "manualTitle": "Your own price",
     "manualHint": "Saved as today's market price and shown in the chart.",
-    "manualSave": "Save price"
+    "manualSave": "Save price",
+    "dialog": {
+      "title": "Refresh prices?",
+      "count": "How many prices to refresh",
+      "order": "Missing prices first, then the ones refreshed longest ago. Each price is one call.",
+      "range": "Enter a number from 1 to {max}",
+      "usage": "Used today {used} of {limit}, {left} left",
+      "confirm": "Refresh"
+    }
   },
   "common": {
     "cancel": "Cancel",
@@ -459,6 +468,8 @@
     "loading": "Loading…",
     "error": "Something went wrong",
     "retry": "Try again",
+    "loadFailed": "Could not load",
+    "loadFailedHint": "The server did not answer or something went wrong. Nothing was deleted, it just did not load.",
     "back": "Back",
     "yes": "Yes",
     "no": "No",
@@ -967,10 +978,44 @@
         "Real profit after inflation in the collection"
       ]
     },
+    "ecb": {
+      "name": "ECB",
+      "about": "Euro reference rates from the European Central Bank. No key, no limit, fetched at most once a day and only for a currency other than the euro.",
+      "keyUrl": "",
+      "unlocks": [
+        "A display currency other than the euro",
+        "Purchases and sales entered in another currency"
+      ]
+    },
     "autoPurchase": "Fill in the purchase price from the retail price",
     "autoPurchaseHint": "A piece without a purchase price gets the retail price at the next price refresh (from BrickEconomy, otherwise Brickset). It costs no calls. An icon marks such a price; editing the price by hand removes the mark. Older pieces get it at their next refresh too.",
     "ownDataOnly": "You see data from this service only for sets your own key asked for. Other accounts do not see it and public links never show it.",
     "personalLicense": "The BrickEconomy licence is personal: the same key in two accounts means sharing it."
+  },
+  "currency": {
+    "label": "Display currency",
+    "names": {
+      "EUR": "Euro (€)",
+      "CZK": "Czech koruna (Kč)",
+      "USD": "US dollar ($)",
+      "GBP": "British pound (£)",
+      "PLN": "Polish złoty (zł)",
+      "HUF": "Hungarian forint (Ft)",
+      "CHF": "Swiss franc (CHF)"
+    },
+    "rate": "{rate} · ECB, {day}",
+    "euroHint": "The app stores everything in euros. Another currency is only converted at today's ECB rate.",
+    "loading": "Getting the ECB rate…",
+    "rateFailed": "The ECB rate could not be fetched right now, amounts stay in euros.",
+    "note": "Amounts are converted at today's ECB rate ({rate}, {day}). They are still stored in euros.",
+    "blocked": "ECB rates are switched off in Settings → Data, amounts are shown in euros.",
+    "foreignEntry": "Enter purchases and sales in other currencies too",
+    "foreignEntryHint": "The price in the piece form and in the sale dialog gets a currency picker. The amount is converted to euros at the ECB rate of the purchase or sale day, without a date at today's rate.",
+    "field": "Currency",
+    "inEuro": "≈ {amount} at {rate} on {day}",
+    "inEuroFailed": "The ECB rate could not be fetched, save the price in euros.",
+    "original": "{amount}, at {rate} on {day}",
+    "originalNoDay": "{amount}, at {rate}"
   },
   "capabilities": {
     "rebrickable": {
@@ -981,6 +1026,16 @@
       "series_sync": {
         "title": "All minifigure series",
         "hint": "The Minifigures section checks for new series once a week (dozens of calls, no limit). Off: only series you own something from are shown."
+      },
+      "parts": {
+        "title": "Set parts",
+        "hint": "When you expand the Parts card in the set detail, once per set (two or three calls for a big set), again at the earliest after 90 days.",
+        "brings": "parts list by colour and a completeness check for each piece"
+      },
+      "alternates": {
+        "title": "What else you can build",
+        "hint": "When you expand the card in the set detail, one call per set, again at the earliest after 90 days.",
+        "brings": "alternate builds from the set's parts with a link to Rebrickable"
       }
     },
     "brickset": {
@@ -1038,6 +1093,12 @@
       "inflation": {
         "title": "Inflation index",
         "hint": "Once a week. Off: the In today's money switch adjusts nothing."
+      }
+    },
+    "ecb": {
+      "rates": {
+        "title": "Exchange rates",
+        "hint": "Once a day, only when you use another display currency or enter an amount in a foreign currency. Off: amounts stay in euros."
       }
     }
   },
@@ -1272,6 +1333,35 @@
     "rebrickableDetail": "Rebrickable (free key) adds the name, photo, series and parts.",
     "wishlist": "BrickEconomy (Premium key) adds the current price and a notice when a set drops to your target price.",
     "barcode": "Brickset (free key) recognises barcodes, UPCitemdb is the fallback (just switch it on)."
+  },
+  "parts": {
+    "title": "Parts",
+    "titleCount": "Parts · {count}",
+    "empty": "Rebrickable does not know the parts of this set.",
+    "spares": "Spare parts",
+    "totalPlural": "{count} part | {count} parts",
+    "sparesPlural": "{count} spare | {count} spares",
+    "check": "Completeness check",
+    "checkDone": "Done",
+    "checkHint": "Enter how many of each part there are. Only what is missing is saved.",
+    "piece": "Piece",
+    "pieceLabel": "{condition} · bought {date}",
+    "have": "Have",
+    "missingPlural": "{count} part missing | {count} parts missing",
+    "missingShort": "{count} missing",
+    "complete": "Nothing missing",
+    "missingList": "Missing parts list",
+    "missingListFailed": "Could not download the missing parts list",
+    "saveFailed": "Could not save the check",
+    "credit": "Parts and pictures: Rebrickable"
+  },
+  "alternates": {
+    "title": "What else you can build",
+    "titleCount": "What else you can build · {count}",
+    "empty": "Rebrickable has no alternate builds for this set.",
+    "by": "by {name}",
+    "open": "Open on Rebrickable",
+    "credit": "Fan builds from Rebrickable. Instructions are on the build's page, some are paid."
   },
   "unlock": {
     "title": "What else the app can do",

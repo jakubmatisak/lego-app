@@ -652,6 +652,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/{num}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Set Parts
+         * @description Dieliky setu zoskupiteľné podľa farby, náhradné označené.
+         */
+        get: operations["get_set_parts_api_v1_catalog__num__parts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/{num}/alternates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Set Alternates
+         * @description Čo ešte sa dá postaviť z dielikov setu (MOC na Rebrickable).
+         */
+        get: operations["get_set_alternates_api_v1_catalog__num__alternates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/{num}/parts-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Parts Summary
+         * @description Počty do nadpisov kariet z uložených zoznamov; von nevolá.
+         */
+        get: operations["get_parts_summary_api_v1_catalog__num__parts_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/items/{item_id}/part-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Part Checks */
+        get: operations["get_part_checks_api_v1_items__item_id__part_checks_get"];
+        /**
+         * Put Part Check
+         * @description Koľko jedného dielika kusu chýba. Ukladajú sa len odchýlky, nula záznam zmaže.
+         */
+        put: operations["put_part_check_api_v1_items__item_id__part_checks_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/items/{item_id}/missing-parts.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Missing Parts Csv
+         * @description Zoznam chýbajúcich dielikov kusu, napríklad na objednávku náhradných.
+         *
+         *     Názov a farba sú z Rebrickable, bez vlastného kľúča ostanú prázdne.
+         */
+        get: operations["missing_parts_csv_api_v1_items__item_id__missing_parts_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/items/{item_id}/photos": {
         parameters: {
             query?: never;
@@ -853,6 +956,10 @@ export interface paths {
          *     to ručná obnova jednej položky z detailu, pri sérii jej figúrok, a tá
          *     vek snímky nepozerá: používateľ chce cenu teraz. Jedno volanie na
          *     položku a zvyšok kvóty platia v oboch prípadoch.
+         *
+         *     ``limit`` je počet z dialógu obnovy (najviac toľko volaní). Stav „beží“
+         *     sa zaberie ešte pred odpoveďou, úloha na pozadí štartuje až po nej;
+         *     druhé kliknutie počas behu druhú dávku nespustí.
          */
         post: operations["refresh_all_api_v1_prices_refresh_all_post"];
         delete?: never;
@@ -1159,6 +1266,29 @@ export interface paths {
          * @description Bez prihlásenia. Zrušený odkaz vracia 404.
          */
         get: operations["public_collection_api_v1_public__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rates/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rate
+         * @description Kurz v daný deň (víkend = posledný pracovný deň pred ním), bez dňa najnovší.
+         *
+         *     Frontend sa pýta, len keď má účet inú menu než euro alebo zadáva sumu
+         *     v cudzej mene; až vtedy sa kurzy sťahujú z ECB.
+         */
+        get: operations["get_rate_api_v1_rates__code__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2286,6 +2416,11 @@ export interface components {
             cagr_pct?: number | null;
             /** Categories */
             categories?: number[];
+            /**
+             * Missing Parts
+             * @default 0
+             */
+            missing_parts: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2398,6 +2533,10 @@ export interface components {
             unidentified: boolean;
             /** Purchase Price */
             purchase_price: string | null;
+            /** Purchase Currency */
+            purchase_currency?: string | null;
+            /** Purchase Price Original */
+            purchase_price_original?: string | null;
             /** Purchase Date */
             purchase_date: string | null;
             /** Purchase Place */
@@ -2463,6 +2602,10 @@ export interface components {
             flags?: string[];
             /** Purchase Price Eur */
             purchase_price_eur?: number | string | null;
+            /** Purchase Currency */
+            purchase_currency?: ("EUR" | "CZK" | "USD" | "GBP" | "PLN" | "HUF" | "CHF") | null;
+            /** Purchase Price Original */
+            purchase_price_original?: number | string | null;
             /** Purchase Total Eur */
             purchase_total_eur?: number | string | null;
             /** Purchase Date */
@@ -2501,6 +2644,10 @@ export interface components {
             flags?: string[];
             /** Purchase Price Eur */
             purchase_price_eur?: number | string | null;
+            /** Purchase Currency */
+            purchase_currency?: ("EUR" | "CZK" | "USD" | "GBP" | "PLN" | "HUF" | "CHF") | null;
+            /** Purchase Price Original */
+            purchase_price_original?: number | string | null;
             /** Purchase Date */
             purchase_date?: string | null;
             /** Purchase Place */
@@ -2535,12 +2682,20 @@ export interface components {
              * @default false
              */
             purchase_price_auto: boolean;
+            /** Purchase Currency */
+            purchase_currency?: string | null;
+            /** Purchase Price Original */
+            purchase_price_original?: string | null;
             /** Purchase Date */
             purchase_date: string | null;
             /** Purchase Place */
             purchase_place: string | null;
             /** Sold Price Eur */
             sold_price_eur: string | null;
+            /** Sale Currency */
+            sale_currency?: string | null;
+            /** Sale Price Original */
+            sale_price_original?: string | null;
             /** Sold Date */
             sold_date: string | null;
             /** Sold Via */
@@ -2586,12 +2741,20 @@ export interface components {
              * @default false
              */
             purchase_price_auto: boolean;
+            /** Purchase Currency */
+            purchase_currency?: string | null;
+            /** Purchase Price Original */
+            purchase_price_original?: string | null;
             /** Purchase Date */
             purchase_date: string | null;
             /** Purchase Place */
             purchase_place: string | null;
             /** Sold Price Eur */
             sold_price_eur: string | null;
+            /** Sale Currency */
+            sale_currency?: string | null;
+            /** Sale Price Original */
+            sale_price_original?: string | null;
             /** Sold Date */
             sold_date: string | null;
             /** Sold Via */
@@ -2635,6 +2798,10 @@ export interface components {
             flags?: string[] | null;
             /** Purchase Price Eur */
             purchase_price_eur?: number | string | null;
+            /** Purchase Currency */
+            purchase_currency?: ("EUR" | "CZK" | "USD" | "GBP" | "PLN" | "HUF" | "CHF") | null;
+            /** Purchase Price Original */
+            purchase_price_original?: number | string | null;
             /** Purchase Date */
             purchase_date?: string | null;
             /** Purchase Place */
@@ -2738,6 +2905,40 @@ export interface components {
             last_purchase_price: string | null;
             /** Last Purchase Date */
             last_purchase_date: string | null;
+        };
+        /** PartCheckIn */
+        PartCheckIn: {
+            /** Part Num */
+            part_num: string;
+            /** Color Id */
+            color_id: number;
+            /**
+             * Is Spare
+             * @default false
+             */
+            is_spare: boolean;
+            /** Missing */
+            missing: number;
+        };
+        /** PartCheckOut */
+        PartCheckOut: {
+            /** Part Num */
+            part_num: string;
+            /** Color Id */
+            color_id: number;
+            /** Is Spare */
+            is_spare: boolean;
+            /** Missing */
+            missing: number;
+        };
+        /** PartChecksOut */
+        PartChecksOut: {
+            /** Item Id */
+            item_id: number;
+            /** Missing Total */
+            missing_total: number;
+            /** Checks */
+            checks?: components["schemas"]["PartCheckOut"][];
         };
         /** PhotoOut */
         PhotoOut: {
@@ -2904,6 +3105,10 @@ export interface components {
             market_value?: string | null;
             /** Price Missing */
             price_missing?: number | null;
+            /** Currency */
+            currency?: ("EUR" | "CZK" | "USD" | "GBP" | "PLN" | "HUF" | "CHF") | null;
+            /** Rate */
+            rate?: string | null;
             /** Items */
             items: components["schemas"]["PublicItemOut"][];
             /** Wishes */
@@ -2958,6 +3163,30 @@ export interface components {
             /** Target Price Eur */
             target_price_eur?: string | null;
         };
+        /**
+         * RateOut
+         * @description Kurz eura od ECB: 1 € = ``rate`` jednotiek meny, zo dňa ``day``.
+         */
+        RateOut: {
+            /**
+             * Currency
+             * @enum {string}
+             */
+            currency: "EUR" | "CZK" | "USD" | "GBP" | "PLN" | "HUF" | "CHF";
+            /** Rate */
+            rate: string;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Source
+             * @default ECB
+             * @constant
+             */
+            source: "ECB";
+        };
         /** RefreshStatusOut */
         RefreshStatusOut: {
             /** Running */
@@ -2987,6 +3216,16 @@ export interface components {
              * @default 0
              */
             skipped_fresh: number;
+            /**
+             * Calls Limit
+             * @default 0
+             */
+            calls_limit: number;
+            /**
+             * Calls Used
+             * @default 0
+             */
+            calls_used: number;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -3108,7 +3347,11 @@ export interface components {
         /** SellRequest */
         SellRequest: {
             /** Sold Price Eur */
-            sold_price_eur: number | string;
+            sold_price_eur?: number | string | null;
+            /** Sale Currency */
+            sale_currency?: ("EUR" | "CZK" | "USD" | "GBP" | "PLN" | "HUF" | "CHF") | null;
+            /** Sale Price Original */
+            sale_price_original?: number | string | null;
             /**
              * Sold Date
              * Format: date
@@ -3155,6 +3398,32 @@ export interface components {
             /** Missing */
             missing: components["schemas"]["SeriesMissingOut"][];
         };
+        /** SetAlternateOut */
+        SetAlternateOut: {
+            /** Set Num */
+            set_num: string;
+            /** Name */
+            name: string;
+            /** Year */
+            year?: number | null;
+            /** Num Parts */
+            num_parts?: number | null;
+            /** Image Url */
+            image_url?: string | null;
+            /** Url */
+            url?: string | null;
+            /** Designer Name */
+            designer_name?: string | null;
+        };
+        /** SetAlternatesOut */
+        SetAlternatesOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Alternates */
+            alternates?: components["schemas"]["SetAlternateOut"][];
+        };
         /** SetImageOut */
         SetImageOut: {
             /** Thumbnail Url */
@@ -3171,6 +3440,60 @@ export interface components {
             enabled: boolean;
             /** Images */
             images?: components["schemas"]["SetImageOut"][];
+        };
+        /** SetPartOut */
+        SetPartOut: {
+            /** Part Num */
+            part_num: string;
+            /** Name */
+            name: string;
+            /** Color Id */
+            color_id: number;
+            /** Color Name */
+            color_name: string;
+            /** Color Rgb */
+            color_rgb?: string | null;
+            /**
+             * Is Trans
+             * @default false
+             */
+            is_trans: boolean;
+            /** Quantity */
+            quantity: number;
+            /**
+             * Is Spare
+             * @default false
+             */
+            is_spare: boolean;
+            /** Image Url */
+            image_url?: string | null;
+            /** Element Id */
+            element_id?: string | null;
+        };
+        /**
+         * SetPartsOut
+         * @description ``enabled`` = účet vidí údaje Rebrickable (vlastný kľúč).
+         *
+         *     ``fetched_at`` prázdne = zoznam ešte nikto nestiahol; prázdny zoznam
+         *     s dátumom = Rebrickable diely setu nepozná.
+         */
+        SetPartsOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Parts */
+            parts?: components["schemas"]["SetPartOut"][];
+        };
+        /**
+         * SetPartsSummaryOut
+         * @description Počty z uložených zoznamov, bez volania von. None = ešte nestiahnuté.
+         */
+        SetPartsSummaryOut: {
+            /** Parts */
+            parts?: number | null;
+            /** Alternates */
+            alternates?: number | null;
         };
         /** ShareCreateRequest */
         ShareCreateRequest: {
@@ -3603,12 +3926,20 @@ export interface components {
              * @default false
              */
             purchase_price_auto: boolean;
+            /** Purchase Currency */
+            purchase_currency?: string | null;
+            /** Purchase Price Original */
+            purchase_price_original?: string | null;
             /** Purchase Date */
             purchase_date: string | null;
             /** Purchase Place */
             purchase_place: string | null;
             /** Sold Price Eur */
             sold_price_eur: string | null;
+            /** Sale Currency */
+            sale_currency?: string | null;
+            /** Sale Price Original */
+            sale_price_original?: string | null;
             /** Sold Date */
             sold_date: string | null;
             /** Sold Via */
@@ -3646,6 +3977,11 @@ export interface components {
             cagr_pct?: number | null;
             /** Categories */
             categories?: number[];
+            /**
+             * Missing Parts
+             * @default 0
+             */
+            missing_parts: number;
         };
         /** WishlistCreateRequest */
         WishlistCreateRequest: {
@@ -5016,6 +5352,196 @@ export interface operations {
             };
         };
     };
+    get_set_parts_api_v1_catalog__num__parts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                num: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetPartsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_set_alternates_api_v1_catalog__num__alternates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                num: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetAlternatesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_parts_summary_api_v1_catalog__num__parts_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                num: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetPartsSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_part_checks_api_v1_items__item_id__part_checks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChecksOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_part_check_api_v1_items__item_id__part_checks_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartCheckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChecksOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    missing_parts_csv_api_v1_items__item_id__missing_parts_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_photos_api_v1_items__item_id__photos_get: {
         parameters: {
             query?: never;
@@ -5454,6 +5980,7 @@ export interface operations {
         parameters: {
             query?: {
                 num?: string | null;
+                limit?: number | null;
             };
             header?: never;
             path?: never;
@@ -6240,6 +6767,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicCollectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rate_api_v1_rates__code__get: {
+        parameters: {
+            query?: {
+                day?: string | null;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateOut"];
                 };
             };
             /** @description Validation Error */

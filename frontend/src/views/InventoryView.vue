@@ -10,6 +10,9 @@
   import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api } from '@/api/client'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { useAuthStore } from '@/stores/auth'
   import { isoDate, money, shortDate, toNumber } from '@/utils/format'
 
@@ -22,7 +25,6 @@
   const pieces = ref<ValuedItem[]>([])
   const photosByItem = ref<Record<number, Photo[]>>({})
   const urls = ref<Record<number, string>>({})
-  const loading = ref(true)
 
   const today = isoDate()
 
@@ -69,14 +71,24 @@
     }))
   }
 
-  onMounted(async () => {
-    const { data } = await api.GET('/items', {
+  async function load (): Promise<boolean> {
+    const { data, error } = await api.GET('/items', {
       params: { query: { status: 'owned', sort: 'name' } },
     })
-    pieces.value = data ?? []
+    if (error || !data) return false
+    pieces.value = data
     await loadPhotos()
-    loading.value = false
-  })
+    return true
+  }
+
+  /*
+   * Kým server neodpovedal, kostra tabuľky, nie prázdny súpis s nulou:
+   * vytlačený by tvrdil, že zbierka je prázdna. Stránka je bez hornej
+   * lišty, takže sa k Obnoviť stránku neprihlasuje.
+   */
+  const page = usePageLoad(load, { reload: false })
+
+  onMounted(() => page.run())
 
   onBeforeUnmount(() => {
     for (const url of Object.values(urls.value)) URL.revokeObjectURL(url)
@@ -100,7 +112,7 @@
 
           <v-btn
             color="primary"
-            :disabled="loading"
+            :disabled="!page.loaded"
             prepend-icon="mdi-printer-outline"
             variant="flat"
             @click="print"
@@ -113,13 +125,13 @@
           <div class="text-body-medium">
             {{ t('inventory.owner') }}: {{ auth.user?.display_name || auth.user?.email }}
             · {{ t('inventory.subtitle', { date: shortDate(today) }) }}
-            · {{ t('collection.piecesPlural', pieces.length, { named: { count: pieces.length } }) }}
+            <template v-if="page.loaded">· {{ t('collection.piecesPlural', pieces.length, { named: { count: pieces.length } }) }}</template>
           </div>
         </header>
 
-        <div v-if="loading" class="d-flex justify-center pa-8 no-print">
-          <v-progress-circular color="primary" indeterminate />
-        </div>
+        <PageSkeleton v-if="page.initial" class="no-print" :count="6" kind="table" />
+
+        <LoadFailed v-else-if="page.error" class="no-print" :loading="page.loading" @retry="page.run()" />
 
         <div v-else class="inventory-scroll">
           <table class="inventory-table">

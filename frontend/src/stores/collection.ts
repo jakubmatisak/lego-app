@@ -6,11 +6,12 @@ import type {
   TimelinePoint,
   ValuedItem,
 } from '@/api/types'
+import type { CurrencyCode } from '@/utils/format'
 import type { BoxSuggestion } from '@/utils/place'
 import type { Scope } from '@/utils/scope'
 import { defineStore } from 'pinia'
-import { computed, ref, watch } from 'vue'
-import { api, errorMessage } from '@/api/client'
+import { computed, onScopeDispose, ref, watch } from 'vue'
+import { api, errorMessage, onCollectionChanged } from '@/api/client'
 import i18n from '@/plugins/i18n'
 import { useFilterStore } from '@/stores/filters'
 import { useNotifyStore } from '@/stores/notify'
@@ -143,9 +144,54 @@ export const useCollectionStore = defineStore('collection', () => {
 
   /** Poradové číslo načítania Prehľadu; staršia odpoveď novšiu neprepíše. */
   let dashboardRun = 0
+  /** To isté pre samotný súhrn, ktorý ťahá aj obnova po zmene. */
+  let summaryRun = 0
+  let summaryTimer: ReturnType<typeof setTimeout> | null = null
+
+  /** Súhrn je na ceste; naplánovaná obnova po zmene je zbytočná. */
+  function summaryRequested (): number {
+    if (summaryTimer) {
+      clearTimeout(summaryTimer)
+      summaryTimer = null
+    }
+    return ++summaryRun
+  }
+
+  async function loadSummary (): Promise<void> {
+    const run = summaryRequested()
+    const { data } = await api.GET('/stats/summary', { params: { query: realQuery() } })
+    if (run === summaryRun && data) {
+      summary.value = data
+    }
+  }
+
+  /**
+   * Po zmene kusov alebo Chcem (``onCollectionChanged`` v klientovi) sa
+   * súhrn za počtami v ponuke načíta nanovo. S malým odkladom: obrazovka,
+   * ktorá po uložení prenačíta všetko (``refreshAll``), ho medzitým stiahne
+   * sama a druhé načítanie sa zruší.
+   */
+  const SUMMARY_DELAY_MS = 250
+  const stopListening = onCollectionChanged(() => {
+    if (summaryTimer) {
+      clearTimeout(summaryTimer)
+    }
+    summaryTimer = setTimeout(() => {
+      summaryTimer = null
+      // Výpadok siete: čísla ostanú, opravia sa pri ďalšom načítaní.
+      loadSummary().catch(() => {})
+    }, SUMMARY_DELAY_MS)
+  })
+  onScopeDispose(() => {
+    stopListening()
+    if (summaryTimer) {
+      clearTimeout(summaryTimer)
+    }
+  })
 
   async function loadDashboard (): Promise<void> {
     const run = ++dashboardRun
+    const ownSummary = summaryRequested()
     loading.value = true
     try {
       const scoped = scope.value !== null
@@ -163,7 +209,9 @@ export const useCollectionStore = defineStore('collection', () => {
       if (run !== dashboardRun) {
         return
       }
-      summary.value = summaryRes.data ?? null
+      if (ownSummary === summaryRun) {
+        summary.value = summaryRes.data ?? null
+      }
       scopedSummary.value = scopedRes.data ?? null
       timeline.value = timelineRes.data ?? []
       movers.value = moversRes.data ?? []
@@ -189,7 +237,9 @@ export const useCollectionStore = defineStore('collection', () => {
   async function sellItem (
     id: number,
     payload: {
-      sold_price_eur: string
+      sold_price_eur: string | null
+      sale_currency?: CurrencyCode | null
+      sale_price_original?: string | null
       sold_date: string
       sold_via?: string | null
       sold_fees_eur?: string | null
@@ -279,6 +329,7 @@ export const useCollectionStore = defineStore('collection', () => {
     loadGrouped,
     loadLocations,
     loadDashboard,
+    loadSummary,
     loadMovers,
     refreshAll,
     sellItem,

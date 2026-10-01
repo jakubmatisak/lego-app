@@ -14,13 +14,17 @@
   import ExportCsvButton from '@/components/ExportCsvButton.vue'
   import FormMemoryCard from '@/components/FormMemoryCard.vue'
   import ImportPanel from '@/components/ImportPanel.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import ShareDialog from '@/components/ShareDialog.vue'
   import SourcesPanel from '@/components/SourcesPanel.vue'
+  import { currencyApplying, useDisplayCurrency } from '@/composables/useDisplayCurrency'
   import { useDisplayPrefs } from '@/composables/useDisplayPrefs'
+  import { onPageReload, usePageLoad } from '@/composables/usePageLoad'
   import { useAuthStore } from '@/stores/auth'
   import { useNotifyStore } from '@/stores/notify'
   import { usePriceStore } from '@/stores/prices'
-  import { dateTime } from '@/utils/format'
+  import { CURRENCIES, type CurrencyCode, dateTime, displayCurrency, rateText, shortDate } from '@/utils/format'
 
   const { t, locale } = useI18n()
   const notify = useNotifyStore()
@@ -45,20 +49,66 @@
     set: (value: boolean) => display.setTheme(value ? 'dark' : 'light'),
   })
 
+  // --- mena zobrazenia ---------------------------------------------------
+
+  /*
+   * Ukladá sa všetko v eurách, mena je len prepočet dnešným kurzom ECB
+   * (`utils/format.ts`). Bez schopnosti ecb.rates ostáva euro.
+   */
+  const currencyPrefs = useDisplayCurrency()
+  const currencyCode = computed(() => display.current().currency)
+  const currencyItems = computed(() => CURRENCIES.map(code => ({ value: code, title: t(`currency.names.${code}`) })))
+  const ratesBlocked = computed(() => auth.keys !== null && !auth.can('ecb.rates'))
+  const currencyLoading = ref(false)
+  const currencyLine = computed(() => {
+    const code = currencyCode.value
+    if (ratesBlocked.value && code !== 'EUR') return t('currency.blocked')
+    if (code === 'EUR') return t('currency.euroHint')
+    if (currencyLoading.value || currencyApplying.value) return t('currency.loading')
+    const shown = displayCurrency.value
+    if (shown.code !== code) return t('currency.rateFailed')
+    return t('currency.rate', { rate: rateText(code, shown.rate), day: shortDate(shown.day) })
+  })
+
+  async function chooseCurrency (code: CurrencyCode): Promise<void> {
+    currencyLoading.value = true
+    try {
+      await currencyPrefs.choose(code)
+    } finally {
+      currencyLoading.value = false
+    }
+  }
+
+  const foreignEntry = computed({
+    get: () => display.current().foreignEntry,
+    set: (value: boolean) => display.setForeignEntry(value),
+  })
+
   function publicUrl (token: string): string {
     return `${window.location.origin}/z/${token}`
   }
 
-  async function loadLinks (): Promise<void> {
-    const { data } = await api.GET('/share', {})
-    links.value = data ?? []
+  async function loadLinks (): Promise<boolean> {
+    const { data, error } = await api.GET('/share', {})
+    if (error || !data) return false
+    links.value = data
+    return true
   }
 
-  async function loadUsers (): Promise<void> {
-    if (!auth.isAdmin) return
-    const { data } = await api.GET('/admin/users', {})
-    users.value = data ?? []
+  async function loadUsers (): Promise<boolean> {
+    if (!auth.isAdmin) return true
+    const { data, error } = await api.GET('/admin/users', {})
+    if (error || !data) return false
+    users.value = data
+    return true
   }
+
+  /*
+   * Zoznamy odkazov a používateľov: kým server neodpovedal, kostra riadkov,
+   * nie „Zatiaľ žiadny odkaz“ (usePageLoad). Obnoviť stránku ich načíta znova.
+   */
+  const linksPage = usePageLoad(loadLinks)
+  const usersPage = usePageLoad(loadUsers)
 
   // --- nastavenia appky (len správca) ---------------------------------------
 
@@ -189,9 +239,12 @@
     await loadUsers()
   }
 
+  // Nastavenia appky (správca) aj pri Obnoviť stránku.
+  onPageReload(loadAppSettings)
+
   onMounted(() => {
-    loadLinks()
-    loadUsers()
+    linksPage.run()
+    usersPage.run()
     loadAppSettings()
     prices.fetchStatus()
   })
@@ -279,8 +332,12 @@
             </v-menu>
           </div>
 
+          <PageSkeleton v-if="linksPage.initial" :count="2" kind="rows" />
+
+          <LoadFailed v-else-if="linksPage.error" :loading="linksPage.loading" @retry="linksPage.run()" />
+
           <v-empty-state
-            v-if="links.length === 0"
+            v-else-if="links.length === 0"
             icon="mdi-share-variant-outline"
             :title="t('settings.shareEmpty')"
           />
@@ -370,6 +427,31 @@
             @update:model-value="auth.updateProfile({ locale })"
           />
 
+          <div>
+            <v-select
+              :disabled="ratesBlocked && currencyCode === 'EUR'"
+              hide-details
+              item-title="title"
+              item-value="value"
+              :items="currencyItems"
+              :label="t('currency.label')"
+              :loading="currencyLoading"
+              :model-value="currencyCode"
+              @update:model-value="(code: CurrencyCode) => chooseCurrency(code)"
+            />
+
+            <div class="text-body-medium text-medium-emphasis mt-2" data-test="currency-rate">{{ currencyLine }}</div>
+          </div>
+
+          <v-switch
+            v-model="foreignEntry"
+            color="primary"
+            :disabled="ratesBlocked"
+            :hint="t('currency.foreignEntryHint')"
+            :label="t('currency.foreignEntry')"
+            persistent-hint
+          />
+
           <v-switch
             v-model="isDark"
             color="primary"
@@ -443,7 +525,11 @@
       </v-window-item>
 
       <v-window-item v-if="auth.isAdmin" class="settings-narrow" value="users">
-        <v-card border flat>
+        <PageSkeleton v-if="usersPage.initial" :count="3" kind="rows" />
+
+        <LoadFailed v-else-if="usersPage.error" :loading="usersPage.loading" @retry="usersPage.run()" />
+
+        <v-card v-else border flat>
           <v-list lines="two">
             <v-list-item v-for="user in users" :key="user.id" :subtitle="user.email">
               <v-list-item-title>

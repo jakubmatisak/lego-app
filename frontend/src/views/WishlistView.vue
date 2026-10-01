@@ -12,8 +12,11 @@
   import { api, errorMessage } from '@/api/client'
   import CardGrid from '@/components/CardGrid.vue'
   import KeyHint from '@/components/KeyHint.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import PurchaseDialog from '@/components/PurchaseDialog.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { useAuthStore } from '@/stores/auth'
   import { useCollectionStore } from '@/stores/collection'
   import { useNotifyStore } from '@/stores/notify'
@@ -28,7 +31,6 @@
   const collection = useCollectionStore()
 
   const items = ref<WishlistItem[]>([])
-  const loading = ref(true)
   const error = ref<string | null>(null)
   const addOpen = ref(false)
   const newNumber = ref('')
@@ -90,7 +92,7 @@
     }
     notify.success(t('wishlist.edited', { name: editing.value.catalog.name }))
     editOpen.value = false
-    await load()
+    await page.run()
   }
 
   function openBuy (item: WishlistItem): void {
@@ -98,14 +100,19 @@
     buyOpen.value = true
   }
 
-  async function load (): Promise<void> {
-    loading.value = true
-    const { data } = await api.GET('/wishlist', { params: { query: wishlistQuery(view) as never } })
-    items.value = data ?? []
-    loading.value = false
+  async function load (): Promise<boolean> {
+    const { data, error: err } = await api.GET('/wishlist', { params: { query: wishlistQuery(view) as never } })
+    if (err || !data) return false
+    items.value = data
+    return true
   }
 
-  const reload = useDebounceFn(load, 250)
+  /**
+   * Prvé načítanie kostra, zmena filtra a Obnoviť stránku nad starými
+   * kartami (usePageLoad). „Zatiaľ nič nechceš“ až po odpovedi servera.
+   */
+  const page = usePageLoad(load)
+  const reload = useDebounceFn(() => page.run(), 250)
   watch(() => ({ ...view }), reload, { deep: true })
 
   /** Súhrn obnovuje zmena z tejto stránky, ktorá zoznam načíta sama. */
@@ -128,7 +135,7 @@
     const summary = collection.loadDashboard().finally(() => {
       ownChange = false
     })
-    await Promise.all([load(), summary])
+    await Promise.all([page.run(), summary])
   }
 
   /**
@@ -137,7 +144,7 @@
    * zmenu nespozná, sa zoznam načíta tu.
    */
   function afterPurchase (): void {
-    if (!collection.summary) void load()
+    if (!collection.summary) void page.run()
   }
 
   const filtered = (): boolean => hasWishFilter(view)
@@ -175,7 +182,7 @@
     await afterChange()
   }
 
-  onMounted(load)
+  onMounted(() => page.run())
 </script>
 
 <template>
@@ -251,7 +258,10 @@
       {{ error }}
     </v-alert>
 
-    <v-progress-linear v-if="loading" color="primary" indeterminate />
+    <!-- Kým server neodpovedal, kostra; prázdny stav až po odpovedi. -->
+    <PageSkeleton v-if="page.initial" kind="cards" />
+
+    <LoadFailed v-else-if="page.error" :loading="page.loading" @retry="page.run()" />
 
     <v-empty-state
       v-else-if="items.length === 0 && filtered()"

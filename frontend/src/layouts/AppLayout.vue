@@ -11,7 +11,10 @@
 
   import { api } from '@/api/client'
   import ApiUsageDialog from '@/components/ApiUsageDialog.vue'
+  import RefreshPricesDialog from '@/components/RefreshPricesDialog.vue'
+  import { useDisplayCurrency } from '@/composables/useDisplayCurrency'
   import { useDisplayPrefs } from '@/composables/useDisplayPrefs'
+  import { pageBusy, reloadPage } from '@/composables/usePageLoad'
   import { useScanCodes } from '@/scanner/useScanCodes'
   import { useAuthStore } from '@/stores/auth'
   import { useCollectionStore } from '@/stores/collection'
@@ -38,6 +41,7 @@
 
   const mobile = computed(() => display.smAndDown.value)
   const usageOpen = ref(false)
+  const refreshOpen = ref(false)
   /** Stránka na výšku okna nepotrebuje dolnú rezervu, stránka by inak pretiekla. */
   const fitScreen = computed(() => route.meta.fitScreen === true && !mobile.value)
 
@@ -135,6 +139,7 @@
 
   /** Tmavý/svetlý režim a zúžené menu sa pamätajú pri účte (preferences.display). */
   const prefs = useDisplayPrefs()
+  const displayCurrency = useDisplayCurrency()
   const rail = ref(false)
 
   function toggleTheme (): void {
@@ -166,12 +171,30 @@
   /**
    * Obnovu cien spúšťa len používateľ týmto tlačidlom. Kvóta je 100 volaní
    * na deň a je osobná, takže nemá zmysel ju míňať pri každom prihlásení.
+   * Pred spustením dialóg ukáže minuté volania a spýta sa, koľko cien.
    */
-  async function refreshPrices (): Promise<void> {
+  async function refreshPrices (count: number): Promise<void> {
     await prices.refreshEverything(() => {
       collection.refreshAll()
       auth.loadKeys()
-    })
+    }, count)
+  }
+
+  /**
+   * Obnoviť stránku: znova načíta dáta otvorenej stránky a súhrn za počtami
+   * v ponuke, bez načítania celej stránky (filtre, posunutie aj rozpísaný
+   * formulár ostanú). Len GET na vlastný server, nikdy ceny ani Brickset;
+   * načítania sa prihlasujú cez `usePageLoad` / `onPageReload`.
+   */
+  const reloading = ref(false)
+  async function reloadCurrent (): Promise<void> {
+    if (reloading.value) return
+    reloading.value = true
+    try {
+      await reloadPage(() => collection.loadSummary())
+    } finally {
+      reloading.value = false
+    }
   }
 
   const refreshHint = computed(() => {
@@ -234,6 +257,8 @@
       rail.value = saved.rail
       setPricesHidden(saved.hidePrices)
       if (saved.theme) prefs.applyTheme(saved.theme)
+      // Mena zobrazenia: kurz ECB sa pýta len pri inej mene než euro.
+      if (saved.currency !== 'EUR') displayCurrency.apply(saved.currency)
     })
     if (auth.user?.locale) locale.value = auth.user.locale
 
@@ -382,6 +407,14 @@
       <!-- Denné limity cudzích služieb a história volaní. -->
       <v-btn icon="mdi-gauge" :title="t('usage.title')" @click="usageOpen = true" />
 
+      <!--
+        Znova načíta dáta stránky z vlastného servera; cudzie služby nevolá.
+        Na telefóne je v menu účtu, inak by sa názov stránky nezmestil.
+      -->
+      <v-btn v-if="!mobile" icon :title="t('nav.reload')" @click="reloadCurrent">
+        <v-icon :class="{ 'refresh-spin': reloading }" icon="mdi-refresh" />
+      </v-btn>
+
       <!-- Ceny sa neobnovujú samé, iba týmto tlačidlom. Bez zdroja cien sa neukáže. -->
       <v-tooltip v-if="auth.can('brickeconomy.prices')" location="bottom" :text="refreshHint">
         <template #activator="{ props: tipProps }">
@@ -390,7 +423,7 @@
               :disabled="!auth.hasPriceKey || prices.quotaExhausted"
               icon="mdi-cloud-refresh-outline"
               :loading="prices.running"
-              @click="refreshPrices"
+              @click="refreshOpen = true"
             />
           </div>
         </template>
@@ -438,6 +471,13 @@
 
           <template v-if="mobile">
             <v-list-item
+              :disabled="reloading"
+              prepend-icon="mdi-refresh"
+              :title="t('nav.reload')"
+              @click="reloadCurrent"
+            />
+
+            <v-list-item
               :prepend-icon="theme.global.name.value === 'dark' ? 'mdi-weather-sunny' : 'mdi-weather-night'"
               :title="theme.global.name.value === 'dark' ? t('nav.lightMode') : t('nav.darkMode')"
               @click="toggleTheme"
@@ -459,6 +499,16 @@
           />
         </v-list>
       </v-menu>
+
+      <!-- Stránka sa načítava znova (filter, Obnoviť stránku): staré dáta ostanú, svieti len pruh. -->
+      <v-progress-linear
+        absolute
+        :active="pageBusy"
+        color="primary"
+        height="2"
+        indeterminate
+        location="bottom"
+      />
     </v-app-bar>
 
     <v-main>
@@ -490,6 +540,7 @@
     </v-bottom-navigation>
 
     <ApiUsageDialog v-model="usageOpen" />
+    <RefreshPricesDialog v-model="refreshOpen" @confirm="refreshPrices" />
 
     <!-- Oznámenia celej appky (stores/notify.ts). -->
     <v-snackbar-queue v-model="notify.queue" total-visible="3">

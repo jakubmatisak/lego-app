@@ -17,6 +17,7 @@ async def test_sources_list_providers_in_tier_order(auth_client: AsyncClient) ->
         "brickeconomy",
         "upcitemdb",
         "eurostat",
+        "ecb",
     ]
     assert (sources["brickeconomy"]["paid"], sources["brickset"]["paid"]) == (True, False)
     assert sources["brickset"]["available"] is True

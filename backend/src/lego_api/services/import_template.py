@@ -11,6 +11,7 @@ import csv
 import io
 from datetime import date
 
+from lego_api.services.currency import SUPPORTED
 from lego_api.services.import_file import (
     CONDITION_LABELS,
     EXAMPLE_NOTE,
@@ -40,6 +41,17 @@ COLUMNS: list[tuple[str, str, int]] = [
     ("krabica", "Číslo alebo názov krabice v miestnosti. Nepovinné.", 9),
     ("priznaky", "Oddelené čiarkou: " + ", ".join(FLAG_LABELS.values()) + ".", 20),
     ("kupna_cena_eur", "Cena za jeden kus, v eurách. 39,99 aj 39.99.", 14),
+    (
+        "mena_kupy",
+        "Len pri kúpe v inej mene: CZK, USD, GBP, PLN, HUF alebo CHF. Prázdne = eurá.",
+        10,
+    ),
+    (
+        "kupna_cena_v_mene",
+        "Len pri kúpe v inej mene: cena za kus v tej mene. Bez kúpnej ceny v eurách "
+        "ju appka prepočíta kurzom ECB zo dňa kúpy.",
+        16,
+    ),
     ("datum_kupy", "Deň kúpy, 12.3.2019 alebo 2019-03-12.", 12),
     ("kde_kupene", "Obchod alebo predajca, voľný text.", 14),
     ("predajna_cena_eur", "Len pri predaných: za koľko sa predal.", 16),
@@ -138,6 +150,7 @@ def template_xlsx() -> bytes:
     column_of = {name: get_column_letter(i) for i, name in enumerate(HEADER, start=1)}
     for name in (
         "kupna_cena_eur",
+        "kupna_cena_v_mene",
         "predajna_cena_eur",
         "poplatky_eur",
         "postovne_eur",
@@ -164,6 +177,7 @@ def template_xlsx() -> bytes:
         ("vlastnictvo", OWNERSHIP_LABELS.values()),
         ("stav", CONDITION_LABELS.values()),
         ("zoznam", PURPOSE_LABELS.values()),
+        ("mena_kupy", SUPPORTED),
     ):
         rule = DataValidation(type="list", formula1='"' + ",".join(labels) + '"', allow_blank=True)
         rule.error = "Vyber hodnotu zo zoznamu."

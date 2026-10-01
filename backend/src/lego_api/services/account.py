@@ -23,6 +23,7 @@ from lego_api.models import (
     CategoryItem,
     CollectionItem,
     ImportBatch,
+    ItemPartCheck,
     ItemPhoto,
     PriceCheck,
     PriceSnapshot,
@@ -36,6 +37,7 @@ from lego_api.models import (
 #: Tabuľky so stĺpcom ``user_id``, v poradí od detí k rodičom.
 _OWNED = (
     ItemPhoto,
+    ItemPartCheck,
     PriceCheck,
     PriceSnapshot,
     ShareLink,
@@ -168,6 +170,15 @@ async def export_account(session: AsyncSession, user: User, settings: Settings) 
     imports = list(
         (await session.execute(select(ImportBatch).where(ImportBatch.user_id == user.id))).scalars()
     )
+    part_checks = list(
+        (
+            await session.execute(
+                select(ItemPartCheck)
+                .where(ItemPartCheck.user_id == user.id)
+                .order_by(ItemPartCheck.item_id, ItemPartCheck.id)
+            )
+        ).scalars()
+    )
     data = {
         "profile": {
             "email": user.email,
@@ -212,6 +223,9 @@ async def export_account(session: AsyncSession, user: User, settings: Settings) 
             _row(m, ("ean", "outcome", "product_title", "checked_at")) for m in misses
         ],
         "imports": [_row(b, ("filename", "state", "created_at")) for b in imports],
+        "part_checks": [
+            _row(c, ("item_id", "part_num", "color_id", "is_spare", "missing")) for c in part_checks
+        ],
     }
     out = io.BytesIO()
     folder = Path(settings.photos_dir)

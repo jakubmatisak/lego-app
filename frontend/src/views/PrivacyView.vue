@@ -55,6 +55,7 @@
       body: [
         'Poskytovateľ hostingu, na ktorom appka beží.',
         'Služby, ktoré si pripojíš vlastným kľúčom, dostanú len čísla setov a čiarové kódy, na ktoré sa pýtaš, nie tvoje osobné údaje. Eurostat nedostane nič, čo by sa ťa týkalo.',
+        'Pri inej mene zobrazenia než euro alebo pri sume v cudzej mene stiahne server kurzy z Európskej centrálnej banky (ECB). Sťahujú sa len verejné kurzy, o tebe neodchádza nič.',
         'Fotky setov sa načítavajú cez server appky, takže Rebrickable ani Brickset nevidia tvoju IP adresu.',
       ],
     },
@@ -102,6 +103,7 @@
       body: [
         'The hosting provider the app runs on.',
         'Services you connect with your own key receive only the set numbers and barcodes you ask about, not your personal data. Eurostat receives nothing about you.',
+        'With a display currency other than the euro, or an amount in a foreign currency, the server downloads exchange rates from the European Central Bank (ECB). Only the public rates are downloaded, nothing about you is sent.',
         'Set pictures are loaded through the app’s server, so Rebrickable and Brickset do not see your IP address.',
       ],
     },

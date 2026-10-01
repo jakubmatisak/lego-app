@@ -26,7 +26,7 @@
   import { useI18n } from 'vue-i18n'
   import { useTheme } from 'vuetify'
   import { CHART_COLORS } from '@/plugins/vuetify'
-  import { money, pricesHidden, toNumber } from '@/utils/format'
+  import { amount, displayCurrency, pricesHidden, toDisplay, toNumber } from '@/utils/format'
 
   ChartJS.register(LinearScale, PointElement, LineElement, Filler, Tooltip, Legend, zoomPlugin)
 
@@ -57,7 +57,8 @@
   const shownMax = computed(() => Math.min(props.to ?? dataMax.value, dataMax.value))
 
   function series (pick: (p: TimelinePoint) => string | null): { x: number, y: number }[] {
-    return props.points.map((p, i) => ({ x: xs.value[i] ?? 0, y: toNumber(pick(p)) ?? 0 }))
+    // Sumy v mene zobrazenia (dnešným kurzom), aby osi mali okrúhle čísla v nej.
+    return props.points.map((p, i) => ({ x: xs.value[i] ?? 0, y: toDisplay(toNumber(pick(p)) ?? 0) }))
   }
 
   const chartData = computed(() => ({
@@ -114,6 +115,8 @@
   const chartOptions = computed(() => ({
     // Nový objekt pri skrytí cien: graf prekreslí osi aj popisy so sumami.
     hiddenPrices: pricesHidden.value,
+    // Aj pri zmene meny zobrazenia: body sú prepočítané, osi v novej mene.
+    displayCurrency: displayCurrency.value.code,
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index' as const, intersect: false },
@@ -134,7 +137,7 @@
           title: (items: { parsed: { x: number | null } }[]) =>
             items[0]?.parsed.x == null ? '' : dayFormat.format(new Date(items[0].parsed.x)),
           label: (ctx: { dataset: { label?: string }, parsed: { y: number | null } }) =>
-            `${ctx.dataset.label}: ${money(ctx.parsed.y, { decimals: 0 })}`,
+            `${ctx.dataset.label}: ${amount(ctx.parsed.y, { decimals: 0 })}`,
         },
       },
       zoom: {
@@ -169,7 +172,7 @@
         ticks: {
           color: textColor.value,
           font: { size: 10 },
-          callback: (value: string | number) => money(value, { decimals: 0 }),
+          callback: (value: string | number) => amount(value, { decimals: 0 }),
         },
       },
     },

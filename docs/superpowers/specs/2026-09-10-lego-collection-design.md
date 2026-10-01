@@ -152,7 +152,7 @@ docs/superpowers/specs/  tieto dokumenty
 | `REFRESH_GRACE_SECONDS` | 60 | ochranná lehota po výmene obnovovacieho tokenu |
 | `COOKIE_SECURE`, `COOKIE_DOMAIN` | false / – | cookie obnovovacieho tokenu |
 | `ALLOW_REGISTRATION` | true | východisko, kým ho správca v appke nezmení |
-| `BRICKECONOMY_DAILY_LIMIT` | 90 | vlastný strop pod oficiálnych 100 |
+| `BRICKECONOMY_DAILY_LIMIT` | 100 | denný strop volaní (oficiálna kvóta je 100), dá sa znížiť |
 | `PRICE_MAX_AGE_HOURS` | 168 | vek snímky, po ktorom sa cena obnoví |
 | `PRICE_REFRESH_BUDGET` | 40 | strop položiek na jednu dávku |
 | `PRICE_REFRESH_DELAY_SECONDS` | 1.0 | pauza medzi volaniami |
@@ -252,7 +252,7 @@ deaktivovať a meniť rolu) a nastavenia appky.
 | zdroj | na čo | limit | kľúč |
 |---|---|---|---|
 | **Rebrickable** | metadáta setu, fotka, téma, dieliky, figúrky, zberateľské série | ~1 volanie/s, 429 pri prekročení | používateľa |
-| **BrickEconomy** | trhová cena novej aj použitej položky, história cien, RRP v eurách, retired, číslo figúrky, EAN, odhad o 2 a 5 rokov, rast za 12 mesiacov | 100/deň na kľúč, appka si dáva strop 90 | používateľa (členstvo Premium) |
+| **BrickEconomy** | trhová cena novej aj použitej položky, história cien, RRP v eurách, retired, číslo figúrky, EAN, odhad o 2 a 5 rokov, rast za 12 mesiacov | 100/deň na kľúč, appka ich využije všetky | používateľa (členstvo Premium) |
 | **Brickset** | EAN, popis, štítky, hodnotenie, obľúbenosť, témy, roky, vlny | `getSets` 100/deň; `getThemes`, `getYears` a štatistika sa nerátajú | používateľa, len na súkromné použitie |
 | **UPCitemdb** | posledná možnosť pri čiarovom kóde | ~100/deň na IP adresu servera | bez kľúča |
 | **Eurostat** | HICP Slovenska, mesačný index | bez limitu | bez kľúča |
@@ -510,10 +510,29 @@ stoja jedno volanie. Predané kusy sa neobnovujú.
 
 **Kedy sa obnovuje.** Ceny obnovuje len tlačidlo v hornej lište
 (`POST /prices/refresh-all`), ďalej to beží cez `BackgroundTasks`. Nemá to
-plánovač a nespúšťa to ani prihlásenie. Poistky v `services/refresh.py`:
+plánovač a nespúšťa to ani prihlásenie. Tlačidlo najprv otvorí dialóg
+„Chcete obnoviť ceny?“ (`components/RefreshPricesDialog.vue`): počet cien
+(predvolene 50, najviac zvyšok dnešného limitu), poradie a riadok „Dnes
+použité X zo 100, ostáva Y“. Čísla sú tie isté ako na karte limitov:
+`RefreshStatusOut.calls_used` a `calls_limit` ráta
+`routers/usage.py::brickeconomy_used` aj pre `/usage`. Limit appky je
+`brickeconomy_daily_limit` (100, celá kvóta služby). Zvolený počet
+ide ako `?limit=` (1 až 1000, kontrola v tele funkcie). Obnova jedného setu
+z detailu dialóg nemá.
+
+Stav „beží“ si zaberie samotná požiadavka (`refresh.claim` pod
+`_state_lock`), úloha na pozadí ho len uvoľní (`refresh_prices(claimed=True)`,
+vždy vo `finally`, aj keď nemá čo ťahať). Úloha z `BackgroundTasks` štartuje
+až po odoslaní odpovede; kým si stav brala sama, odpoveď 202 aj hneď
+nasledujúci `refresh-status` hlásili „nebeží“ a prvé kliknutie akoby nič
+nespravilo. Druhé kliknutie počas behu druhú dávku nespustí. Frontend
+(`stores/prices.ts::follow`) berie stav z odpovede na POST.
+
+Poistky v `services/refresh.py`:
 
 - **vek posledného volania:** obnoví sa, len čo je staršie ako 168 h;
-- **strop dávky:** 40 položiek;
+- **strop dávky:** počet z dialógu (`limit`), bez neho 40 položiek
+  (`price_refresh_budget`); strop dávky účtu (`price_batch`) platí vždy;
 - **zvyšok dennej kvóty:** počítadlo je v `providers/brickeconomy.py`,
   pri 429 sa dávka zastaví;
 - **jedno volanie na (číslo, druh);**
@@ -718,6 +737,11 @@ Podrobnosti:
   - prepínač „V dnešných peniazoch“, ktorý pri zapnutí ukazuje štítok
     s mesiacom indexu;
   - limity API;
+  - Obnoviť stránku (`mdi-refresh`, na telefóne v menu účtu): znova
+    načíta dáta otvorenej stránky a súhrn za číslami v ponuke, bez
+    načítania celej stránky (filtre, posunutie a rozpísaný formulár
+    ostanú). Ide len na vlastný server, ceny ani Brickset nevolá; ikona
+    sa pri tom točí;
   - tlačidlo obnovy cien;
   - svetlý a tmavý režim;
   - jazyk;
@@ -727,6 +751,11 @@ Podrobnosti:
   - **Figúrky:** figúrky zo sérií;
   - **Témy:** moje a sledované témy;
   - **Chcem:** položky.
+
+  Obnovujú sa samé po každej úspešnej zmene kusov, Chcem či importu, nech
+  ju spravila ktorákoľvek obrazovka: middleware klienta
+  (`api/client.ts::onCollectionChanged`) a `collection.loadSummary` s
+  odkladom 250 ms, ktorý zruší obrazovka načítavajúca súhrn sama.
 
 **Prehľad** (`/`):
 
@@ -985,7 +1014,7 @@ prihlásenie. Úplná schéma je v OpenAPI (`openapi_export`).
 | kusy | `GET items` (filtre, `sort`, `real`), `items/grouped` (`by`), `items/facets` (počty + súčty, `hidden_figures`), `locations`, `suggestions`; `POST items`, `items/bulk`; `GET/PATCH/DELETE items/{id}`; `PATCH {id}/identify`; `POST {id}/sell`, `{id}/unsell` |
 | fotky | `GET/POST items/{id}/photos`; `GET photos`; `GET/DELETE photos/{id}` |
 | kategórie | `GET/POST categories`; `PATCH/DELETE categories/{id}`; `PUT categories/{id}/members/{num}`; `GET/POST views`, `DELETE views/{id}` |
-| ceny | `GET prices/refresh-status`; `POST prices/refresh-all?num=`; `GET prices/{num}`; `POST prices/{num}/refresh?max_age_hours=`; `PUT prices/{num}/manual`; `POST prices/lookup/{num}`; `GET/POST/DELETE prices/checks` |
+| ceny | `GET prices/refresh-status`; `POST prices/refresh-all?num=&limit=`; `GET prices/{num}`; `POST prices/{num}/refresh?max_age_hours=`; `PUT prices/{num}/manual`; `POST prices/lookup/{num}`; `GET/POST/DELETE prices/checks` |
 | štatistiky | `GET stats/summary`, `breakdown`, `sales`, `timeline` (všetky s `real`), `movers?window=30/90/365`, `series` |
 | figúrky | `GET minifigs/series`, `minifigs/series/{num}`; `GET/POST minifigs/sync` |
 | témy | `GET themes`, `themes/years?theme=`, `themes/wave?theme=&year=&force=` |
@@ -1058,9 +1087,34 @@ Pravidlá API:
   ako Späť). Fronta `v-snackbar-queue` je raz v `AppLayout`. Chyba, ktorá
   patrí k poľu formulára, ostáva pri poli; komponenty nemajú vlastné
   snackbary.
+- **Načítavanie nie je prázdny stav.** Každá stránka rozlišuje tri stavy
+  (`composables/usePageLoad.ts`):
+  - **načítava sa** (prvé načítanie, nič ešte neprišlo): kostra
+    `v-skeleton-loader` v tvare toho, čo príde (`PageSkeleton.vue`:
+    dlaždice, graf a karty Prehľadu; karty, riadky alebo tabuľka Zbierky
+    podľa zobrazenia; fotka, údaje a kusy detailu; riadky zoznamov);
+  - **prázdne**: doterajší prázdny stav, až keď server odpovedal;
+  - **chyba**: „Nepodarilo sa načítať“ so Skúsiť znova (`LoadFailed.vue`),
+    nie prázdny stav. Verejný odkaz rozlišuje neplatný odkaz (404) od
+    výpadku.
+
+  Opakované načítanie (filter, rozsah, Obnoviť stránku) nechá staré dáta
+  na obrazovke a svieti len tenký pruh pod hornou lištou; chyba vtedy ide
+  do oznámenia. Iný set, séria či rok na tej istej trase začína znova
+  kostrou. Čísla v ponuke bez súhrnu nie sú 0, ale žiadne.
 - **index.html sa nekešuje** (`cache-control: no-cache`). Súbory s
   otlačkom v názve sa kešujú na rok. Inak by si prehliadač držal starú
   appku.
+- **Mena zobrazenia (1.1.0).** Sumy sa ukladajú v eurách. Zobrazujú sa
+  v mene účtu dnešným kurzom ECB, prepočet robí formátovač `utils/format.ts`.
+  Kúpa a predaj sa dajú zadať v cudzej mene: do eur sa prepočítajú kurzom
+  zo dňa kúpy a pôvodná suma ostane uložená. Podrobne v
+  `2026-10-01-mena-a-diely-design.md`, časť 1.
+- **Diely setu a alternatívne stavby (1.1.0).** Údaje z Rebrickable sa
+  sťahujú raz na set a v detaile až po rozbalení karty, len pre účet
+  s vlastným kľúčom. Kontrola úplnosti sa ukladá pri kuse a ukazuje štítok
+  „chýbajú N“. Podrobne v tom istom specu, časť 2. Synchronizácia s účtom
+  Rebrickable je zamietnutá (pozri časť 12).
 
 ---
 
@@ -1068,6 +1122,7 @@ Pravidlá API:
 
 | čo | prečo |
 |---|---|
+| Synchronizácia zbierky s účtom Rebrickable a „Postavíš z toho, čo máš?“ | používateľ ich nechce (1. 10. 2026) |
 | BrickLink ako zdroj cien | vyžaduje účet predajcu a kľúče viazané na IP, domáci server pevnú adresu nemá |
 | BrickOwl | ceny až po schválení prístupu ku katalógu |
 | eBay | produkčný prístup cez schvaľovanie |

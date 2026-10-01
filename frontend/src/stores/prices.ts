@@ -1,6 +1,6 @@
 /**
- * Stav obnovy cien. Po prihlásení beží na serveri dávka na pozadí,
- * tu sa len pýtame, či ešte beží, a keď dobehne, prenačítame obrazovky.
+ * Stav obnovy cien. Dávka beží na serveri na pozadí, tu sa len pýtame,
+ * či ešte beží, a keď dobehne, prenačítame obrazovky.
  */
 
 import type { RefreshStatus } from '@/api/types'
@@ -22,6 +22,9 @@ export const usePriceStore = defineStore('prices', () => {
   /** Zvyšok dennej kvóty. Zdroj ich dáva 100 na deň, treba s nimi šetriť. */
   const callsLeft = computed(() => status.value?.calls_left ?? 0)
   const quotaExhausted = computed(() => status.value?.quota_exhausted === true)
+  /** Denný limit appky a dnes použité volania, tie isté čísla ako karta limitov. */
+  const callsLimit = computed(() => status.value?.calls_limit ?? 0)
+  const callsUsed = computed(() => status.value?.calls_used ?? 0)
 
   function stop (): void {
     polling.value = false
@@ -36,13 +39,8 @@ export const usePriceStore = defineStore('prices', () => {
     status.value = data ?? null
   }
 
-  /** Sleduje dávku, kým beží. Po dobehnutí zavolá ``whenDone``. */
-  async function watchRefresh (whenDone?: () => void): Promise<void> {
-    onFinished = whenDone ?? null
-    await fetchStatus()
-    if (!status.value?.running) {
-      return
-    }
+  /** Pýta sa na stav každé tri sekundy, kým dávka beží; potom ``onFinished``. */
+  function poll (): void {
     if (polling.value) {
       return
     }
@@ -59,9 +57,40 @@ export const usePriceStore = defineStore('prices', () => {
     timer = setTimeout(tick, POLL_MS)
   }
 
-  async function refreshEverything (whenDone?: () => void): Promise<void> {
-    await api.POST('/prices/refresh-all', {})
-    await watchRefresh(whenDone)
+  /** Sleduje dávku, kým beží. Po dobehnutí zavolá ``whenDone``. */
+  async function watchRefresh (whenDone?: () => void): Promise<void> {
+    onFinished = whenDone ?? null
+    await fetchStatus()
+    if (status.value?.running) {
+      poll()
+    }
+  }
+
+  /**
+   * Po spustení obnovy: stav berieme z odpovede servera, nie z ďalšieho
+   * dotazu. Server si stav „beží“ zaberie ešte pred odpoveďou; keď
+   * nebeží, nebolo čo spustiť (minutá kvóta, doplnila sa len kúpna cena)
+   * a obrazovky sa prenačítajú hneď.
+   */
+  async function follow (data: RefreshStatus | undefined, whenDone?: () => void): Promise<void> {
+    if (!data) {
+      await watchRefresh(whenDone)
+      return
+    }
+    status.value = data
+    onFinished = whenDone ?? null
+    if (data.running) {
+      poll()
+    } else {
+      whenDone?.()
+    }
+  }
+
+  /** Obnova z hornej lišty; ``limit`` je počet volaní z dialógu. */
+  async function refreshEverything (whenDone?: () => void, limit?: number): Promise<void> {
+    const query = limit ? { limit } : {}
+    const { data } = await api.POST('/prices/refresh-all', { params: { query } })
+    await follow(data, whenDone)
   }
 
   /**
@@ -69,12 +98,8 @@ export const usePriceStore = defineStore('prices', () => {
    * Na rozdiel od obnovy všetkého neminie kvótu na zvyšok zbierky.
    */
   async function refreshOne (num: string, whenDone?: () => void): Promise<void> {
-    await api.POST('/prices/refresh-all', { params: { query: { num } } })
-    await watchRefresh(whenDone)
-    // Keď nebolo čo ťahať, dávka dobehne hneď a watchRefresh už nečaká.
-    if (!status.value?.running) {
-      whenDone?.()
-    }
+    const { data } = await api.POST('/prices/refresh-all', { params: { query: { num } } })
+    await follow(data, whenDone)
   }
 
   onScopeDispose(stop)
@@ -86,6 +111,8 @@ export const usePriceStore = defineStore('prices', () => {
     providerEnabled,
     callsLeft,
     quotaExhausted,
+    callsLimit,
+    callsUsed,
     fetchStatus,
     watchRefresh,
     refreshEverything,

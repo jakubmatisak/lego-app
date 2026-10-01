@@ -179,6 +179,9 @@ async def export_csv(user: CurrentUser, session: SessionDep) -> StreamingRespons
             "zoznam",
             "priznaky",
             "kupna_cena_eur",
+            # Kúpa v inej mene; suma v eurách pred ňou je jej prepočet.
+            "mena_kupy",
+            "kupna_cena_v_mene",
             "datum_kupy",
             "kde_kupene",
             "trhova_hodnota_eur",
@@ -211,6 +214,8 @@ async def export_csv(user: CurrentUser, session: SessionDep) -> StreamingRespons
                 str(v.item.purpose) if v.item.purpose else "",
                 ",".join(v.item.flags or []),
                 _num(v.item.purchase_price_eur),
+                v.item.purchase_currency or "",
+                _num(v.item.purchase_price_original),
                 v.item.purchase_date.isoformat() if v.item.purchase_date else "",
                 v.item.purchase_place or "",
                 _num(market),

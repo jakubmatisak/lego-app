@@ -14,7 +14,10 @@
   import { api, errorMessage } from '@/api/client'
   import CardGrid from '@/components/CardGrid.vue'
   import GhostCard from '@/components/GhostCard.vue'
+  import LoadFailed from '@/components/LoadFailed.vue'
+  import PageSkeleton from '@/components/PageSkeleton.vue'
   import SetImage from '@/components/SetImage.vue'
+  import { usePageLoad } from '@/composables/usePageLoad'
   import { useCollectionStore } from '@/stores/collection'
   import { useProfileStore } from '@/stores/preferences'
   import { imageSrc } from '@/utils/imageSrc'
@@ -48,9 +51,6 @@
   const years = ref<ThemeYear[]>([])
   const year = ref<number | null>(null)
   const wave = ref<ThemeWave | null>(null)
-  const loadingYears = ref(true)
-  const loadingWave = ref(false)
-  const error = ref<string | null>(null)
   const show = ref<Show>('all')
 
   const shown = computed<CmfMember[]>(() => (wave.value?.members ?? []).filter(m =>
@@ -69,57 +69,80 @@
       ?? null
   }
 
-  async function loadYears (): Promise<void> {
-    loadingYears.value = true
+  /** Text chyby rokov a vlny, pre LoadFailed. */
+  const yearsError = ref<string | null>(null)
+  const waveError = ref<string | null>(null)
+
+  async function loadYears (): Promise<boolean> {
     const { data, error: err } = await api.GET('/themes/years', { params: { query: { theme: theme.value } } })
-    loadingYears.value = false
     if (err || !data) {
-      error.value = errorMessage(err, t('themes.loadFailed'))
-      return
+      yearsError.value = errorMessage(err, t('themes.loadFailed'))
+      return false
     }
+    yearsError.value = null
     years.value = data
     if (year.value === null) year.value = defaultYear()
+    return true
   }
 
-  async function loadWave (force = false): Promise<void> {
-    if (year.value === null) return
-    loadingWave.value = true
+  /** Stiahnuť znova (tlačidlo pri vlne): jedno volanie Brickset, len na klik. */
+  let forceNext = false
+
+  async function fetchWave (): Promise<boolean> {
+    if (year.value === null) return true
+    const force = forceNext
+    forceNext = false
     const { data, error: err } = await api.GET('/themes/wave', {
       params: { query: { theme: theme.value, year: year.value, force } },
     })
-    loadingWave.value = false
     if (err || !data) {
-      error.value = errorMessage(err, t('themes.loadFailed'))
-      wave.value = null
-      return
+      waveError.value = errorMessage(err, t('themes.loadFailed'))
+      return false
     }
+    waveError.value = null
     wave.value = data
     // Po stiahnutí vlny je počet pri roku presný, kým v nej nechýba môj set
     // (stará vlna, ktorú sa nepodarilo stiahnuť znova): vtedy ostane odhad.
     years.value = years.value.map(y => (y.year === data.year ? { ...y, owned: data.owned, set_count: data.total, exact: data.exact } : y))
+    return true
+  }
+
+  /*
+   * Roky a sety roka: prvé načítanie kostra, Obnoviť stránku nad starými
+   * údajmi (usePageLoad). Iný rok či téma sú iný obsah, tie začnú kostrou.
+   */
+  const yearsPage = usePageLoad(loadYears)
+  const wavePage = usePageLoad(fetchWave)
+
+  function refreshWave (): void {
+    forceNext = true
+    wavePage.run()
   }
 
   async function onOwned (): Promise<void> {
-    await loadWave()
+    await wavePage.run()
   }
 
   watch(year, value => {
     if (value === null) return
     router.replace({ query: { ...route.query, year: String(value) } })
     show.value = 'all'
-    loadWave()
+    wavePage.reset()
+    wavePage.run()
   })
 
   watch(theme, () => {
     years.value = []
     year.value = null
     wave.value = null
-    loadYears()
+    yearsPage.reset()
+    wavePage.reset()
+    yearsPage.run()
   })
 
   onMounted(() => {
     profile.load()
-    loadYears()
+    yearsPage.run()
   })
 </script>
 
@@ -143,15 +166,15 @@
       >{{ isFollowed ? t('themes.followed') : t('themes.follow') }}</v-btn>
     </div>
 
-    <v-alert
-      v-if="error"
-      closable
-      type="error"
-      variant="tonal"
-      @click:close="error = null"
-    >{{ error }}</v-alert>
+    <!-- Kým server neodpovedal, kostra rokov aj setov (usePageLoad). -->
+    <v-skeleton-loader v-if="yearsPage.initial" class="year-skeleton" type="chip@8" />
 
-    <v-progress-linear v-if="loadingYears" color="primary" indeterminate />
+    <LoadFailed
+      v-else-if="yearsPage.error"
+      :loading="yearsPage.loading"
+      :message="yearsError"
+      @retry="yearsPage.run()"
+    />
 
     <!-- Roky témy; pri každom koľko z nich mám. -->
     <v-slide-group v-else v-model="year" mandatory show-arrows>
@@ -173,7 +196,14 @@
       </v-slide-group-item>
     </v-slide-group>
 
-    <v-progress-linear v-if="loadingWave" color="primary" indeterminate />
+    <PageSkeleton v-if="!yearsPage.error && wavePage.initial" kind="cards" />
+
+    <LoadFailed
+      v-else-if="!yearsPage.error && wavePage.error"
+      :loading="wavePage.loading"
+      :message="waveError"
+      @retry="wavePage.run()"
+    />
 
     <template v-else-if="wave">
       <div class="d-flex align-center flex-wrap ga-3">
@@ -214,7 +244,7 @@
           size="small"
           :title="t('themes.refreshHint')"
           variant="text"
-          @click="loadWave(true)"
+          @click="refreshWave"
         >{{ t('themes.refresh') }}</v-btn>
       </div>
 
@@ -265,5 +295,10 @@
 <style scoped>
 .year-card {
   min-width: 96px;
+}
+
+/* Kostra rokov v riadku ako karty rokov, nie pod sebou. */
+.year-skeleton {
+  background: transparent;
 }
 </style>
