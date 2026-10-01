@@ -10,7 +10,7 @@ ostávajú v evidencii, takže vidíš aj to, koľko si na predaji naozaj zarobi
 
 Appka vznikla pre zberateľa, ktorý mal zbierku v tabuľke a chcel vedieť, čo
 má, kde to má a koľko to dnes stojí. Nie je to obchod ani burza, len evidencia.
-Aktuálna verzia je **1.1.0**.
+Aktuálna verzia je **1.1.1**.
 
 - **Stránka projektu:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (zdroj v [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))
@@ -147,6 +147,12 @@ na zväzku mimo obrazu, takže nové nasadenie ich nezmaže.
 
 Za HTTPS nastav v `.env` `COOKIE_SECURE=true`. Kamera na skenovanie ide len
 cez HTTPS alebo na `localhost`.
+
+Keď pošleš odkaz na appku alebo na verejnú zbierku cez Messenger, WhatsApp
+či e-mail, ukáže sa náhľad s obrázkom a názvom (Open Graph). Verejný odkaz
+ukáže meno a počet setov, sumy nikdy. Za proxy s vlastnou doménou nastav
+`PUBLIC_URL` (napr. `https://kocky.example.sk`), aby mal náhľad správnu
+adresu obrázka.
 
 ## Aktualizácia a zálohy
 
@@ -442,7 +448,7 @@ actually made on each sale.
 The app was built for a collector who kept everything in a spreadsheet and
 wanted to know what he has, where it is and what it is worth today. It is not
 a shop or a marketplace, just a record of the collection. The current version
-is **1.1.0**.
+is **1.1.1**.
 
 - **Project website:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (source at [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))
@@ -598,6 +604,12 @@ does not wipe them.
 
 Behind HTTPS, set `COOKIE_SECURE=true` in `.env`. The camera scanner only
 works over HTTPS or on `localhost`.
+
+When you send a link to the app or to a public collection via Messenger,
+WhatsApp or e-mail, a preview with an image and a title appears (Open Graph).
+A public link shows the name and the number of sets, never amounts. Behind a
+proxy with your own domain, set `PUBLIC_URL` (e.g. `https://kocky.example.sk`)
+so the preview gets the right image address.
 
 ## Updates and backups
 

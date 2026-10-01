@@ -660,6 +660,13 @@ Pri reťazcoch (`Literal["day", "week"]`) je to v poriadku.
 **Pri vypnutých sumách sa ceny do verejnej odpovede vôbec nevkladajú.**
 Nie sú teda ani v zdrojovom kóde stránky. Neriešiť to skrývaním vo frontende.
 
+**Náhľad odkazu (Open Graph) vkladá server.** Četovacie appky JavaScript
+nespúšťajú, preto `main.py::spa` vloží do `index.html` značky `og:*`
+a `twitter:*` z `social.py`. Obrázok je `frontend/public/og.jpg` (1200 × 630),
+adresa musí byť úplná: `PUBLIC_URL`, inak hlavičky proxy či požiadavka.
+Verejný odkaz `/z/{token}` ukáže meno majiteľa a počet setov, nikdy sumy,
+a má `noindex`, rovnako zrušený odkaz.
+
 **index.html sa nesmie kešovať.** Servuje ju `main.py::spa` s
 `cache-control: no-cache`, súbory s otlačkom v názve naopak na rok.
 Bez toho si prehliadač podrží starú stránku, ktorá ťahá staré skripty,
@@ -798,7 +805,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 708 testov, frontend 308. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 714 testov, frontend 310. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá

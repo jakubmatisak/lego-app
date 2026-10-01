@@ -7,15 +7,16 @@ import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from lego_api import __version__, visibility
+from lego_api import __version__, social, visibility
 from lego_api.auth import router as auth_router
+from lego_api.auth.deps import SessionDep
 from lego_api.config import get_settings
 from lego_api.db import get_engine
 from lego_api.models import Base
@@ -234,10 +235,11 @@ def _mount_frontend(app: FastAPI) -> None:
     index = FRONTEND_DIR / "index.html"
 
     @app.get("/{full_path:path}", include_in_schema=False)
-    async def spa(full_path: str) -> FileResponse:
+    async def spa(full_path: str, request: Request, session: SessionDep) -> Response:
         """Existujúci súbor sa vráti, všetko ostatné dostane index.html.
 
         Bez SPA fallbacku by priame otvorenie /zbierka skončilo na 404.
+        Do index.html server vloží náhľad odkazu (Open Graph, `social.py`).
         """
         candidate = (FRONTEND_DIR / full_path).resolve()
         # Poistka proti ../ v ceste: von z priečinka frontendu sa nedá dostať.
@@ -250,7 +252,9 @@ def _mount_frontend(app: FastAPI) -> None:
         # index.html sa nesmie držať v pamäti prehliadača. Odkazuje na súbory
         # s otlačkom v názve, takže po nasadení novej verzie by stará stránka
         # ťahala staré skripty a používateľ by videl appku spred opravy.
-        return FileResponse(index, media_type="text/html", headers={"cache-control": "no-cache"})
+        tags = await social.meta_tags(request, get_settings(), session, full_path)
+        page = social.inject(index.read_text(encoding="utf-8"), tags)
+        return HTMLResponse(page, headers={"cache-control": "no-cache"})
 
 
 app = create_app()

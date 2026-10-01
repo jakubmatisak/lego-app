@@ -6,21 +6,28 @@
    * z Brickset a podľa jeho podmienok nesú poďakovanie pod galériou.
    */
   import type { SetImage } from '@/api/types'
-  import { onMounted, ref } from 'vue'
+  import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api } from '@/api/client'
+  import ImageViewer from '@/components/ImageViewer.vue'
   import SourceCredit from '@/components/SourceCredit.vue'
   import { imageSrc } from '@/utils/imageSrc'
 
-  const props = defineProps<{ num: string, name: string }>()
+  /** `mainImage`: hlavná fotka z katalógu, v okne ide pred fotkami z Brickset. */
+  const props = defineProps<{ num: string, name: string, mainImage?: string | null }>()
 
   const { t } = useI18n()
   const images = ref<SetImage[]>([])
   const open = ref(false)
   const current = ref(0)
 
+  const viewerImages = computed(() => [
+    ...(props.mainImage ? [{ url: props.mainImage }] : []),
+    ...images.value.map(image => ({ url: image.image_url, credit: t('detail.galleryCredit') })),
+  ])
+
   function show (index: number): void {
-    current.value = index
+    current.value = index + (props.mainImage ? 1 : 0)
     open.value = true
   }
 
@@ -51,31 +58,7 @@
 
     <SourceCredit href="https://brickset.com" :text="t('detail.galleryCredit')" />
 
-    <v-dialog v-model="open" max-width="1100">
-      <v-card>
-        <v-carousel
-          v-model="current"
-          bg-color="white"
-          height="min(80vh, 760px)"
-          hide-delimiter-background
-          :show-arrows="images.length > 1 ? 'hover' : false"
-        >
-          <v-carousel-item
-            v-for="(image, index) in images"
-            :key="image.image_url"
-            :alt="`${name} ${index + 1}`"
-            contain
-            :src="imageSrc(image.image_url) ?? undefined"
-          />
-        </v-carousel>
-
-        <v-card-actions>
-          <span class="text-body-small text-medium-emphasis ps-2">{{ t('detail.galleryCredit') }}</span>
-          <v-spacer />
-          <v-btn variant="text" @click="open = false">{{ t('common.close') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <ImageViewer v-model:index="current" v-model:open="open" :images="viewerImages" :name="name" />
   </div>
 </template>
 

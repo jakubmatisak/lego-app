@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     refresh_grace_seconds: int = 60
     cookie_secure: bool = False
     cookie_domain: str | None = None
+    #: Verejná adresa appky (napr. https://kocky.example.sk) pre náhľad odkazu
+    #: (Open Graph, `social.py`). Bez nej sa vezme z hlavičiek proxy či požiadavky.
+    public_url: str | None = None
     #: Len východisko pre novú inštaláciu. Správca to prebije v Nastaveniach.
     allow_registration: bool = True
 

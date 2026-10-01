@@ -6,6 +6,7 @@
   import type { GroupedItem } from '@/api/types'
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import PhotoZoom from '@/components/PhotoZoom.vue'
   import SetImage from '@/components/SetImage.vue'
   import { useFilterStore } from '@/stores/filters'
   import { count, exactMoney, money, percent } from '@/utils/format'
@@ -85,6 +86,13 @@
       />
 
       <SetImage :alt="row.catalog.name" rounded="0" :size="132" :src="imageSrc(row.catalog.image_url) ?? undefined" />
+
+      <PhotoZoom
+        v-if="row.catalog.image_url"
+        :image-url="row.catalog.image_url"
+        :name="row.catalog.name"
+        :num="row.catalog.catalog_num"
+      />
 
       <v-chip
         v-if="(sold ? row.sold_quantity : row.quantity) > 1"

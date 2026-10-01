@@ -14,6 +14,7 @@
   import KeyHint from '@/components/KeyHint.vue'
   import LoadFailed from '@/components/LoadFailed.vue'
   import PageSkeleton from '@/components/PageSkeleton.vue'
+  import PhotoZoom from '@/components/PhotoZoom.vue'
   import PurchaseDialog from '@/components/PurchaseDialog.vue'
   import SetImage from '@/components/SetImage.vue'
   import { usePageLoad } from '@/composables/usePageLoad'
@@ -286,6 +287,13 @@
       >
         <div class="position-relative">
           <SetImage :alt="item.catalog.name" rounded="0" :size="132" :src="imageSrc(item.catalog.image_url) ?? undefined" />
+
+          <PhotoZoom
+            v-if="item.catalog.image_url"
+            :image-url="item.catalog.image_url"
+            :name="item.catalog.name"
+            :num="item.catalog.catalog_num"
+          />
 
           <!-- Cena klesla na cieľ: to je dôvod, prečo tu set vôbec je. -->
           <v-chip

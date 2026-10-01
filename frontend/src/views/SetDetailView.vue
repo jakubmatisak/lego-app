@@ -21,6 +21,7 @@
   import LoadFailed from '@/components/LoadFailed.vue'
   import PageSkeleton from '@/components/PageSkeleton.vue'
   import PhotosDialog from '@/components/PhotosDialog.vue'
+  import PhotoZoom from '@/components/PhotoZoom.vue'
   import PieceDialog from '@/components/PieceDialog.vue'
   import PriceHistoryChart from '@/components/PriceHistoryChart.vue'
   import PurchaseDialog from '@/components/PurchaseDialog.vue'
@@ -507,13 +508,22 @@
 
     <v-card border class="pa-4" flat>
       <div class="d-flex ga-4 flex-wrap">
-        <SetImage
-          :alt="catalog.name"
-          rounded="md"
-          :size="156"
-          :src="imageSrc(catalog.image_url) ?? undefined"
-          style="width: 156px"
-        />
+        <div class="position-relative" style="width: 156px">
+          <SetImage
+            :alt="catalog.name"
+            rounded="md"
+            :size="156"
+            :src="imageSrc(catalog.image_url) ?? undefined"
+            style="width: 156px"
+          />
+
+          <PhotoZoom
+            v-if="catalog.image_url"
+            :image-url="catalog.image_url"
+            :name="catalog.name"
+            :num="catalog.catalog_num"
+          />
+        </div>
 
         <div class="flex-grow-1" style="min-width: 280px">
           <div class="d-flex align-center ga-2 flex-wrap mb-2">
@@ -696,6 +706,7 @@
             v-if="showGallery"
             :key="catalog.catalog_num"
             class="mt-3"
+            :main-image="catalog.image_url"
             :name="catalog.name"
             :num="catalog.catalog_num"
           />
