@@ -282,7 +282,7 @@
         @update:model-value="value => setView(value === 'table')"
       >
         <v-btn icon="mdi-view-module-outline" :title="t('collection.viewCards')" value="cards" />
-        <v-btn data-test="wish-table" icon="mdi-table-large" :title="t('collection.viewTable')" value="table" />
+        <v-btn data-test="wish-table" icon="mdi-view-headline" :title="t('collection.viewTable')" value="table" />
       </v-btn-toggle>
 
       <v-btn
@@ -505,7 +505,10 @@
         border
         class="h-100 d-flex flex-column"
         flat
+        :to="{ name: 'set-detail', params: { num: item.catalog_num } }"
       >
+        <!-- Celá karta vedie na detail setu ako v Zbierke; tlačidlá v nej preto
+             zastavia klik (.stop.prevent), inak by po nich karta otvorila detail. -->
         <div class="position-relative">
           <SetImage :alt="item.catalog.name" rounded="0" :size="132" :src="imageSrc(item.catalog.image_url) ?? undefined" />
 
@@ -540,15 +543,17 @@
             </span>
           </div>
 
-          <v-chip
-            v-if="item.owned_count > 0"
-            class="align-self-start"
-            color="primary"
-            label
-            prepend-icon="mdi-check-circle-outline"
-            size="small"
-            variant="tonal"
-          >{{ t('wishlist.owned', { count: t('collection.pieces', { count: item.owned_count }) }) }}</v-chip>
+          <!-- Riadok štítku má miesto vždy, aby ceny na kartách stáli v jednej línii. -->
+          <div class="wish-owned">
+            <v-chip
+              v-if="item.owned_count > 0"
+              color="primary"
+              label
+              prepend-icon="mdi-check-circle-outline"
+              size="small"
+              variant="tonal"
+            >{{ t('wishlist.owned', { count: t('collection.pieces', { count: item.owned_count }) }) }}</v-chip>
+          </div>
 
           <div class="d-flex ga-4 mt-1">
             <div v-if="item.market_price">
@@ -558,10 +563,6 @@
                 class="text-body-medium font-weight-medium"
                 :class="{ 'text-positive': item.target_reached }"
               >{{ exactMoney(item.market_price) }}</div>
-
-              <div v-if="item.price_at" class="text-body-small text-medium-emphasis text-no-wrap">
-                {{ t('collection.priceAt', { date: shortDate(item.price_at) }) }}
-              </div>
             </div>
 
             <div v-if="item.target_price_eur">
@@ -571,7 +572,7 @@
 
             <div v-else>
               <div class="text-body-small text-medium-emphasis">{{ t('wishlist.target') }}</div>
-              <v-btn class="px-0" size="small" variant="text" @click="openEdit(item)">{{ t('wishlist.setTarget') }}</v-btn>
+              <v-btn class="px-0" size="small" variant="text" @click.stop.prevent="openEdit(item)">{{ t('wishlist.setTarget') }}</v-btn>
             </div>
 
             <div v-if="item.distance_pct !== null && item.distance_pct !== undefined">
@@ -584,6 +585,11 @@
             </div>
           </div>
 
+          <!-- Dátum ceny pod sumami, rovnako ako na karte setu v Zbierke. -->
+          <div v-if="item.market_price && item.price_at" class="text-body-small text-medium-emphasis text-no-wrap">
+            {{ t('collection.priceAt', { date: shortDate(item.price_at) }) }}
+          </div>
+
           <div class="d-flex align-center flex-wrap ga-1 mt-auto pt-2">
             <!-- Hlavná akcia: kúpené sa pridá bez hľadania čísla a z Chcem zmizne. -->
             <v-btn
@@ -591,14 +597,8 @@
               prepend-icon="mdi-cart-check"
               size="small"
               variant="flat"
-              @click="openBuy(item)"
+              @click.stop.prevent="openBuy(item)"
             >{{ t('purchase.bought') }}</v-btn>
-
-            <v-btn
-              size="small"
-              :to="{ name: 'set-detail', params: { num: item.catalog_num } }"
-              variant="text"
-            >{{ t('wishlist.currentPrice') }}</v-btn>
 
             <!-- Úprava a zmazanie spolu vpravo; lámu sa len ako celok. -->
             <div class="d-flex flex-nowrap ms-auto">
@@ -607,7 +607,7 @@
                 size="small"
                 :title="t('wishlist.edit')"
                 variant="text"
-                @click="openEdit(item)"
+                @click.stop.prevent="openEdit(item)"
               />
 
               <v-btn
@@ -615,7 +615,7 @@
                 icon="mdi-delete-outline"
                 size="small"
                 variant="text"
-                @click="remove(item)"
+                @click.stop.prevent="remove(item)"
               />
             </div>
           </div>
@@ -692,6 +692,11 @@
 </template>
 
 <style scoped>
+.wish-owned {
+  display: flex;
+  min-height: 24px;
+}
+
 .wish-reached {
   left: 8px;
   position: absolute;

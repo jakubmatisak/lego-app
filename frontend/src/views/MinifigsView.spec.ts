@@ -114,7 +114,7 @@ describe('Figúrky: zoznam sérií ako tabuľka', () => {
     const { wrapper } = await mount(MinifigsView)
 
     expect(wrapper.findComponent(CardGrid).exists()).toBe(true)
-    expect(wrapper.find('[icon="mdi-table-large"]').exists()).toBe(true)
+    expect(wrapper.find('[icon="mdi-view-headline"]').exists()).toBe(true)
     expect(wrapper.find('.minifigs-table').exists()).toBe(false)
   })
 
@@ -155,7 +155,7 @@ describe('Figúrky: jedna séria ako tabuľka', () => {
     const { wrapper } = await mount(MinifigSeriesView)
 
     expect(wrapper.findComponent(CardGrid).exists()).toBe(true)
-    expect(wrapper.find('[icon="mdi-table-large"]').exists()).toBe(true)
+    expect(wrapper.find('[icon="mdi-view-headline"]').exists()).toBe(true)
     expect(wrapper.find('.minifigs-table').exists()).toBe(false)
   })
 

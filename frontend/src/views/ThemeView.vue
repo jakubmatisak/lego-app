@@ -182,11 +182,21 @@
         <v-card
           border
           class="ma-1 pa-3 text-center year-card"
+          :class="{ 'year-card--downloaded': row.downloaded && !isSelected }"
           :color="isSelected ? 'primary' : undefined"
           flat
           :variant="isSelected ? 'tonal' : 'outlined'"
           @click="toggle"
         >
+          <!-- Stiahnutý rok: jemný odtieň a ikonka v rohu, otvorí sa bez volania Brickset. -->
+          <v-icon
+            v-if="row.downloaded"
+            class="year-card__mark"
+            icon="mdi-cloud-check-outline"
+            size="14"
+            :title="t('themes.downloadedYear')"
+          />
+
           <div class="text-body-large font-weight-medium">{{ row.year }}</div>
 
           <div class="text-body-small">
@@ -295,6 +305,18 @@
 <style scoped>
 .year-card {
   min-width: 96px;
+  position: relative;
+}
+
+.year-card--downloaded {
+  background: rgba(var(--v-theme-on-surface), 0.07);
+}
+
+.year-card__mark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0.7;
 }
 
 /* Kostra rokov v riadku ako karty rokov, nie pod sebou. */

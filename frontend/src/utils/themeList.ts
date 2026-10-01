@@ -13,9 +13,20 @@ export interface ThemeFilter {
   withSets?: boolean
   /** Len nekompletné: nemám naozaj všetky sety témy (`complete` zo servera). */
   incomplete?: boolean
+  /** Stiahnuté série: všetky témy so stiahnutým rokom, aj tie, z ktorých nemám nič. */
+  downloaded?: boolean
 }
 
 type Row = Pick<ThemeRow, 'theme' | 'owned' | 'set_count' | 'followed' | 'complete'>
+  & Partial<Pick<ThemeRow, 'downloaded_years'>>
+
+/**
+ * Z čoho sa vyberá: bežne moje témy, so „Stiahnuté série“ všetky témy, ktoré
+ * majú stiahnutý aspoň jeden rok (videné, aj bez môjho setu).
+ */
+export function themeSource<T extends Row> (mine: T[], all: T[], filter: ThemeFilter): T[] {
+  return filter.downloaded ? all.filter(r => (r.downloaded_years ?? 0) > 0) : mine
+}
 
 /**
  * Podiel mojich setov v téme; bez známeho počtu setov nič. Server počet

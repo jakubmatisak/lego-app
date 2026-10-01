@@ -371,6 +371,8 @@ class ThemeRow:
     followed: bool = False
     #: Mám naozaj všetky sety témy (``_complete``); len vtedy je pruh zelený.
     complete: bool = False
+    #: Koľko rokov témy má stiahnutú vlnu, ktorú účet vidí (značka vo výbere série).
+    downloaded_years: int = 0
 
 
 def followed_of(preferences: dict | None) -> list[str]:
@@ -392,8 +394,10 @@ async def overview(
         if t is not None:
             placed.setdefault(t["theme"], set()).add(num)
     in_waves: dict[str, set[str]] = {}
+    downloaded: Counter[str] = Counter()
     for (theme, _year), nums in mine.waves.sets.items():
         in_waves.setdefault(theme.lower(), set()).update(nums)
+        downloaded[theme.lower()] += 1
 
     def row(t: dict) -> ThemeRow:
         total = t.get("setCount") or 0
@@ -406,6 +410,7 @@ async def overview(
             # Viac, než Brickset v téme ráta, neukazovať; pruh sa oreže.
             owned=min(raw, total),
             complete=_complete(raw, total, in_waves.get(t["theme"].lower(), set()), mine.sets),
+            downloaded_years=downloaded[t["theme"].lower()],
         )
 
     follow = set(followed or [])
@@ -426,6 +431,8 @@ class YearRow:
     owned: int
     #: Presný počet (vlna je stiahnutá a nechýba v nej môj set), alebo odhad (``assign``).
     exact: bool
+    #: Vlna roka je stiahnutá (aj stará, s odhadom); rok sa v zozname označí.
+    downloaded: bool = False
 
 
 async def years(
@@ -462,7 +469,15 @@ async def years(
             set_count = r.get("setCount") or 0
             owned = min(guess.get(year, 0), set_count)
         exact = nums is not None and not extra
-        result.append(YearRow(year=year, set_count=set_count, owned=owned, exact=exact))
+        result.append(
+            YearRow(
+                year=year,
+                set_count=set_count,
+                owned=owned,
+                exact=exact,
+                downloaded=nums is not None,
+            )
+        )
     result.sort(key=lambda r: -r.year)
     return result
 

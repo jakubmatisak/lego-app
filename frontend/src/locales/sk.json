@@ -307,7 +307,6 @@
     "empty": "Zoznam je prázdny",
     "emptyHint": "Pridaj set, ktorý chceš, a budeš mať jeho cenu na očiach.",
     "remove": "Odobrať",
-    "currentPrice": "Aktuálne",
     "reached": "Cieľová cena dosiahnutá",
     "marketNow": "Trh teraz",
     "target": "Cieľ",
@@ -786,6 +785,8 @@
     "closeDialogFirst": "Najprv zavri otvorené okno, potom skenuj"
   },
   "themes": {
+    "downloadedYear": "Sety roka sú stiahnuté z Brickset",
+    "downloadedYearsPlural": "stiahnutý {count} rok | stiahnuté {count} roky | stiahnutých {count} rokov",
     "findKnownPlural": "{count} známym setom | {count} známymi setmi | {count} známymi setmi",
     "findHint": "Hľadá len medzi {count} (tvoje sety, Chcem a stiahnuté série). Iné nenájde.",
     "findHintPlain": "Hľadá len medzi známymi setmi (tvoje sety, Chcem a stiahnuté série). Iné nenájde.",
@@ -811,7 +812,8 @@
     "filter": {
       "followed": "Sledované",
       "withSets": "S mojimi setmi",
-      "incomplete": "Nekompletné"
+      "incomplete": "Nekompletné",
+      "downloaded": "Stiahnuté série"
     },
     "sort": {
       "mine": "Najviac mojich setov",

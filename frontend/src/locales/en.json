@@ -307,7 +307,6 @@
     "empty": "The wishlist is empty",
     "emptyHint": "Add a set you want and keep an eye on its price.",
     "remove": "Remove",
-    "currentPrice": "Current",
     "reached": "Target price reached",
     "marketNow": "Market now",
     "target": "Target",
@@ -786,6 +785,8 @@
     "closeDialogFirst": "Close the open window first, then scan"
   },
   "themes": {
+    "downloadedYear": "The year’s sets are downloaded from Brickset",
+    "downloadedYearsPlural": "{count} year downloaded | {count} years downloaded",
     "findKnownPlural": "{count} known set | {count} known sets | {count} known sets",
     "findHint": "Searches only among {count} (your sets, the wishlist and downloaded themes). It won’t find others.",
     "findHintPlain": "Searches only among known sets (your sets, the wishlist and downloaded themes). It won’t find others.",
@@ -811,7 +812,8 @@
     "filter": {
       "followed": "Followed",
       "withSets": "With my sets",
-      "incomplete": "Incomplete"
+      "incomplete": "Incomplete",
+      "downloaded": "Downloaded themes"
     },
     "sort": {
       "mine": "Most of my sets",

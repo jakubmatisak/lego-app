@@ -18,7 +18,7 @@
   import SeriesBar from '@/components/SeriesBar.vue'
   import ThemeSetSearch from '@/components/ThemeSetSearch.vue'
   import { usePageLoad } from '@/composables/usePageLoad'
-  import { arrangeThemes } from '@/utils/themeList'
+  import { arrangeThemes, themeSource } from '@/utils/themeList'
 
   const { t } = useI18n()
   const router = useRouter()
@@ -31,12 +31,22 @@
   const picked = ref<string | null>(null)
 
   const SORTS: ThemeSort[] = ['mine', 'completeness', 'name']
-  const view = reactive({ sort: 'mine' as ThemeSort, followed: false, withSets: false, incomplete: false })
-  const shown = computed(() => arrangeThemes(mine.value, view.sort, view))
-  const CHIPS = ['followed', 'withSets', 'incomplete'] as const
+  const view = reactive({
+    sort: 'mine' as ThemeSort,
+    followed: false,
+    withSets: false,
+    incomplete: false,
+    downloaded: false,
+  })
+  const shown = computed(() => arrangeThemes(themeSource(mine.value, all.value, view), view.sort, view))
+  const CHIPS = ['followed', 'withSets', 'incomplete', 'downloaded'] as const
 
   const themeItems = computed(() =>
-    all.value.map(row => ({ value: row.theme, title: `${row.theme} (${row.set_count})` })),
+    all.value.map(row => ({
+      value: row.theme,
+      title: `${row.theme} (${row.set_count})`,
+      downloaded: row.downloaded_years,
+    })),
   )
 
   async function load (): Promise<boolean> {
@@ -85,7 +95,20 @@
         prepend-inner-icon="mdi-magnify"
         style="max-width: 480px; flex: 1 1 320px"
         @update:model-value="open"
-      />
+      >
+        <!-- Séria so stiahnutými rokmi má ikonku a počet, ako stiahnutý rok v sérii. -->
+        <template #item="{ props: itemProps, item }">
+          <v-list-item v-bind="itemProps">
+            <template v-if="item.downloaded" #append>
+              <span class="text-body-small text-medium-emphasis me-1">
+                {{ t('themes.downloadedYearsPlural', item.downloaded, { named: { count: item.downloaded } }) }}
+              </span>
+
+              <v-icon icon="mdi-cloud-check-outline" size="16" />
+            </template>
+          </v-list-item>
+        </template>
+      </v-autocomplete>
 
       <ThemeSetSearch />
     </div>
@@ -122,7 +145,7 @@
       </div>
 
       <v-empty-state
-        v-if="mine.length === 0"
+        v-if="mine.length === 0 && !view.downloaded"
         icon="mdi-shape-outline"
         :text="t('themes.emptyHint')"
         :title="t('themes.empty')"

@@ -584,6 +584,12 @@ bez figúrok zo sérií a sáčkov (`themes.py::_known_sets`); tému a rok dáva
 povie riadkom pod poľom, že hľadá len medzi známymi setmi, aj koľko ich je
 (`GET /themes/find/count`).
 
+**Stiahnuté roky sú označené.** `ThemeYearOut.downloaded` (vlna je
+v databáze a účet ju vidí, aj stará s odhadom) dáva roku v sérii odtieň
+a ikonku, `ThemeOut.downloaded_years` počet pri sérii vo výbere „Nájsť
+sériu“. Čip „Stiahnuté série“ (`utils/themeList.ts::themeSource`) ukáže
+všetky série so stiahnutým rokom, aj bez môjho setu.
+
 **UPCitemdb je posledná možnosť.** Rebrickable kódy
 nemá a BrickEconomy podľa kódu hľadať nevie (kód len posiela v odpovedi
 o cene, `apply_catalog_extras` ho uloží). `services/barcode.py` skúsi
@@ -831,7 +837,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 735 testov, frontend 363. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 736 testov, frontend 364. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá

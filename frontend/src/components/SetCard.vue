@@ -199,11 +199,6 @@
             <span v-if="!sold && priceApprox" class="text-medium-emphasis">≈ </span>
             {{ exactMoney(sold ? row.sold_total : row.market_total) }}
           </span>
-
-          <!-- Kedy bola cena stiahnutá; ručná cena a predaj čas nemajú. -->
-          <span v-if="!sold && row.price_at" class="text-body-small text-medium-emphasis text-no-wrap">
-            {{ t('collection.priceAt', { date: shortDate(row.price_at) }) }}
-          </span>
         </div>
 
         <v-chip
@@ -223,6 +218,12 @@
           size="small"
           variant="tonal"
         >{{ percent(profitPct, { decimals: 0 }) }}</v-chip>
+      </div>
+
+      <!-- Kedy bola cena stiahnutá, pod sumami, aby Kúpené a Hodnota stáli v jednej línii.
+           Ručná cena a predaj čas nemajú. -->
+      <div v-if="!sold && row.price_at" class="text-body-small text-medium-emphasis text-no-wrap mt-n1">
+        {{ t('collection.priceAt', { date: shortDate(row.price_at) }) }}
       </div>
     </div>
   </v-card>

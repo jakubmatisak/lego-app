@@ -3843,6 +3843,11 @@ export interface components {
              * @default false
              */
             complete: boolean;
+            /**
+             * Downloaded Years
+             * @default 0
+             */
+            downloaded_years: number;
         };
         /** ThemeSliceOut */
         ThemeSliceOut: {
@@ -3885,6 +3890,11 @@ export interface components {
             owned: number;
             /** Exact */
             exact: boolean;
+            /**
+             * Downloaded
+             * @default false
+             */
+            downloaded: boolean;
         };
         /** ThemesOut */
         ThemesOut: {

@@ -469,12 +469,12 @@
         >
           <!-- Pri jednotlivých kusoch sú „karty“ zoznam pod sebou, ikona to musí povedať. -->
           <v-btn
-            :icon="collection.grouping === 'item' ? 'mdi-view-list-outline' : 'mdi-view-module-outline'"
+            :icon="collection.grouping === 'item' ? 'mdi-view-agenda-outline' : 'mdi-view-module-outline'"
             :title="t(collection.grouping === 'item' ? 'collection.viewList' : 'collection.viewCards')"
             value="cards"
           />
 
-          <v-btn icon="mdi-table-large" :title="t('collection.viewTable')" value="table" />
+          <v-btn icon="mdi-view-headline" :title="t('collection.viewTable')" value="table" />
         </v-btn-toggle>
 
         <v-btn-toggle

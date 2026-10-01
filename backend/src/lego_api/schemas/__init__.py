@@ -1120,6 +1120,8 @@ class ThemeOut(BaseModel):
     followed: bool = False
     #: Mám naozaj všetky sety témy. Orezaný ``owned`` rovný ``set_count`` ešte nie.
     complete: bool = False
+    #: Koľko rokov témy má stiahnutú vlnu (značka vo výbere série).
+    downloaded_years: int = 0
 
 
 class ThemesOut(BaseModel):
@@ -1150,6 +1152,8 @@ class ThemeYearOut(BaseModel):
     owned: int
     #: Presné (vlna je stiahnutá), alebo odhad podľa údajov setov.
     exact: bool
+    #: Vlna roka je stiahnutá, aj keď je počet pre chýbajúci môj set len odhad.
+    downloaded: bool = False
 
 
 class ThemeWaveOut(BaseModel):

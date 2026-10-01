@@ -743,3 +743,22 @@ async def test_menu_counts_only_themes_the_series_list_shows(
     async with sessionmaker_() as session:
         mine, _ = await themes.overview(session, 1, rows)
     assert [r.theme for r in mine] == ["Icons", "Technic"]
+
+
+async def test_downloaded_years_are_marked_in_years_and_themes(session) -> None:
+    """Rok so stiahnutou vlnou je označený, téma povie, koľko rokov má stiahnutých."""
+    await _collection(session)
+    provider = FakeBrickset()
+    years = await themes.years(session, 1, provider, "Speed Champions")
+    assert years is not None
+    assert [(y.year, y.downloaded) for y in years] == [(2025, False), (2024, False)]
+
+    await themes.wave(session, provider, 1, "Speed Champions", 2025)
+
+    years = await themes.years(session, 1, provider, "Speed Champions")
+    assert years is not None
+    assert [(y.year, y.downloaded) for y in years] == [(2025, True), (2024, False)]
+    # Zoznam tém priamo zo zdroja: ``all_themes`` ho drží v pamäti procesu z iných testov.
+    _mine, everything = await themes.overview(session, 1, await provider.get_themes())
+    counts = {r.theme: r.downloaded_years for r in everything}
+    assert (counts["Speed Champions"], counts["Technic"]) == (1, 0)

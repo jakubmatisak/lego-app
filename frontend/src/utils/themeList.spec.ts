@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrangeThemes } from './themeList'
+import { arrangeThemes, themeSource } from './themeList'
 
 function theme (name: string, owned: number, sets: number, followed = false, complete = sets > 0 && owned >= sets) {
   return ({ theme: name, owned, set_count: sets, followed, complete, year_from: null, year_to: null }) as never
@@ -42,5 +42,21 @@ describe('témy: zoradenie a filtre', () => {
       'Icons', 'Ideas', 'Seasonal', 'Technic',
     ])
     expect(names(arrangeThemes(rows, 'completeness', {})).slice(0, 2)).toEqual(['Speed Champions', 'Seasonal'])
+  })
+})
+
+describe('témy: stiahnuté série', () => {
+  it('ukážu všetky témy so stiahnutým rokom, aj bez môjho setu', () => {
+    const mine = [Object.assign(theme('Technic', 12, 400), { downloaded_years: 0 })] as never[]
+    const all = [
+      Object.assign(theme('Technic', 12, 400), { downloaded_years: 0 }),
+      Object.assign(theme('Promotional', 0, 56), { downloaded_years: 2 }),
+      Object.assign(theme('Icons', 0, 10), { downloaded_years: 1 }),
+    ] as never[]
+
+    expect(names(themeSource(mine, all, {}))).toEqual(['Technic'])
+    expect(names(arrangeThemes(themeSource(mine, all, { downloaded: true }), 'name', { downloaded: true }))).toEqual([
+      'Icons', 'Promotional',
+    ])
   })
 })
