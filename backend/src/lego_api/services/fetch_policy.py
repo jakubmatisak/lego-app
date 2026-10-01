@@ -63,7 +63,7 @@ def parse_settings(raw: Any) -> dict:
             except ValueError as exc:
                 raise ValueError(f"Schopnosť {key!r} nepoznám.") from exc
             if CAPABILITIES[cap].required:
-                raise ValueError(f"Schopnosť {key!r} sa vypnúť nedá, bez nej appka nefunguje.")
+                raise ValueError(f"Schopnosť {key!r} sa vypnúť nedá, bez nej Moje kocky nefungujú.")
             disabled.append(cap.value)
         out["disabled"] = sorted(set(disabled))
     if "enabled" in raw:

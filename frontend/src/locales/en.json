@@ -87,6 +87,7 @@
     "donutSetsPlural": "set | sets"
   },
   "collection": {
+    "priceAt": "price from {date}",
     "title": "Collection",
     "search": "Search by name, number or location…",
     "sortBy": "Sort",
@@ -100,11 +101,19 @@
       "year": "Release year",
       "parts": "Pieces",
       "name": "Name",
-      "recent": "Recently added"
+      "recent": "Recently added",
+      "number": "Set number",
+      "theme": "Series",
+      "quantity": "Quantity",
+      "condition": "Condition",
+      "location": "Location",
+      "price_at": "Price date"
     },
     "groupBy": {
-      "set": "By set",
-      "item": "Each piece"
+      "set": "Sets combined",
+      "item": "Single copies",
+      "setHint": "One row per set, copies combined: count and summed prices, value and profit",
+      "itemHint": "One row per copy, each with its own condition, price, date and location"
     },
     "status": {
       "all": "Everything",
@@ -138,6 +147,7 @@
     "sortAsc": "Ascending (click to flip)",
     "sortDesc": "Descending (click to flip)",
     "viewCards": "Cards",
+    "viewList": "List",
     "viewTable": "Table",
     "partsPlural": "{count} part | {count} parts"
   },
@@ -282,6 +292,15 @@
     "costsHint": "Deducted from the profit so it is net."
   },
   "wishlist": {
+    "colSet": "Set",
+    "themeClear": "All themes",
+    "addAndRemove": "Add and remove from wishlist",
+    "addAndKeep": "Add and keep on wishlist",
+    "owned": "In collection · {count}",
+    "filterTheme": "Theme",
+    "noTheme": "No theme",
+    "alreadyOwned": "You already have this set in your collection ({count}).",
+    "alreadyWished": "This set is already on your wishlist.",
     "title": "Wishlist",
     "add": "Add to wishlist",
     "targetPrice": "Target price",
@@ -512,7 +531,8 @@
     "colCosts": "Costs",
     "colRealized": "Net profit",
     "colRoi": "Return",
-    "inventoryLink": "Insurance inventory"
+    "inventoryLink": "Insurance inventory",
+    "colChannel": "Channel"
   },
   "photos": {
     "title": "Piece photos",
@@ -692,16 +712,32 @@
     },
     "yearLabel": "Release year",
     "sort": {
-      "progress": "In progress first",
       "leastMissing": "Fewest missing",
       "yearDesc": "Year: newest",
       "yearAsc": "Year: oldest",
       "nameAsc": "Name A–Z",
-      "nameDesc": "Name Z–A"
+      "nameDesc": "Name Z–A",
+      "ownedDesc": "Owned: most",
+      "ownedAsc": "Owned: fewest",
+      "missingAsc": "Missing: fewest",
+      "missingDesc": "Missing: most",
+      "progressDesc": "Completeness: highest",
+      "progressAsc": "Completeness: lowest"
     },
     "categoryMinifigs": "Minifigures",
     "summaryOther": "Pieces from series: {figures} · collecting: {collecting} · complete: {complete}",
-    "syncSwitchedOff": "Downloading all series is switched off in Settings → Data. Series the app already knows are shown."
+    "syncSwitchedOff": "Downloading all series is switched off in Settings → Data. Series the app already knows are shown.",
+    "colSeries": "Series",
+    "colYear": "Year",
+    "colOwned": "Owned",
+    "colMissing": "Missing",
+    "colProgress": "Completeness",
+    "colNumber": "Number",
+    "colFigure": "Figure",
+    "colState": "State",
+    "colWish": "Wishlist",
+    "missing": "Missing",
+    "openDetail": "Open detail"
   },
   "purchase": {
     "title": "I bought it",
@@ -710,7 +746,7 @@
     "save": "Add to collection",
     "failed": "Could not add it",
     "hint": "Flags, notes and photos can be added in the detail.",
-    "hintWishlist": "It leaves the wishlist once saved. The rest can be added in the detail.",
+    "hintWishlist": "Below you choose whether to remove it from the wishlist or keep it there. The rest can be added in the detail.",
     "haveAll": "I have them all",
     "haveAllAgain": "Add the whole series again",
     "wholeSeriesTitle": "I have the whole series",
@@ -750,6 +786,12 @@
     "closeDialogFirst": "Close the open window first, then scan"
   },
   "themes": {
+    "findKnownPlural": "{count} known set | {count} known sets | {count} known sets",
+    "findHint": "Searches only among {count} (your sets, the wishlist and downloaded themes). It won’t find others.",
+    "findHintPlain": "Searches only among known sets (your sets, the wishlist and downloaded themes). It won’t find others.",
+    "findType": "Type at least two letters or a set number",
+    "findSet": "Find a set by name or number",
+    "findNone": "Nothing found among the known sets. Try another word, or open the theme and year so they are downloaded from Brickset.",
     "title": "Series",
     "search": "Find a series (Speed Champions, Technic…)",
     "mine": "My series",
@@ -806,7 +848,8 @@
       "key_check": "Key check",
       "other": "Other",
       "inflation": "Inflation adjustment"
-    }
+    },
+    "colResult": "Result"
   },
   "inflation": {
     "chip": "In today's money · {month}",
@@ -1198,6 +1241,7 @@
     }
   },
   "table": {
+    "priceAt": "Price from",
     "image": "",
     "number": "Number",
     "name": "Name",

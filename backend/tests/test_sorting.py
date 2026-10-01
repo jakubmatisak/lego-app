@@ -19,16 +19,23 @@ def _v(
     year: int | None = 2020,
     bought: date | None = None,
     item_id: int = 1,
+    theme: str | None = None,
+    condition: ItemCondition = ItemCondition.NEW_SEALED,
+    location: str | None = None,
+    box: str | None = None,
+    price_at: datetime | None = None,
 ) -> ValuedItem:
     catalog = CatalogItem(
-        catalog_num=num, name=name or f"Set {num}", kind=CatalogKind.SET, year=year
+        catalog_num=num, name=name or f"Set {num}", kind=CatalogKind.SET, year=year, theme=theme
     )
     item = CollectionItem(
         id=item_id,
         user_id=1,
         catalog_num=num,
         status=ItemStatus.OWNED,
-        condition=ItemCondition.NEW_SEALED,
+        condition=condition,
+        location=location,
+        box=box,
         flags=[],
         purchase_price_eur=Decimal(purchase) if purchase is not None else None,
         purchase_date=bought,
@@ -40,6 +47,7 @@ def _v(
         catalog=catalog,
         market_value=Decimal(value) if value is not None else Decimal("0"),
         price_source="market" if value is not None else "missing",
+        price_at=price_at,
     )
 
 
@@ -186,3 +194,134 @@ async def test_grouped_row_carries_the_annual_return(auth_client, sessionmaker_)
     }
     assert rows["10294-1"]["cagr_pct"] is not None and rows["10294-1"]["cagr_pct"] > 0
     assert rows["21318-1"]["cagr_pct"] is None
+
+
+# --- stĺpce tabuľky -------------------------------------------------------------------
+
+
+def _group(*members: ValuedItem) -> Group:
+    return Group(head=members[0].catalog, members=list(members))
+
+
+def _heads(groups: list[Group]) -> list[str]:
+    return [g.head.catalog_num for g in groups]
+
+
+def test_number_sorts_naturally() -> None:
+    """10294-1 pred 75192-1 a 6000-1 pred 10294-1: čísla, nie písmená."""
+    rows = [_v("75192-1", "1", "1"), _v("10294-1", "1", "1"), _v("6000-1", "1", "1")]
+    assert _nums(sort_items(rows, "number", None)) == ["6000-1", "10294-1", "75192-1"]
+    assert _nums(sort_items(rows, "number", "desc")) == ["75192-1", "10294-1", "6000-1"]
+    variants = [_v("71046-10", "1", "1"), _v("71046-2", "1", "1"), _v("71046", "1", "1")]
+    assert _heads(sort_groups([_group(v) for v in variants], "number", None)) == [
+        "71046",
+        "71046-2",
+        "71046-10",
+    ]
+    # Holá figúrka (fig-…) sa s číslom setu porovnať dá, nespadne.
+    assert len(sort_items([_v("fig-000123", "1", "1"), *rows], "number", None)) == 4
+
+
+def test_theme_is_folded_and_empty_last() -> None:
+    rows = [
+        _v("1-1", "1", "1", theme="Star Wars"),
+        _v("2-1", "1", "1", theme=None),
+        _v("3-1", "1", "1", theme="Ázijské"),
+        _v("4-1", "1", "1", theme="city"),
+    ]
+    assert _nums(sort_items(rows, "theme", None)) == ["3-1", "4-1", "1-1", "2-1"]
+    assert _nums(sort_items(rows, "theme", "desc")) == ["1-1", "4-1", "3-1", "2-1"]
+
+
+def test_quantity_counts_pieces_of_the_group() -> None:
+    one = _group(_v("1-1", "1", "1", name="A"))
+    three = _group(*(_v("2-1", "1", "1", name="B", item_id=i) for i in (2, 3, 4)))
+    assert _heads(sort_groups([one, three], "quantity", None)) == ["2-1", "1-1"]
+    assert _heads(sort_groups([one, three], "quantity", "asc")) == ["1-1", "2-1"]
+    # Jednotlivý kus je vždy jeden; rozhodne názov.
+    b, a = _v("1-1", "1", "1", name="Beta"), _v("2-1", "1", "1", name="Alfa")
+    assert _nums(sort_items([b, a], "quantity", None)) == ["2-1", "1-1"]
+
+
+def test_condition_goes_from_sealed_to_parted_out() -> None:
+    rows = [
+        _v("1-1", "1", "1", condition=ItemCondition.BUILT),
+        _v("2-1", "1", "1", condition=ItemCondition.NEW_SEALED),
+        _v("3-1", "1", "1", condition=ItemCondition.PARTED_OUT),
+        _v("4-1", "1", "1", condition=ItemCondition.OPENED_UNBUILT),
+    ]
+    assert _nums(sort_items(rows, "condition", None)) == ["2-1", "4-1", "1-1", "3-1"]
+    assert _nums(sort_items(rows, "condition", "desc")) == ["3-1", "1-1", "4-1", "2-1"]
+    sealed = _group(_v("5-1", "1", "1", condition=ItemCondition.NEW_SEALED))
+    mixed = _group(
+        _v("6-1", "1", "1", condition=ItemCondition.NEW_SEALED, item_id=2),
+        _v("6-1", "1", "1", condition=ItemCondition.BUILT, item_id=3),
+    )
+    assert _heads(sort_groups([mixed, sealed], "condition", None)) == ["5-1", "6-1"]
+
+
+def test_location_uses_the_place_label_and_empty_last() -> None:
+    rows = [
+        _v("1-1", "1", "1", location="Povala", box="3"),
+        _v("2-1", "1", "1"),
+        _v("3-1", "1", "1", location="Átrium"),
+        _v("4-1", "1", "1", location="Povala", box="1"),
+    ]
+    assert _nums(sort_items(rows, "location", None)) == ["3-1", "4-1", "1-1", "2-1"]
+    assert _nums(sort_items(rows, "location", "desc")) == ["1-1", "4-1", "3-1", "2-1"]
+    assert _heads(sort_groups([_group(r) for r in rows], "location", "desc")) == [
+        "1-1",
+        "4-1",
+        "3-1",
+        "2-1",
+    ]
+
+
+def test_price_at_newest_first_and_without_price_last() -> None:
+    old = _v("1-1", "1", "1", price_at=datetime(2026, 1, 1, tzinfo=UTC))
+    new = _v("2-1", "1", "1", price_at=datetime(2026, 9, 1, tzinfo=UTC))
+    none = _v("3-1", "1", None)
+    sold = _v("4-1", "1", "1", price_at=datetime(2026, 9, 2, tzinfo=UTC))
+    sold.item.status = ItemStatus.SOLD
+    # Predaný kus dátum ceny v tabuľke nemá, preto je pri prázdnych.
+    assert _nums(sort_items([old, none, sold, new], "price_at", None)) == [
+        "2-1",
+        "1-1",
+        "3-1",
+        "4-1",
+    ]
+    assert _nums(sort_items([new, none, old], "price_at", "asc")) == ["1-1", "2-1", "3-1"]
+    assert _heads(sort_groups([_group(old), _group(new), _group(none)], "price_at", None)) == [
+        "2-1",
+        "1-1",
+        "3-1",
+    ]
+
+
+async def test_table_columns_sort_through_the_api(auth_client) -> None:
+    """Klik na hlavičku: rovnaké poradie v Sety spolu aj Jednotlivé kusy."""
+    for num, theme in (("75192-1", "Star Wars"), ("10294-1", None), ("6000-1", "City")):
+        response = await auth_client.post(
+            "/catalog", json={"catalog_num": num, "name": num, "theme": theme}
+        )
+        assert response.status_code == 201, response.text
+        await auth_client.post("/items", json={"catalog_num": num, "location": "Povala"})
+    await auth_client.post("/items", json={"catalog_num": "10294-1"})
+
+    async def grouped(**params) -> list[str]:
+        response = await auth_client.get("/items/grouped", params=params)
+        assert response.status_code == 200, response.text
+        return [r["catalog"]["catalog_num"] for r in response.json()]
+
+    async def items(**params) -> list[str]:
+        response = await auth_client.get("/items", params=params)
+        assert response.status_code == 200, response.text
+        return [i["catalog_num"] for i in response.json()]
+
+    assert await grouped(sort="number") == ["6000-1", "10294-1", "75192-1"]
+    assert await items(sort="number", dir="desc") == ["75192-1", "10294-1", "10294-1", "6000-1"]
+    assert await grouped(sort="theme") == ["6000-1", "75192-1", "10294-1"]
+    assert (await grouped(sort="quantity"))[0] == "10294-1"
+    for key in ("condition", "location", "price_at"):
+        assert len(await grouped(sort=key)) == 3
+        assert len(await items(sort=key, dir="asc")) == 4

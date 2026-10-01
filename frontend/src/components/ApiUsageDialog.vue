@@ -4,12 +4,16 @@
    * a čo appka volala, kedy a prečo.
    *
    * Dni sa rátajú podľa UTC, tak ako limity služieb. Brickset dáva vlastnú
-   * štatistiku, tá ráta aj volania mimo tejto appky.
+   * štatistiku, tá ráta aj volania mimo tejto appky. História sa radí
+   * klikom na hlavičku, predvolene najnovšie navrchu.
    */
+  import type { SortDir, SortState, SortValue } from '@/utils/tableSort'
   import { computed, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api, errorMessage } from '@/api/client'
+  import SortHeader from '@/components/SortHeader.vue'
   import { dateTime } from '@/utils/format'
+  import { headerDir, nextSort, sortRows } from '@/utils/tableSort'
 
   interface ProviderUsage {
     provider: string
@@ -48,7 +52,30 @@
     upcitemdb: 'UPCitemdb',
   }
 
-  const shown = computed(() => (only.value ? calls.value.filter(c => c.provider === only.value) : calls.value))
+  type Column = 'when' | 'service' | 'what' | 'why' | 'result'
+  const COLUMNS: Array<{ key: Column, title: string }> = [
+    { key: 'when', title: 'usage.colWhen' },
+    { key: 'service', title: 'usage.colService' },
+    { key: 'what', title: 'usage.colWhat' },
+    { key: 'why', title: 'usage.colWhy' },
+    { key: 'result', title: 'usage.colResult' },
+  ]
+  const VALUES: Record<Column, (c: ApiCall) => SortValue> = {
+    when: c => Date.parse(c.at),
+    service: c => NAMES[c.provider] ?? c.provider,
+    what: c => [c.action, c.subject].filter(Boolean).join(' '),
+    why: c => purposeLabel(c.purpose),
+    // Neúspešné volania navrchu, tie sú zaujímavé.
+    result: c => (c.ok ? 1 : 0),
+  }
+  const defaultDir = (column: Column): SortDir => (column === 'when' ? 'desc' : 'asc')
+  const order = ref<SortState<Column>>({ sort: 'when', dir: null })
+
+  const shown = computed(() => sortRows(
+    only.value ? calls.value.filter(c => c.provider === only.value) : calls.value,
+    VALUES[order.value.sort],
+    order.value.dir ?? defaultDir(order.value.sort),
+  ))
 
   function purposeLabel (purpose: string): string {
     // Nové záznamy nesú schopnosť, staré ešte pôvodný účel.
@@ -166,11 +193,13 @@
         <v-table v-else density="compact">
           <thead>
             <tr>
-              <th>{{ t('usage.colWhen') }}</th>
-              <th>{{ t('usage.colService') }}</th>
-              <th>{{ t('usage.colWhat') }}</th>
-              <th>{{ t('usage.colWhy') }}</th>
-              <th />
+              <th v-for="column in COLUMNS" :key="column.key">
+                <SortHeader
+                  :dir="headerDir(column.key, order, defaultDir)"
+                  :title="t(column.title)"
+                  @sort="order = nextSort(column.key, order, defaultDir)"
+                />
+              </th>
             </tr>
           </thead>
 

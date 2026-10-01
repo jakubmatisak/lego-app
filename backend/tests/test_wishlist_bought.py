@@ -314,3 +314,26 @@ async def test_identifying_a_sold_bag_keeps_the_wish(auth_client: AsyncClient, s
     )
     assert response.status_code == 200, response.text
     assert await _wished(auth_client) == {"71046-3"}
+
+
+async def test_keep_wishlist_leaves_the_wish_and_marks_it_owned(
+    auth_client: AsyncClient, session
+) -> None:
+    """„Nechať v Chcem“ po otázke pri kúpe: set ostane v Chcem a nesie počet kusov."""
+    await _seed(session)
+    await _wish(auth_client, "10294-1")
+
+    created = await _add(auth_client, "10294-1", quantity=2, keep_wishlist=True)
+
+    assert all(c.get("removed_from_wishlist") is None for c in created)
+    rows = (await auth_client.get("/wishlist")).json()
+    assert [(r["catalog_num"], r["owned_count"]) for r in rows] == [("10294-1", 2)]
+
+
+async def test_wish_without_owned_piece_counts_zero(auth_client: AsyncClient, session) -> None:
+    await _seed(session)
+    await _wish(auth_client, "21318-1")
+
+    rows = (await auth_client.get("/wishlist")).json()
+
+    assert rows[0]["owned_count"] == 0

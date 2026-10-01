@@ -225,6 +225,8 @@ class ItemCreateRequest(BaseModel):
     purpose: ItemPurpose | None = None
     manual_market_price_eur: Money | None = None
     note: str | None = Field(default=None, max_length=500)
+    #: Kúpu potvrdil používateľ s „Nechať v Chcem“; inak set z Chcem vypadne.
+    keep_wishlist: bool = False
 
 
 class SeriesMemberRequest(BaseModel):
@@ -385,6 +387,8 @@ class ValuedItemOut(ItemOut):
     categories: list[int] = Field(default_factory=list)
     #: Koľko dielikov kusu chýba podľa kontroly úplnosti (bez náhradných).
     missing_parts: int = 0
+    #: Kedy bola stiahnutá cena, z ktorej je hodnota (ručná a chýbajúca nič).
+    price_at: datetime | None = None
 
 
 class GroupedItemOut(BaseModel):
@@ -410,6 +414,8 @@ class GroupedItemOut(BaseModel):
     categories: list[int] = Field(default_factory=list)
     #: Chýbajúce dieliky vlastnených kusov podľa kontroly úplnosti (bez náhradných).
     missing_parts: int = 0
+    #: Najnovšia stiahnutá cena vlastnených kusov (ručná a chýbajúca sa nerátajú).
+    price_at: datetime | None = None
 
 
 # --- ceny -------------------------------------------------------------------
@@ -665,6 +671,17 @@ class WishlistOut(ORMModel):
     target_reached: bool = False
     #: Trhová cena voči cieľovej v %: záporné = pod cieľom. Bez ceny alebo cieľa prázdne.
     distance_pct: float | None = None
+    #: Koľko kusov tohto setu účet vlastní (štítok „V zbierke“).
+    owned_count: int = 0
+    #: Kedy bola stiahnutá trhová cena (``market_price``).
+    price_at: datetime | None = None
+
+
+class WishThemeOut(BaseModel):
+    """Séria vo filtri Chcem a koľko setov v nej je."""
+
+    value: str
+    count: int
 
 
 class PhotoOut(ORMModel):
@@ -1110,6 +1127,20 @@ class ThemesOut(BaseModel):
     all: list[ThemeOut]
     #: Bez kľúča k Brickset témy nie sú.
     provider_enabled: bool
+
+
+class KnownSetsOut(BaseModel):
+    count: int
+
+
+class ThemeFoundOut(BaseModel):
+    """Set nájdený na stránke Série: kam patrí a či ho mám alebo chcem."""
+
+    catalog: CatalogOut
+    theme: str | None
+    year: int | None
+    owned: int
+    wanted: bool
 
 
 class ThemeYearOut(BaseModel):

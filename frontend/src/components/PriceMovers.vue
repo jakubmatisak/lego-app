@@ -6,7 +6,9 @@
   import type { Mover } from '@/api/types'
   import { ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import SetImage from '@/components/SetImage.vue'
   import { exactMoney, percent } from '@/utils/format'
+  import { imageSrc } from '@/utils/imageSrc'
 
   const props = defineProps<{ movers: Mover[] }>()
   const emit = defineEmits<{ (e: 'window', value: 30 | 90 | 365): void }>()
@@ -43,6 +45,18 @@
         :key="mover.catalog_num"
         :to="{ name: 'set-detail', params: { num: mover.catalog_num } }"
       >
+        <!-- Fotka ako pri Najväčšom zisku, nech karty Prehľadu vyzerajú rovnako. -->
+        <template #prepend>
+          <SetImage
+            :alt="mover.name"
+            class="me-3"
+            rounded="md"
+            :size="40"
+            :src="imageSrc(mover.image_url) ?? undefined"
+            style="width: 40px"
+          />
+        </template>
+
         <v-list-item-title class="text-body-medium font-weight-medium">
           {{ mover.name }}
         </v-list-item-title>

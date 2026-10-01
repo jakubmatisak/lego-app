@@ -37,9 +37,9 @@
     {
       title: 'Prečo a na akom základe',
       body: [
-        'Aby appka mohla viesť tvoju evidenciu: plnenie zmluvy, čl. 6 ods. 1 písm. b GDPR.',
+        'Aby sa dala viesť tvoja evidencia: plnenie zmluvy, čl. 6 ods. 1 písm. b GDPR.',
         'Záznam volaní a tokeny kvôli bezpečnosti a stráženiu denných limitov služieb: oprávnený záujem, čl. 6 ods. 1 písm. f GDPR.',
-        'Appka nepoužíva reklamu, analytiku ani sledovanie a údaje nepredáva.',
+        'Moje kocky nepoužívajú reklamu, analytiku ani sledovanie a údaje nepredávajú.',
       ],
     },
     {
@@ -47,24 +47,24 @@
       body: [
         'Údaje účtu a zbierky, kým účet nezmažeš. Záznam volaní 30 dní.',
         'Prihlásenie do zatvorenia prehliadača, na serveri najviac 12 hodín bez použitia. Keď pri prihlásení zaškrtneš Zapamätať si prihlásenie, 30 dní od posledného použitia. Odhlásenie ho zruší hneď.',
-        'Pred každou aktualizáciou appky na inú verziu sa celá databáza zálohuje na server do priečinka backups. Uchováva sa 5 posledných záloh, staršie sa mažú, a zálohu staršiu než 90 dní appka zmaže pri najbližšom štarte. Rovnako sa maže aj databáza, ktorú správca pri návrate zálohy odloží do toho istého priečinka. Údaje zmazaného účtu v nich môžu ostať, kým sa zálohy neprestriedajú, najdlhšie do prvého štartu appky po 90 dňoch.',
+        'Pred každou aktualizáciou na inú verziu sa celá databáza zálohuje na server do priečinka backups. Uchováva sa 5 posledných záloh, staršie sa mažú, a záloha staršia než 90 dní sa zmaže pri najbližšom štarte. Rovnako sa maže aj databáza, ktorú správca pri návrate zálohy odloží do toho istého priečinka. Údaje zmazaného účtu v nich môžu ostať, kým sa zálohy neprestriedajú, najdlhšie do prvého štartu po 90 dňoch.',
       ],
     },
     {
       title: 'Kto ich dostane',
       body: [
-        'Poskytovateľ hostingu, na ktorom appka beží.',
+        'Poskytovateľ hostingu, na ktorom Moje kocky bežia.',
         'Služby, ktoré si pripojíš vlastným kľúčom, dostanú len čísla setov a čiarové kódy, na ktoré sa pýtaš, nie tvoje osobné údaje. Eurostat nedostane nič, čo by sa ťa týkalo.',
         'Pri inej mene zobrazenia než euro alebo pri sume v cudzej mene stiahne server kurzy z Európskej centrálnej banky (ECB). Sťahujú sa len verejné kurzy, o tebe neodchádza nič.',
-        'Fotky setov sa načítavajú cez server appky, takže Rebrickable ani Brickset nevidia tvoju IP adresu.',
+        'Fotky setov sa načítavajú cez tento server, takže Rebrickable ani Brickset nevidia tvoju IP adresu.',
       ],
     },
     {
       title: 'Tvoje práva',
       body: [
         'Prístup a prenosnosť: v Nastaveniach → Účet si stiahneš všetky svoje údaje aj fotky (ZIP).',
-        'Oprava: údaje zmeníš priamo v appke.',
-        'Vymazanie: v Nastaveniach → Účet zmažeš účet so všetkým, čo k nemu patrí. V zálohách pred aktualizáciou ostane, kým sa neprestriedajú, najdlhšie do prvého štartu appky po 90 dňoch (pozri Ako dlho).',
+        'Oprava: údaje zmeníš priamo v Mojich kockách.',
+        'Vymazanie: v Nastaveniach → Účet zmažeš účet so všetkým, čo k nemu patrí. V zálohách pred aktualizáciou ostane, kým sa neprestriedajú, najdlhšie do prvého štartu po 90 dňoch (pozri Ako dlho).',
         'Námietka a obmedzenie spracúvania: napíš prevádzkovateľovi.',
         'Sťažnosť: Úrad na ochranu osobných údajov Slovenskej republiky, dataprotection.gov.sk.',
       ],

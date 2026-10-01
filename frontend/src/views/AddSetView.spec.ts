@@ -18,6 +18,9 @@ vi.mock('vue-router', async original => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
 }))
 
+/** Čo je v Chcem, keď sa Pridať set pýta ('/wishlist'). */
+let wished: Array<{ catalog_num: string }> = []
+
 const SETS: Record<string, string> = { '10294-1': 'Titanic', '21318-1': 'Tree House' }
 
 /** Titanic bol v Chcem; uloženie ho odtiaľ vyradí a odpoveď to povie. */
@@ -39,6 +42,9 @@ vi.mock('@/api/client', async original => ({
       }
       if (path === '/auth/me/preferences') {
         return { data: {} }
+      }
+      if (path === '/wishlist') {
+        return { data: [...wished] }
       }
       return { data: [] }
     },
@@ -67,6 +73,7 @@ describe('Pridať set: kúpený set vypadne z Chcem a dá sa vrátiť', () => {
     setActivePinia(createPinia())
     i18n.global.locale.value = 'sk'
     query = {}
+    wished = []
     post.mockReset()
     del.mockReset()
     post.mockImplementation(async (path: string) => {
@@ -185,5 +192,19 @@ describe('Pridať set: kúpený set vypadne z Chcem a dá sa vrátiť', () => {
     await flushPromises()
 
     expect(useNotifyStore().queue.map(n => n.text)).toEqual(['Pridané do zbierky: Titanic ×1'])
+  })
+
+  it.each([
+    ['Nechať v Chcem', true],
+    ['Odstrániť z Chcem', false],
+  ])('set z Chcem má dve tlačidlá: %s', async (_answer, keep) => {
+    wished = [{ catalog_num: '10294-1' }]
+    query = { code: '10294-1' }
+    const wrapper = await mountAdd()
+
+    await wrapper.find(keep ? 'v-btn[prepend-icon="mdi-heart-outline"]' : 'v-btn[prepend-icon="mdi-plus"]').trigger('click')
+    await flushPromises()
+
+    expect(post).toHaveBeenCalledWith('/items', { body: expect.objectContaining({ keep_wishlist: keep }) })
   })
 })

@@ -9,6 +9,8 @@ import SeriesPurchaseDialog from './SeriesPurchaseDialog.vue'
 
 /** Volania servera v poradí: „GET /wishlist“, „POST /items“… */
 let calls: string[] = []
+/** Telo posledného POST /items. */
+let lastBody: Record<string, unknown> | null = null
 
 const REMOVED = {
   catalog_num: '10294-1',
@@ -25,8 +27,9 @@ vi.mock('@/api/client', async original => ({
       calls.push(`GET ${path}`)
       return { data: path === '/auth/me/preferences' ? {} : [] }
     },
-    POST: async (path: string) => {
+    POST: async (path: string, options?: { body?: Record<string, unknown> }) => {
       calls.push(`POST ${path}`)
+      lastBody = options?.body ?? null
       return { data: [{ id: 5, catalog_num: '10294-1', removed_from_wishlist: REMOVED }] }
     },
     PUT: async (path: string) => {
@@ -49,10 +52,11 @@ describe('Kúpil som: Chcem vyraďuje server', () => {
     setActivePinia(createPinia())
     i18n.global.locale.value = 'sk'
     calls = []
+    lastBody = null
   })
 
   it.each([
-    ['z Chcem (id položky známe)', 12],
+    ['z Chcem (id položky známe), po odpovedi Odstrániť', 12],
     ['z inej obrazovky (figúrka, detail setu)', null],
   ])('kúpa %s zmaže Chcem len na serveri, nie druhý raz z dialógu', async (_where, wishlistId) => {
     const wrapper = shallowMount(PurchaseDialog, {
@@ -70,6 +74,23 @@ describe('Kúpil som: Chcem vyraďuje server', () => {
     expect(calls).not.toContain('GET /wishlist')
     // Pre používateľa je to ako predtým: oznámenie o pridaní a dialóg sa zavrie.
     expect(useNotifyStore().queue.map(n => n.text)).toEqual(['Pridané do zbierky: Titanic ×1'])
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+    expect(lastBody?.keep_wishlist).toBe(false)
+  })
+
+  it('kúpa z Chcem tlačidlom Pridať a nechať v Chcem pošle keep_wishlist', async () => {
+    const wrapper = shallowMount(PurchaseDialog, {
+      props: { 'modelValue': false, 'catalog': CATALOG, 'wishlistId': 12, 'onUpdate:modelValue': () => {} },
+      ...mountOptions,
+    })
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    await wrapper.find('v-btn[prepend-icon="mdi-heart-outline"]').trigger('click')
+    await flushPromises()
+
+    expect(calls.filter(c => c === 'POST /items')).toHaveLength(1)
+    expect(lastBody?.keep_wishlist).toBe(true)
     expect(wrapper.emitted('saved')).toHaveLength(1)
   })
 

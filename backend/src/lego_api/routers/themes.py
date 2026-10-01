@@ -10,6 +10,8 @@ from lego_api.providers.brickset import BricksetProvider
 from lego_api.schemas import (
     CatalogOut,
     CmfMemberOut,
+    KnownSetsOut,
+    ThemeFoundOut,
     ThemeOut,
     ThemesOut,
     ThemeWaveOut,
@@ -44,6 +46,31 @@ async def list_themes(
         all=[ThemeOut(**vars(r)) for r in everything],
         provider_enabled=True,
     )
+
+
+@router.get("/find/count", response_model=KnownSetsOut)
+async def known_sets(user: CurrentUser, session: SessionDep) -> KnownSetsOut:
+    """Koľko setov appka pozná; hľadanie v Sériách nájde len medzi nimi."""
+    return KnownSetsOut(count=await themes.known_set_count(session))
+
+
+@router.get("/find", response_model=list[ThemeFoundOut])
+async def find_set(
+    q: Annotated[str, Query(min_length=2, max_length=120)],
+    user: CurrentUser,
+    session: SessionDep,
+) -> list[ThemeFoundOut]:
+    """Set podľa názvu či čísla, len medzi setmi, ktoré appka pozná; nič nevolá von."""
+    return [
+        ThemeFoundOut(
+            catalog=CatalogOut.model_validate(found.catalog),
+            theme=found.theme,
+            year=found.year,
+            owned=found.owned,
+            wanted=found.wanted,
+        )
+        for found in await themes.find_sets(session, user.id, q)
+    ]
 
 
 @router.get("/years", response_model=list[ThemeYearOut])

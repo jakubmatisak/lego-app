@@ -9,7 +9,7 @@
   import PhotoZoom from '@/components/PhotoZoom.vue'
   import SetImage from '@/components/SetImage.vue'
   import { useFilterStore } from '@/stores/filters'
-  import { count, exactMoney, money, percent } from '@/utils/format'
+  import { count, exactMoney, money, percent, shortDate } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
 
   const props = defineProps<{
@@ -198,6 +198,11 @@
           >
             <span v-if="!sold && priceApprox" class="text-medium-emphasis">≈ </span>
             {{ exactMoney(sold ? row.sold_total : row.market_total) }}
+          </span>
+
+          <!-- Kedy bola cena stiahnutá; ručná cena a predaj čas nemajú. -->
+          <span v-if="!sold && row.price_at" class="text-body-small text-medium-emphasis text-no-wrap">
+            {{ t('collection.priceAt', { date: shortDate(row.price_at) }) }}
           </span>
         </div>
 

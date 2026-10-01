@@ -75,7 +75,8 @@ describe('súhrn v ponuke po zmene zbierky', () => {
     const { default: GhostCard } = await import('@/components/GhostCard.vue')
     const card = shallowMount(GhostCard, {
       props: { catalog: { catalog_num: '71046-3', name: 'Astronaut', kind: 'minifig', image_url: null } as never },
-      global: { plugins: [i18n, pinia], config: { warnHandler: () => {} } },
+      // Srdiečko je v GhostActions, tie sa vykreslia naozaj.
+      global: { plugins: [i18n, pinia], stubs: { GhostActions: false }, config: { warnHandler: () => {} } },
     })
 
     await card.find('[prepend-icon="mdi-heart-outline"]').trigger('click')

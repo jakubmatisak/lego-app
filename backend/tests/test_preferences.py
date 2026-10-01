@@ -65,3 +65,11 @@ async def test_unlock_card_can_be_hidden(auth_client: AsyncClient) -> None:
     assert (await auth_client.get("/auth/me/preferences")).json()["unlock"] == {
         "hidden": ["brickeconomy"]
     }
+
+
+async def test_minifigs_view_is_a_known_preference(auth_client: AsyncClient) -> None:
+    """Figúrky si pamätajú voľbu karty alebo tabuľka, zvlášť zoznam a séria."""
+    body = {"list": "table", "series": "table"}
+    saved = await auth_client.put("/auth/me/preferences/minifigs", json=body)
+    assert saved.status_code == 200, saved.text
+    assert (await auth_client.get("/auth/me/preferences")).json()["minifigs"] == body

@@ -31,7 +31,8 @@
     /** Kupuje sa z Chcem: nápoveda povie, že odtiaľ po uložení zmizne. */
     wishlistId?: number | null
   }>()
-  const emit = defineEmits<{ saved: [] }>()
+  /** `saved` nesie, či set ostal v Chcem (karta v Chcem ukáže „V zbierke“). */
+  const emit = defineEmits<{ saved: [keptInWishlist: boolean] }>()
 
   const { t } = useI18n()
   const notify = useNotifyStore()
@@ -71,7 +72,11 @@
     if (collection.locations.length === 0) collection.loadLocations()
   })
 
-  async function save (): Promise<void> {
+  /**
+   * Uloží kúpu. Pri kúpe z Chcem rozhodne tlačidlo: `keepWishlist` nechá set
+   * v Chcem (napríklad keď chcem ďalší kus), inak ho server vyradí.
+   */
+  async function save (keepWishlist = false): Promise<void> {
     if (!props.catalog || quantity.value < 1) return
     saving.value = true
     error.value = null
@@ -93,6 +98,7 @@
         purchase_place: (place.value ?? '').trim() || null,
         location: (location.value ?? '').trim() || null,
         box: (box.value ?? '').trim() || null,
+        keep_wishlist: keepWishlist,
       },
     })
     if (err) {
@@ -111,7 +117,7 @@
     saving.value = false
     open.value = false
     collection.refreshAll()
-    emit('saved')
+    emit('saved', keepWishlist)
   }
 </script>
 
@@ -192,13 +198,32 @@
         <v-spacer />
         <v-btn variant="text" @click="open = false">{{ t('common.cancel') }}</v-btn>
 
+        <template v-if="wishlistId">
+          <v-btn
+            :disabled="quantity < 1 || saving"
+            prepend-icon="mdi-heart-outline"
+            variant="tonal"
+            @click="save(true)"
+          >{{ t('wishlist.addAndKeep') }}</v-btn>
+
+          <v-btn
+            color="primary"
+            :disabled="quantity < 1"
+            :loading="saving"
+            prepend-icon="mdi-check"
+            variant="flat"
+            @click="save(false)"
+          >{{ t('wishlist.addAndRemove') }}</v-btn>
+        </template>
+
         <v-btn
+          v-else
           color="primary"
           :disabled="quantity < 1"
           :loading="saving"
           prepend-icon="mdi-check"
           variant="flat"
-          @click="save"
+          @click="save(false)"
         >{{ t('purchase.save') }}</v-btn>
       </v-card-actions>
     </v-card>

@@ -1378,6 +1378,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/themes/find/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Known Sets
+         * @description Koľko setov appka pozná; hľadanie v Sériách nájde len medzi nimi.
+         */
+        get: operations["known_sets_api_v1_themes_find_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/find": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find Set
+         * @description Set podľa názvu či čísla, len medzi setmi, ktoré appka pozná; nič nevolá von.
+         */
+        get: operations["find_set_api_v1_themes_find_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/themes/years": {
         parameters: {
             query?: never;
@@ -1620,6 +1660,29 @@ export interface paths {
          *     ho neposiela, tam kúpa platí a Chcem sa vráti aj tak.
          */
         post: operations["add_wishlist_api_v1_wishlist_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/wishlist/themes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Wishlist Themes
+         * @description Voľby filtra Séria: série z katalógu s počtom setov podľa ostatných filtrov.
+         *
+         *     Len vlastná databáza, nič sa nesťahuje. ``theme`` sa berie, aby klient
+         *     poslal ten istý dotaz ako zoznamu, ale do počtov sa neráta.
+         */
+        get: operations["list_wishlist_themes_api_v1_wishlist_themes_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2421,6 +2484,8 @@ export interface components {
              * @default 0
              */
             missing_parts: number;
+            /** Price At */
+            price_at?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2661,6 +2726,11 @@ export interface components {
             manual_market_price_eur?: number | string | null;
             /** Note */
             note?: string | null;
+            /**
+             * Keep Wishlist
+             * @default false
+             */
+            keep_wishlist: boolean;
         };
         /** ItemCreatedOut */
         ItemCreatedOut: {
@@ -2815,6 +2885,11 @@ export interface components {
             manual_market_price_eur?: number | string | null;
             /** Note */
             note?: string | null;
+        };
+        /** KnownSetsOut */
+        KnownSetsOut: {
+            /** Count */
+            count: number;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -3731,6 +3806,21 @@ export interface components {
             /** Real Month */
             real_month?: string | null;
         };
+        /**
+         * ThemeFoundOut
+         * @description Set nájdený na stránke Série: kam patrí a či ho mám alebo chcem.
+         */
+        ThemeFoundOut: {
+            catalog: components["schemas"]["CatalogOut"];
+            /** Theme */
+            theme: string | null;
+            /** Year */
+            year: number | null;
+            /** Owned */
+            owned: number;
+            /** Wanted */
+            wanted: boolean;
+        };
         /** ThemeOut */
         ThemeOut: {
             /** Theme */
@@ -3982,6 +4072,18 @@ export interface components {
              * @default 0
              */
             missing_parts: number;
+            /** Price At */
+            price_at?: string | null;
+        };
+        /**
+         * WishThemeOut
+         * @description Séria vo filtri Chcem a koľko setov v nej je.
+         */
+        WishThemeOut: {
+            /** Value */
+            value: string;
+            /** Count */
+            count: number;
         };
         /** WishlistCreateRequest */
         WishlistCreateRequest: {
@@ -4019,6 +4121,13 @@ export interface components {
             target_reached: boolean;
             /** Distance Pct */
             distance_pct?: number | null;
+            /**
+             * Owned Count
+             * @default 0
+             */
+            owned_count: number;
+            /** Price At */
+            price_at?: string | null;
         };
         /**
          * WishlistUpdateRequest
@@ -4770,7 +4879,7 @@ export interface operations {
     list_items_api_v1_items_get: {
         parameters: {
             query?: {
-                sort?: "profit" | "profit_pct" | "cagr" | "value" | "purchase" | "purchased" | "year" | "parts" | "name" | "recent";
+                sort?: "profit" | "profit_pct" | "cagr" | "value" | "purchase" | "purchased" | "year" | "parts" | "name" | "recent" | "number" | "theme" | "quantity" | "condition" | "location" | "price_at";
                 /** @description Smer zoradenia; bez neho predvolený smer kľúča. */
                 dir?: ("asc" | "desc") | null;
                 status?: "owned" | "sold" | "all";
@@ -4875,7 +4984,7 @@ export interface operations {
         parameters: {
             query?: {
                 by?: "set" | "series";
-                sort?: "profit" | "profit_pct" | "cagr" | "value" | "purchase" | "purchased" | "year" | "parts" | "name" | "recent";
+                sort?: "profit" | "profit_pct" | "cagr" | "value" | "purchase" | "purchased" | "year" | "parts" | "name" | "recent" | "number" | "theme" | "quantity" | "condition" | "location" | "price_at";
                 /** @description Smer zoradenia; bez neho predvolený smer kľúča. */
                 dir?: ("asc" | "desc") | null;
                 status?: "owned" | "sold" | "all";
@@ -6935,6 +7044,57 @@ export interface operations {
             };
         };
     };
+    known_sets_api_v1_themes_find_count_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnownSetsOut"];
+                };
+            };
+        };
+    };
+    find_set_api_v1_themes_find_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeFoundOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     theme_years_api_v1_themes_years_get: {
         parameters: {
             query: {
@@ -7307,6 +7467,7 @@ export interface operations {
                 reached?: boolean;
                 retired?: boolean;
                 no_price?: boolean;
+                theme?: string[] | null;
             };
             header?: never;
             path?: never;
@@ -7364,6 +7525,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_wishlist_themes_api_v1_wishlist_themes_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                reached?: boolean;
+                retired?: boolean;
+                no_price?: boolean;
+                theme?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WishThemeOut"][];
+                };
             };
             /** @description Validation Error */
             422: {

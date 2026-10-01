@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { defaultDir } from '@/stores/collection'
 import { COLUMNS, rowFromGroup, rowFromItem, sortFromHeader } from './tableColumns'
 
 const column = (key: string) => COLUMNS.find(c => c.key === key)!
@@ -15,13 +16,25 @@ describe('zoradenie hlavičkou tabuľky', () => {
     expect(sortFromHeader(column('value'), once!)).toEqual({ sort: 'value', dir: null })
   })
 
-  it('stĺpec bez kľúča zoradenia nič nerobí', () => {
-    expect(sortFromHeader(column('location'), { sort: 'name', dir: null })).toBeNull()
+  it('fotka sa zoradiť nedá, nič nerobí', () => {
+    expect(sortFromHeader(column('image'), { sort: 'name', dir: null })).toBeNull()
   })
 
-  it('každý stĺpec so zoradením používa kľúč z registra servera', () => {
-    const keys = COLUMNS.map(c => c.sort).filter(Boolean)
-    expect(keys).toEqual(['name', 'year', 'purchase', 'value', 'profit', 'profit_pct', 'cagr'])
+  it('každý stĺpec okrem fotky radí kľúčom z registra servera', () => {
+    expect(COLUMNS.filter(c => !c.sort).map(c => c.key)).toEqual(['image'])
+    expect(COLUMNS.map(c => c.sort).filter(Boolean)).toEqual([
+      'number', 'name', 'theme', 'year', 'quantity', 'condition', 'location',
+      'purchase', 'value', 'price_at', 'profit', 'profit_pct', 'cagr',
+    ])
+  })
+
+  it('číslo, téma, stav a miesto začínajú od A, počet a dátum ceny od najväčšieho', () => {
+    for (const key of ['number', 'theme', 'condition', 'location'] as const) {
+      expect(defaultDir(key)).toBe('asc')
+    }
+    expect(defaultDir('quantity')).toBe('desc')
+    expect(defaultDir('price_at')).toBe('desc')
+    expect(sortFromHeader(column('number'), { sort: 'number', dir: null })).toEqual({ sort: 'number', dir: 'desc' })
   })
 })
 

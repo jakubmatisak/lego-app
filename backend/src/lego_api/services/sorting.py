@@ -3,6 +3,9 @@
 Používa ho zoznam kusov aj zoskupený zoznam (a neskôr tabuľka), aby sa
 „podľa zisku“ znamenalo všade to isté. Router nič neradí sám.
 
+Každý stĺpec tabuľky okrem fotky má kľúč: aj číslo (prirodzene, 10294-1
+pred 75192-1), téma, počet, stav, umiestnenie a dátum ceny.
+
 Prázdna hodnota (kus bez ceny, bez dátumu kúpy) ide vždy na koniec, v oboch
 smeroch. Inak by pri „zisk vzostupne“ boli navrchu kusy, o ktorých nevieme
 nič, a vyzerali by ako najhoršie.
@@ -10,12 +13,15 @@ nič, a vyzerali by ako najhoršie.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
-from lego_api.models import CatalogItem, ItemStatus
+from lego_api.models import CatalogItem, ItemCondition, ItemStatus
+from lego_api.services.collection import item_place
+from lego_api.services.filters import fold
 from lego_api.services.portfolio import ValuedItem, collection_cagr
 
 
@@ -51,6 +57,29 @@ def _profit_pct(v: ValuedItem) -> float | None:
     if profit is None or not purchase:
         return None
     return float(profit / purchase * 100)
+
+
+_DIGITS = re.compile(r"(\d+)")
+
+
+def natural(num: str) -> tuple[tuple[int, int | str], ...]:
+    """Číslo setu na porovnanie: číslice ako čísla („10294-1“ pred „75192-1“)."""
+    return tuple(
+        (0, int(part)) if part.isdigit() else (1, part.casefold()) for part in _DIGITS.split(num)
+    )
+
+
+#: Stav od nového v krabici po rozobratý, v poradí ako vo formulári.
+_CONDITION_RANK = {condition: rank for rank, condition in enumerate(ItemCondition)}
+
+
+def _price_at(v: ValuedItem) -> Any:
+    # Predaný kus dátum ceny v tabuľke nemá (pomlčka), preto ani tu.
+    return None if v.item.status == ItemStatus.SOLD else v.price_at
+
+
+def _place(v: ValuedItem) -> str | None:
+    return fold(item_place(v.item)) or None
 
 
 # --- hodnoty skupiny -----------------------------------------------------------------
@@ -95,6 +124,26 @@ def _head(fn: Callable[[CatalogItem], Any]) -> Callable[[Group], Any]:
     return lambda group: fn(group.head)
 
 
+def _owned(group: Group) -> list[ValuedItem]:
+    return [v for v in group.members if v.item.status == ItemStatus.OWNED]
+
+
+def _group_conditions(group: Group) -> tuple[int, ...] | None:
+    """Stavy kusov od najlepšieho: samé nové v krabici pred zmesou s postavenými."""
+    ranks = sorted(_CONDITION_RANK[v.item.condition] for v in _scope(group))
+    return tuple(ranks) or None
+
+
+def _group_place(group: Group) -> str | None:
+    """Ako bunka riadku: miesta vlastnených kusov podľa abecedy, čiarkou."""
+    places = sorted({p for v in _owned(group) if (p := item_place(v.item))})
+    return fold(", ".join(places)) or None
+
+
+def _group_price_at(group: Group) -> Any:
+    return max((v.price_at for v in _owned(group) if v.price_at), default=None)
+
+
 @dataclass(frozen=True, slots=True)
 class SortSpec:
     item: Callable[[ValuedItem], Any]
@@ -119,6 +168,23 @@ SORTS: dict[str, SortSpec] = {
         lambda v: v.catalog.name.casefold(), _head(lambda c: c.name.casefold()), descending=False
     ),
     "recent": SortSpec(lambda v: v.item.created_at, _latest(lambda v: v.item.created_at)),
+    # Ďalšie stĺpce tabuľky v Zbierke (klik na hlavičku).
+    "number": SortSpec(
+        lambda v: natural(v.item.catalog_num),
+        _head(lambda c: natural(c.catalog_num)),
+        descending=False,
+    ),
+    "theme": SortSpec(
+        lambda v: fold(v.catalog.theme) or None,
+        _head(lambda c: fold(c.theme) or None),
+        descending=False,
+    ),
+    "quantity": SortSpec(lambda _: 1, lambda g: len(_scope(g))),
+    "condition": SortSpec(
+        lambda v: _CONDITION_RANK[v.item.condition], _group_conditions, descending=False
+    ),
+    "location": SortSpec(_place, _group_place, descending=False),
+    "price_at": SortSpec(_price_at, _group_price_at),
 }
 SORT_KEYS: tuple[str, ...] = tuple(SORTS)
 

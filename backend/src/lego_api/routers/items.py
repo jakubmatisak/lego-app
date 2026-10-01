@@ -228,6 +228,7 @@ async def list_items(
             cagr_pct=v.cagr_pct(),
             categories=ctx.categories_by_item.get(v.item.id, []),
             missing_parts=parts_missing.get(v.item.id, 0),
+            price_at=v.price_at,
         )
         for v in valued
     ]
@@ -300,6 +301,10 @@ async def list_grouped(
                     cagr_pct=collection_cagr([by_id[i.id] for i in owned])[0],
                     categories=ctx.categories_by_item.get(group[0].id, []),
                     missing_parts=sum(parts_missing.get(i.id, 0) for i in owned),
+                    price_at=max(
+                        (by_id[i.id].price_at for i in owned if by_id[i.id].price_at),
+                        default=None,
+                    ),
                 ),
             )
         )
@@ -413,7 +418,8 @@ async def create_items(
         )
         session.add(item)
         created.append(item)
-    dropped = await drop_bought(session, user.id, created)
+    # „Nechať v Chcem“ potvrdil používateľ v otázke po kúpe; inak sa kúpené vyradí.
+    dropped = [] if payload.keep_wishlist else await drop_bought(session, user.id, created)
     await session.commit()
     for item in created:
         await session.refresh(item, ["catalog"])

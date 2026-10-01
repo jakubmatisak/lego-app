@@ -90,7 +90,7 @@ def normalize(code: str | None) -> str | None:
         return None
     value = str(code).strip().upper()
     if value not in SUPPORTED:
-        raise ValueError(f"Menu {code!r} appka nepozná. Na výber: {', '.join(SUPPORTED)}.")
+        raise ValueError(f"Mena {code!r} sa nedá zvoliť. Na výber: {', '.join(SUPPORTED)}.")
     return value
 
 

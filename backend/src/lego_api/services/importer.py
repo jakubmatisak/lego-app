@@ -117,7 +117,7 @@ async def create_batch(
             if row["pending"]:
                 row["pending"] = False
                 row["errors"].append(
-                    "Set nie je v katalógu appky. Na dohľadanie treba kľúč Rebrickable "
+                    "Set nie je v katalógu. Na dohľadanie treba kľúč Rebrickable "
                     "(Nastavenia → Dáta)."
                 )
         batch.progress_total = 0

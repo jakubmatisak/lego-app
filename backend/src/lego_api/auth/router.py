@@ -389,7 +389,16 @@ async def set_my_keys(
 
 
 #: Obrazovky, ktoré si pamätajú svoj stav. Iný kľúč server neprijme.
-PREFERENCE_KEYS = {"collection", "themes", "display", "form", "dashboard", "unlock"}
+PREFERENCE_KEYS = {
+    "collection",
+    "themes",
+    "display",
+    "form",
+    "dashboard",
+    "unlock",
+    "wishlist",
+    "minifigs",
+}
 #: Stav jednej obrazovky je pár filtrov, nie román.
 PREFERENCE_MAX_BYTES = 8_000
 

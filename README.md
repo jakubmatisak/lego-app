@@ -3,14 +3,15 @@
 **[English version below](#english)**
 
 Evidencia zbierky LEGO® setov pre jednu rodinu alebo pár známych, na vlastnom
-serveri. Zadáš alebo naskenuješ set, appka dotiahne názov, fotku, dieliky
-a sériu z katalógu, ty doplníš kúpnu cenu, stav a kde ho máš uložený. Potom
-vidíš trhovú hodnotu, zisk, ročný výnos a graf vývoja portfólia. Predané kusy
-ostávajú v evidencii, takže vidíš aj to, koľko si na predaji naozaj zarobil.
+serveri. Zadáš alebo naskenuješ set, Moje kocky dotiahnu názov, fotku,
+dieliky a sériu z katalógu, ty doplníš kúpnu cenu, stav a kde ho máš uložený.
+Potom vidíš trhovú hodnotu, zisk, ročný výnos a graf vývoja portfólia.
+Predané kusy ostávajú v evidencii, takže vidíš aj to, koľko si na predaji
+naozaj zarobil.
 
-Appka vznikla pre zberateľa, ktorý mal zbierku v tabuľke a chcel vedieť, čo
+Moje kocky vznikli pre zberateľa, ktorý mal zbierku v tabuľke a chcel vedieť, čo
 má, kde to má a koľko to dnes stojí. Nie je to obchod ani burza, len evidencia.
-Aktuálna verzia je **1.1.1**.
+Aktuálna verzia je **1.2.0**.
 
 - **Stránka projektu:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (zdroj v [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))
@@ -80,8 +81,8 @@ Aktuálna verzia je **1.1.1**.
   cena toho, čo vlastníš) a realizovaný (čistý z predajov, po poplatkoch
   a poštovnom). Nikdy sa nesčítajú do jedného čísla.
 - **Ročný výnos** kusu, série, zoznamu aj celej zbierky, od roka držania.
-- **Bez ceny pomlčka, nie 0 €.** Kým kus nemá trhovú cenu, appka ukáže
-  pomlčku alebo „cena neznáma“, nie 0 € a −100 %. Keď v skupine nemá cenu
+- **Bez ceny pomlčka, nie 0 €.** Kým kus nemá trhovú cenu, ukáže sa
+  pomlčka alebo „cena neznáma“, nie 0 € a −100 %. Keď v skupine nemá cenu
   ani jeden kus, pomlčku ukáže aj Prehľad, Výkonnosť a súčty; pri čiastočnej
   cene je hodnota z ocenených kusov a vedľa nej „bez ceny: N“. Rovnako súpis
   a odkaz na pozretie; export CSV nechá bunku prázdnu a predaj pole ceny
@@ -113,7 +114,7 @@ Aktuálna verzia je **1.1.1**.
 **Ostatné**
 
 - Viac účtov na jednej inštancii, každý so svojou zbierkou a kľúčmi.
-  Registráciu otvára a zatvára správca v appke.
+  Registráciu otvára a zatvára správca v Nastaveniach → Aplikácia.
 - **Zapamätať si prihlásenie na tomto počítači**: so zaškrtnutým políčkom
   ostaneš prihlásený aj po zatvorení prehliadača, 30 dní od poslednej
   návštevy. Bez neho prihlásenie skončí so zatvorením prehliadača alebo
@@ -123,8 +124,8 @@ Aktuálna verzia je **1.1.1**.
   počítač. Nastavenia zobrazenia sa pamätajú pri účte.
 - Prehľad spotreby volaní cudzích služieb a prepínače, čo sa z ktorej
   služby smie sťahovať.
-- Automatická záloha databázy pri každej aktualizácii appky a príkaz, ktorý
-  ju vráti.
+- Automatická záloha databázy pri každej aktualizácii a príkaz, ktorý ju
+  vráti.
 
 ## Rýchly štart cez Docker
 
@@ -148,9 +149,9 @@ na zväzku mimo obrazu, takže nové nasadenie ich nezmaže.
 Za HTTPS nastav v `.env` `COOKIE_SECURE=true`. Kamera na skenovanie ide len
 cez HTTPS alebo na `localhost`.
 
-Keď pošleš odkaz na appku alebo na verejnú zbierku cez Messenger, WhatsApp
-či e-mail, ukáže sa náhľad s obrázkom a názvom (Open Graph). Verejný odkaz
-ukáže meno a počet setov, sumy nikdy. Za proxy s vlastnou doménou nastav
+Keď pošleš odkaz na svoju inštanciu alebo na verejnú zbierku cez Messenger,
+WhatsApp či e-mail, ukáže sa náhľad s obrázkom a názvom (Open Graph). Verejný
+odkaz ukáže meno a počet setov, sumy nikdy. Za proxy s vlastnou doménou nastav
 `PUBLIC_URL` (napr. `https://kocky.example.sk`), aby mal náhľad správnu
 adresu obrázka.
 
@@ -167,7 +168,7 @@ Schéma databázy sa pri štarte sama posunie na najnovšiu verziu. Akú verziu
 máš, ukazuje Nastavenia → Aplikácia (vidí ich správca) aj `/api/v1/health`,
 napríklad `{"status": "ok", "version": "1.0.0"}`.
 
-**Automatická záloha.** Pri prvom štarte každej inej verzie appky
+**Automatická záloha.** Pri prvom štarte každej inej verzie
 (aktualizácia aj návrat na staršiu), aj keď sa schéma nemení, sa databáza
 najprv skopíruje do `data/backups/`, napríklad
 `lego-20261015-083000-v1.0.0-<revízia>.db`. Verzia v mene je tá, ktorá nad
@@ -179,21 +180,21 @@ bez zmeny.
 
 - Po každom úspešnom štarte, aj keď sa nič nezálohovalo, ostane posledných
   **5 záloh** a žiadna staršia než **90 dní**; ostatné sa zmažú. Iné súbory
-  v priečinku appka nechá tak.
+  v priečinku ostanú nedotknuté.
 - Kým štart padá (Docker ho skúša znova), nemaže sa nič a nové kópie
   pokazeného stavu nepribúdajú; stále platí záloha spred aktualizácie.
 - Nová inštalácia s prázdnou databázou sa nezálohuje.
 - Automatická záloha je len databáza, fotky v nej nie sú.
 - Zálohy obsahujú aj údaje účtov, ktoré sa medzitým zmazali, kým sa
   neprestriedajú, najdlhšie do prvého štartu po 90 dňoch. Spomínajú to aj
-  zásady ochrany súkromia v appke.
+  zásady ochrany súkromia.
 
 **Obnova zo zálohy.** Keby sa po aktualizácii niečo pokazilo:
 
-1. Zastav appku: `docker compose stop`. Kde je záloha spred aktualizácie,
+1. Zastav kontajner: `docker compose stop`. Kde je záloha spred aktualizácie,
    napíše aj log: `docker compose logs app` (cesta `/app/data/backups/`
    v kontajneri je na disku `data/backups/`).
-2. Vráť zálohu príkazom, kým appka stojí:
+2. Vráť zálohu príkazom, kým kontajner stojí:
 
    ```bash
    docker compose run --rm app python -m lego_api.cli restore-backup lego-20261015-083000-v1.0.0-<revízia>.db
@@ -202,13 +203,13 @@ bez zmeny.
    Stačí meno súboru z `data/backups/`, alebo celá cesta v kontajneri
    (`/app/data/backups/…`). Mimo Dockeru je to
    `cd backend && uv run python -m lego_api.cli restore-backup <záloha>`.
-   Súbor, ktorý nie je celá a čitateľná databáza appky, príkaz odmietne
+   Súbor, ktorý nie je celá a čitateľná databáza zbierky, príkaz odmietne
    a nič nezmení. Doterajšiu databázu nemaže: aj so zvyškami žurnálu
    (`lego.db-journal`, `-wal`, `-shm`) ju odloží do `data/backups/` ako
    `lego-<čas>-pred-obnovou.db`, kde sa zmaže ako ostatné zálohy, a zálohu
    skopíruje na jej miesto. Nakoniec napíše, z ktorej verzie záloha je.
 
-   Ručne, bez príkazu (appka ho má od verzie 1.0.1): zmaž
+   Ručne, bez príkazu (ten je od verzie 1.0.1): zmaž
    `data/lego.db-journal`, `data/lego.db-wal` a `data/lego.db-shm`, ak tam
    sú, inak by SQLite zvyšok žurnálu pri ďalšom otvorení vrátil do
    obnoveného súboru a pokazil ho. Potom skopíruj zálohu na miesto databázy,
@@ -223,7 +224,7 @@ bez zmeny.
    `git checkout main` a `git pull`.
 
 **Ručná záloha** všetkého, databázy aj fotiek, je kópia priečinka `data/`,
-najistejšie pri zastavenej appke:
+najistejšie pri zastavenom kontajneri:
 
 ```bash
 docker compose stop
@@ -233,12 +234,12 @@ docker compose start
 
 ## Kľúče k službám
 
-Appka funguje aj bez kľúčov; vtedy je to evidencia, kde si názov setu a cenu
-vyplníš sám. Každá služba pridá niečo navyše. Kde by údaj doplnila služba,
-ktorú nemáš pripojenú, appka to povie a ukáže, kde ju pripojiť; Prehľad má
-kartu „Čo ešte appka vie“ (dá sa skryť).
+Moje kocky fungujú aj bez kľúčov; vtedy je to evidencia, kde si názov setu
+a cenu vyplníš sám. Každá služba pridá niečo navyše. Kde by údaj doplnila
+služba, ktorú nemáš pripojenú, Moje kocky to povedia a ukážu, kde ju pripojiť;
+Prehľad má kartu „Čo ešte Moje kocky vedia“ (dá sa skryť).
 
-Kľúče nie sú v `.env`. **Každý používateľ si svoje vloží v appke**,
+Kľúče nie sú v `.env`. **Každý používateľ si svoje vloží sám**,
 v Nastaveniach na karte Dáta. Ukladajú sa zašifrované pri jeho účte a von
 sa už nedostanú, rozhranie ukáže len ich koncovku. Šifra je odvodená
 z `JWT_SECRET`; po jeho zmene treba kľúče zadať znova. Každý kľúč má vlastnú
@@ -311,7 +312,7 @@ cd frontend && npm run type-check && npm run lint && npm test
 ```
 
 Testy poskytovateľov bežia proti uloženým odpovediam, bez siete a bez kľúčov;
-ceny BrickEconomy v nich sú vymyslené. Verzia appky má jeden zdroj, `version`
+ceny BrickEconomy v nich sú vymyslené. Verzia má jeden zdroj, `version`
 v `backend/pyproject.toml`; pri vydaní sa zvýši aj v `uv.lock`,
 `frontend/package.json` a `frontend/package-lock.json`, zhodu stráži
 `tests/test_version.py`. README test nekontroluje, riadok „Aktuálna verzia“
@@ -350,12 +351,12 @@ a zobrazujú sa len na nekomerčné informačné účely v súlade s pravidlami
 - **Vyhľadanie podľa čiarového kódu (záložné):** [UPCitemdb](https://www.upcitemdb.com).
 - **Inflácia (HICP Slovensko):** Zdroj: Eurostat, dátový súbor
   [prc_hicp_minr](https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_minr/default/table).
-  Appka z indexu počíta prepočet cien do dnešných peňazí; je to úprava dát,
+  Z indexu sa počíta prepočet cien do dnešných peňazí; je to úprava dát,
   za ktorú Eurostat nezodpovedá
   ([podmienky opätovného použitia](https://ec.europa.eu/eurostat/help/copyright-notice)).
 - **Kurzy mien:** Zdroj: ECB, referenčné výmenné kurzy eura
   ([eurofxref](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html)).
-  Appka nimi len prepočítava sumy, kurzy nemení.
+  Kurzami sa len prepočítavajú sumy, samotné kurzy sa nemenia.
 
 Kľúče k službám patria jednotlivým používateľom a ich použitie sa riadi
 podmienkami danej služby.
@@ -392,7 +393,7 @@ výrobkov LEGO; tie patria svojim vlastníkom.
 
 ## Právne poznámky pre prevádzku
 
-Nie je to právna rada, len to, ako appka rieši podmienky služieb (k septembru
+Nie je to právna rada, len to, ako Moje kocky riešia podmienky služieb (k septembru
 2026). Podrobne v [specu](docs/superpowers/specs/2026-09-28-licencne-cista-architektura-design.md).
 
 **Kým účet nezadá vlastný kľúč, zo služby nevidí nič.**
@@ -406,14 +407,14 @@ Nie je to právna rada, len to, ako appka rieši podmienky služieb (k septembru
   služieb neukazujú nič.
 - **UPCitemdb a Eurostat** nemajú kľúč: sú predvolene vypnuté, účet ich
   zapne sám v Nastaveniach → Dáta. Zdroj Eurostatu je uvedený vyššie.
-- **Obrázky setov** idú cez server appky, takže tieto služby nevidia IP
+- **Obrázky setov** idú cez server inštancie, takže tieto služby nevidia IP
   adresy návštevníkov.
 - **GDPR:** stránka Zásady ochrany súkromia (prevádzkovateľa vyplní
   správca v Nastaveniach → Aplikácia), potvrdenie pri registrácii, export
   všetkých údajov a zmazanie účtu v Nastaveniach → Účet. Fotky sa ukladajú
   zmenšené a bez polohy GPS. Zásady spomínajú aj zálohy pri aktualizácii;
-  po zmene ich textu appka každému účtu ukáže oznámenie, kým ho nepotvrdí.
-  Appka používa len nevyhnutné cookie na prihlásenie (na 30 dní, len keď
+  po zmene ich textu sa každému účtu ukáže oznámenie, kým ho nepotvrdí.
+  Používa sa len nevyhnutné cookie na prihlásenie (na 30 dní, len keď
   si používateľ zaškrtne zapamätanie), bez analytiky a reklamy, takže lišta
   so súhlasom netreba.
 
@@ -448,7 +449,7 @@ actually made on each sale.
 The app was built for a collector who kept everything in a spreadsheet and
 wanted to know what he has, where it is and what it is worth today. It is not
 a shop or a marketplace, just a record of the collection. The current version
-is **1.1.1**.
+is **1.2.0**.
 
 - **Project website:** [jakubmatisak.github.io/moje-kocky](https://jakubmatisak.github.io/moje-kocky/)
   (source at [github.com/jakubmatisak/moje-kocky](https://github.com/jakubmatisak/moje-kocky))

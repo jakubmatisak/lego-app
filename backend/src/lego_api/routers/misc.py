@@ -20,6 +20,7 @@ from lego_api.schemas import (
     WishlistCreateRequest,
     WishlistOut,
     WishlistUpdateRequest,
+    WishThemeOut,
 )
 from lego_api.services.account import delete_account
 from lego_api.services.app_settings import (
@@ -38,6 +39,7 @@ from lego_api.services.wishlist import (
     added_at,
     arrange,
     still_bought,
+    theme_options,
     wishlist_prices,
 )
 
@@ -67,11 +69,36 @@ async def list_wishlist(
     reached: bool = False,
     retired: bool = False,
     no_price: bool = False,
+    theme: Annotated[list[str] | None, Query()] = None,
 ) -> list[WishlistOut]:
     """Predvolene najbližšie k cieľovej cene navrch (pod cieľom najprv)."""
     rows = await wishlist_prices(session, user.id)
-    f = WishFilter(q=q, reached=reached, retired=retired, no_price=no_price)
+    f = WishFilter(
+        q=q, reached=reached, retired=retired, no_price=no_price, themes=tuple(theme or ())
+    )
     return arrange(rows, f, sort, direction)
+
+
+@router.get("/wishlist/themes", response_model=list[WishThemeOut])
+async def list_wishlist_themes(
+    user: CurrentUser,
+    session: SessionDep,
+    q: str | None = None,
+    reached: bool = False,
+    retired: bool = False,
+    no_price: bool = False,
+    theme: Annotated[list[str] | None, Query()] = None,
+) -> list[WishThemeOut]:
+    """Voľby filtra Séria: série z katalógu s počtom setov podľa ostatných filtrov.
+
+    Len vlastná databáza, nič sa nesťahuje. ``theme`` sa berie, aby klient
+    poslal ten istý dotaz ako zoznamu, ale do počtov sa neráta.
+    """
+    rows = await wishlist_prices(session, user.id)
+    f = WishFilter(
+        q=q, reached=reached, retired=retired, no_price=no_price, themes=tuple(theme or ())
+    )
+    return [WishThemeOut(value=value, count=count) for value, count in theme_options(rows, f)]
 
 
 @router.post(

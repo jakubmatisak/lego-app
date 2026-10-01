@@ -18,16 +18,26 @@ import { useNotifyStore } from '@/stores/notify'
 
 export type StatusFilter = 'owned' | 'sold' | 'all'
 
+/**
+ * Zoradenia vo výbere nad kartami. Ďalšie kľúče má len hlavička tabuľky
+ * (číslo, téma, počet…), vo výbere by len zavadzali.
+ */
+export const MENU_SORT_KEYS = [
+  'profit', 'profit_pct', 'cagr', 'value', 'purchase', 'purchased', 'year', 'parts', 'name', 'recent',
+] as const
 /** Kľúče zoradenia, rovnaké ako na serveri (services/sorting.py). */
 export const SORT_KEYS = [
-  'profit', 'profit_pct', 'cagr', 'value', 'purchase', 'purchased', 'year', 'parts', 'name', 'recent',
+  ...MENU_SORT_KEYS, 'number', 'theme', 'quantity', 'condition', 'location', 'price_at',
 ] as const
 export type SortKey = (typeof SORT_KEYS)[number]
 export type SortDir = 'asc' | 'desc'
 
-/** Predvolený smer kľúča: názov od A, všetko ostatné od najväčšieho a najnovšieho. */
+/** Kľúče, ktoré začínajú od A (texty a stav od nového); ostatné od najväčšieho a najnovšieho. */
+const ASCENDING = new Set<SortKey>(['name', 'number', 'theme', 'condition', 'location'])
+
+/** Predvolený smer kľúča. Rovnaký ako `descending` v services/sorting.py. */
 export function defaultDir (key: SortKey): SortDir {
-  return key === 'name' ? 'asc' : 'desc'
+  return ASCENDING.has(key) ? 'asc' : 'desc'
 }
 /**
  * Karty setov, alebo každý kus zvlášť. Zoskupenie podľa série figúrok

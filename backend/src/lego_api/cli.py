@@ -73,19 +73,19 @@ def _restore_backup(name: str, database: str | None) -> None:
         print(f"Zvyšky žurnálu sú odložené {where} ({', '.join(journal)}), do obnovenej nejdú.")
     if restored.moved:
         print(
-            "Odložené súbory zmaže štart appky ako ostatné zálohy: ostane "
+            "Odložené súbory zmaže ďalší štart ako ostatné zálohy: ostane "
             f"{db_backup.KEEP} posledných, žiadna staršia než {db_backup.MAX_AGE_DAYS} dní."
         )
     if restored.version:
         print(
             f"Záloha je z verzie {restored.version} (revízia {restored.revision}). Ďalej "
-            f"spusti appku v tejto verzii, napríklad git checkout v{restored.version} "
+            f"spusti Moje kocky v tejto verzii, napríklad git checkout v{restored.version} "
             "a docker compose up --build -d. Novšia verzia by databázu pri štarte "
             "znova zmigrovala."
         )
     else:
         print(
-            f"Záloha nemá zapísanú verziu appky (revízia {restored.revision}), je "
+            f"Záloha nemá zapísanú verziu (revízia {restored.revision}), je "
             "z inštalácie spred verzie 1.0.0. Ďalej vráť kód na commit tesne pred "
             "„Moje kocky 1.0.0“ (git log --oneline) a spusti docker compose up --build -d. "
             "Novšia verzia by databázu pri štarte znova zmigrovala."
@@ -101,7 +101,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("recompress-photos", help="Zmenší fotky spred kompresie na JPEG do 1 MB")
     restore = sub.add_parser(
         "restore-backup",
-        help="Vráti zálohu databázy na jej miesto, doterajšiu odloží (appka musí stáť)",
+        help="Vráti zálohu databázy na jej miesto, doterajšiu odloží (server musí stáť)",
     )
     restore.add_argument("backup", help="Súbor zálohy: cesta, alebo meno v priečinku backups")
     restore.add_argument("--database", help="Kam zálohu vrátiť; predvolene podľa DATABASE_URL")

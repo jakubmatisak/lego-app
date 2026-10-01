@@ -242,6 +242,21 @@ názvu, nielen podľa nula dielikov: kompletná sada má niekedy dieliky všetk�
 kusov. Ukladajú sa do `blind_series` s kategóriou; členovia sú `kind=set`,
 cenia sa ako sety. Minifigúrky ostávajú v `cmf_series`, oddelene.
 
+**Chcem: séria z katalógu, štítok V zbierke a upozornenie pri pridaní.**
+Filter Séria (`WishFilter.themes`, `GET /wishlist/themes` s počtami podľa
+ostatných filtrov, `__none__` = bez série) berie tému z katalógu, nič sa
+nevypĺňa ani nesťahuje. `WishlistOut.owned_count` dáva štítok „V zbierke“.
+Dialóg Pridať do zoznamu upozorní pod číslom na set v zbierke či v Chcem
+(`composables/useOwnedHint.ts`, len `GET /catalog/{num}/ownership`), riadok
+má miesto vždy, dialóg neposkočí. Kúpa z Chcem („Kúpil som“) a Pridať set
+pri sete z Chcem majú dve tlačidlá: „Pridať a odstrániť z Chcem“ a „Pridať
+a nechať v Chcem“ (pošle `keep_wishlist`, server set nevyradí; Chcem potom
+karty načíta, aby bol hneď vidieť štítok). Automatické uloženie po skene set
+vyradí ako doteraz, Späť ostáva. Filter Séria je čip s ponukou, ako ostatné
+čipy. Chcem má karty aj tabuľku, voľba v `preferences.wishlist`. Figúrky
+rovnako, voľba v `preferences.minifigs` (`list` a `series`, `useMinifigsView`);
+akcie chýbajúcej figúrky sú `GhostActions.vue` pre kartu aj riadok.
+
 **„Kúpil som“ je jeden dialóg pre všetko, z Chcem vyraďuje server.**
 `components/PurchaseDialog.vue` pridá do zbierky vec, ktorú katalóg už
 pozná, z Chcem aj z chýbajúcej figúrky; Chcem sám nemaže. Kúpené vyradí
@@ -336,9 +351,13 @@ minifigúrky.
 
 **Zoradenie je jeden register, `services/sorting.py`.** Desať kľúčov
 (zisk v € a %, ročný výnos, hodnota, kúpna cena, dátum kúpy, rok, dieliky,
-názov, pridané) so smerom `dir`. Zoznam kusov aj zoskupený zoznam idú cez
+názov, pridané) a šesť len z hlavičky tabuľky (číslo prirodzene, téma,
+kusy, stav, umiestnenie, dátum ceny) so smerom `dir`. Zoznam kusov aj zoskupený zoznam idú cez
 neho; router nič neradí sám (zoskupený zoznam kedysi zoradenie ignoroval).
 Prázdna hodnota (bez ceny, bez dátumu) je vždy na konci, v oboch smeroch.
+Každá tabuľka radí klikom na hlavičku (okrem fotky a akcií) cez
+`components/SortHeader.vue` a `utils/tableSort.ts`; kde radí klient,
+`sortRows` dá prázdne tiež na koniec.
 
 **Filtre sa skladajú: v skupine ALEBO, medzi skupinami A.** Počet pri voľbe
 ráta s ostatnými skupinami, nie s vlastnou, inak by po zaškrtnutí jednej
@@ -557,6 +576,13 @@ chýba môj set (stará vlna, ktorú brána nepustila stiahnuť znova):
 `ThemeWaveOut.exact` je False, počty aj sety vlny ho rátajú ako `years()`
 a otvorený rok čip neprepne na presný. Existujúcim setom
 Brickset nič neprepisuje, len dopĺňa chýbajúce.
+
+**Hľadanie setu v Sériách nevolá von.** `GET /themes/find?q=` hľadá podľa
+názvu, čísla či témy len v katalógu (a vlnách Brickset, ktoré účet vidí),
+bez figúrok zo sérií a sáčkov (`themes.py::_known_sets`); tému a rok dáva
+`assign`, ako ich rátajú Série. Upozornenie nad poľom (`ThemeSetSearch.vue`)
+povie riadkom pod poľom, že hľadá len medzi známymi setmi, aj koľko ich je
+(`GET /themes/find/count`).
 
 **UPCitemdb je posledná možnosť.** Rebrickable kódy
 nemá a BrickEconomy podľa kódu hľadať nevie (kód len posiela v odpovedi
@@ -805,7 +831,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 714 testov, frontend 310. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 735 testov, frontend 363. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá

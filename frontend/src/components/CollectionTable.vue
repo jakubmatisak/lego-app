@@ -2,19 +2,24 @@
   /**
    * Zbierka ako tabuľka. `v-data-table-virtual` kreslí len riadky na
    * obrazovke, takže aj 1500 riadkov sa posúva plynulo. Radí server: klik
-   * na hlavičku zmení kľúč a smer v store (`sortFromHeader`), tabuľka sama
-   * neradí nič. Pri zoskupení je riadok set alebo séria, pri „každom kuse“
-   * kus. V režime výberu klik riadok označí, inak otvorí detail setu.
+   * na hlavičku (každý stĺpec okrem fotky, `SortHeader`) zmení kľúč a smer
+   * v store (`sortFromHeader`), tabuľka sama neradí nič. Pri zoskupení je
+   * riadok set alebo séria, pri „každom kuse“ kus. V režime výberu klik riadok označí, inak otvorí detail setu.
    */
   import type { Selection } from '@/composables/useSelection'
+  import type { SortDir } from '@/stores/collection'
   import type { TableRow } from '@/utils/tableColumns'
   import type { VNodeRef } from 'vue'
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { VDataTable, VDataTableVirtual } from 'vuetify/components'
+  import SetImage from '@/components/SetImage.vue'
+  import SortHeader from '@/components/SortHeader.vue'
   import { defaultDir, useCollectionStore } from '@/stores/collection'
+  import { imageSrc } from '@/utils/imageSrc'
   import { COLUMNS, rowFromGroup, rowFromItem, sortFromHeader } from '@/utils/tableColumns'
+  import { headerDir } from '@/utils/tableSort'
 
   /**
    * `fill`: široká obrazovka, tabuľka vyplní výšku výsledkov a posúva sa
@@ -41,11 +46,11 @@
     width: column.width,
   })))
 
-  function sortIcon (key: string): string | null {
+  /** Smer šípky v hlavičke stĺpca, alebo null, keď sa podľa neho neradí. */
+  function columnDir (key: string): SortDir | null {
     const column = COLUMNS.find(c => c.key === key)
-    if (!column?.sort || column.sort !== collection.sort) return null
-    const dir = collection.sortDir ?? defaultDir(collection.sort)
-    return dir === 'asc' ? 'mdi-arrow-up' : 'mdi-arrow-down'
+    if (!column?.sort) return null
+    return headerDir(column.sort, { sort: collection.sort, dir: collection.sortDir }, defaultDir)
   }
 
   function onHeader (key: string): void {
@@ -78,6 +83,10 @@
     router.push({ name: 'set-detail', params: { num: row.num } })
   }
 
+  /** Výška riadku s fotkou; virtuálna tabuľka ju potrebuje na odhad posúvania. */
+  const PHOTO = 64
+  const ROW_HEIGHT = 77
+
   function conditionText (conditions: Record<string, number>): string {
     const entries = Object.entries(conditions)
     if (entries.length === 1) return t(`condition.${entries[0]![0]}`)
@@ -96,19 +105,20 @@
       :height="fill ? '100%' : undefined"
       :hide-default-footer="!fill"
       hover
-      :item-height="fill ? 41 : undefined"
+      :item-height="fill ? ROW_HEIGHT : undefined"
       item-value="key"
       :items="rows"
       :items-per-page="fill ? undefined : -1"
     >
       <template v-for="column in COLUMNS" :key="column.key" #[`header.${column.key}`]="{ column: header }">
-        <span
-          :class="{ 'collection-table__sortable': column.sort }"
-          @click="onHeader(column.key)"
-        >
-          {{ header.title }}
-          <v-icon v-if="sortIcon(column.key)" :icon="sortIcon(column.key)!" size="x-small" />
-        </span>
+        <SortHeader
+          v-if="column.sort"
+          :dir="columnDir(column.key)"
+          :title="header.title ?? ''"
+          @sort="onHeader(column.key)"
+        />
+
+        <template v-else>{{ header.title }}</template>
       </template>
 
       <!--
@@ -122,7 +132,11 @@
           :class="{ 'collection-table__row--selected': selection.active.value && selected(slot.item) }"
           @click="onRow(slot.item)"
         >
-          <!-- Tabuľka je na prehľad čísel, fotky sú na kartách. -->
+          <!-- Malá fotka, nech sa set spozná; veľká je na kartách a v detaile. -->
+          <td class="collection-table__photo">
+            <SetImage :alt="slot.item.name" rounded="sm" :size="PHOTO" :src="imageSrc(slot.item.image) ?? undefined" />
+          </td>
+
           <td class="text-no-wrap">
             <v-icon
               v-if="selection.active.value"
@@ -141,6 +155,7 @@
           <td>{{ slot.item.location }}</td>
           <td class="text-end text-no-wrap">{{ slot.item.purchase }}</td>
           <td class="text-end text-no-wrap">{{ slot.item.value }}</td>
+          <td class="text-end text-no-wrap text-medium-emphasis">{{ slot.item.priceAt }}</td>
 
           <td
             class="text-end text-no-wrap"
@@ -175,7 +190,7 @@
    */
   .collection-table :deep(table) {
     table-layout: fixed;
-    min-width: 1400px;
+    min-width: 1608px;
   }
 
   /* Hlavička sa nesmie lámať („Kus / y“), šírky sú na to dosť veľké. */
@@ -189,13 +204,14 @@
     white-space: nowrap;
   }
 
-  .collection-table__sortable {
-    cursor: pointer;
-    user-select: none;
-  }
-
   .collection-table__row {
     cursor: pointer;
+  }
+
+  /* Rovnako vysoké riadky ako tabuľka v Chcem. */
+  .collection-table__photo {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
   }
 
   .collection-table__row--selected {

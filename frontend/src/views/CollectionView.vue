@@ -37,10 +37,10 @@
   import { usePageLoad } from '@/composables/usePageLoad'
   import { createSelection } from '@/composables/useSelection'
   import { useAuthStore } from '@/stores/auth'
-  import { defaultDir, groupingFrom, SORT_KEYS, useCollectionStore } from '@/stores/collection'
+  import { defaultDir, groupingFrom, MENU_SORT_KEYS, SORT_KEYS, useCollectionStore } from '@/stores/collection'
   import { hasStaleKeys, useFilterStore } from '@/stores/filters'
   import { useProfileStore } from '@/stores/preferences'
-  import { exactMoney, money } from '@/utils/format'
+  import { exactMoney, money, shortDate } from '@/utils/format'
   import { placeLabel } from '@/utils/place'
   import { figuresRoute } from '@/utils/series'
 
@@ -63,7 +63,16 @@
   const panelOpen = ref(true)
   const managerOpen = ref(false)
 
-  const sortOptions = computed(() => SORT_KEYS.map(value => ({ value, title: t(`collection.sort.${value}`) })))
+  /**
+   * Výber nad kartami má len hlavné zoradenia. Kľúč z hlavičky tabuľky
+   * (číslo, téma, stav…) sa doň pridá, len kým platí, nech výber ukáže,
+   * podľa čoho sa radí.
+   */
+  const sortOptions = computed(() => {
+    const keys: SortKey[] = [...MENU_SORT_KEYS]
+    if (!keys.includes(collection.sort)) keys.push(collection.sort)
+    return keys.map(value => ({ value, title: t(`collection.sort.${value}`) }))
+  })
 
   /** Smer, ktorý práve platí: otočený, alebo predvolený pre kľúč. */
   const effectiveDir = computed(() => collection.sortDir ?? defaultDir(collection.sort))
@@ -458,8 +467,14 @@
           variant="outlined"
           @update:model-value="value => setView(value === 'table')"
         >
-          <v-btn icon="mdi-view-grid-outline" :title="t('collection.viewCards')" value="cards" />
-          <v-btn icon="mdi-table" :title="t('collection.viewTable')" value="table" />
+          <!-- Pri jednotlivých kusoch sú „karty“ zoznam pod sebou, ikona to musí povedať. -->
+          <v-btn
+            :icon="collection.grouping === 'item' ? 'mdi-view-list-outline' : 'mdi-view-module-outline'"
+            :title="t(collection.grouping === 'item' ? 'collection.viewList' : 'collection.viewCards')"
+            value="cards"
+          />
+
+          <v-btn icon="mdi-table-large" :title="t('collection.viewTable')" value="table" />
         </v-btn-toggle>
 
         <v-btn-toggle
@@ -468,8 +483,15 @@
           mandatory
           variant="outlined"
         >
-          <v-btn value="set">{{ t('collection.groupBy.set') }}</v-btn>
-          <v-btn value="item">{{ t('collection.groupBy.item') }}</v-btn>
+          <v-btn value="set">
+            {{ t('collection.groupBy.set') }}
+            <v-tooltip activator="parent" location="bottom" :text="t('collection.groupBy.setHint')" />
+          </v-btn>
+
+          <v-btn value="item">
+            {{ t('collection.groupBy.item') }}
+            <v-tooltip activator="parent" location="bottom" :text="t('collection.groupBy.itemHint')" />
+          </v-btn>
         </v-btn-toggle>
       </div>
 
@@ -561,6 +583,10 @@
 
                   <div class="text-body-small" :class="pieceProfitClass(item)">
                     {{ pieceProfit(item) }}
+                  </div>
+
+                  <div v-if="item.status !== 'sold' && item.price_at" class="text-body-small text-medium-emphasis">
+                    {{ t('collection.priceAt', { date: shortDate(item.price_at) }) }}
                   </div>
                 </div>
               </template>

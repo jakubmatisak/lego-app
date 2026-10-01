@@ -800,7 +800,9 @@ Podrobnosti:
   `collection_set_count`, `collection_item_count`, `collection_sold_count`.
 - Hľadanie bez diakritiky v názve, čísle, téme, podtéme, umiestnení,
   obchode, poznámke a štítkoch (všetky slová musia sedieť).
-- Zoradenie desiatimi spôsobmi so smerom (register `services/sorting.py`),
+- Zoradenie so smerom (register `services/sorting.py`): desať kľúčov vo
+  výbere nad kartami a ďalších šesť z hlavičky tabuľky (číslo prirodzene,
+  téma bez diakritiky, počet kusov, stav, umiestnenie, dátum ceny);
   prázdne hodnoty vždy na konci; tlačidlo Filtre s počtom aktívnych filtrov.
 - Prepínač vlastnené / predané / všetko a zoskupenie podľa setu alebo
   kusu.
@@ -822,8 +824,9 @@ Podrobnosti:
   Do výšky rastú len výsledky, riadky nad nimi majú vlastnú výšku.
 - **Karty alebo tabuľka** (pamätá sa pri účte). Tabuľka
   (`CollectionTable.vue`, `v-data-table-virtual`) má stĺpce číslo, názov,
-  téma, rok, kusy, stav, umiestnenie, kúpené, hodnota, zisk, %, ročne;
-  klik na hlavičku radí cez server (`utils/tableColumns.ts`).
+  téma, rok, kusy, stav, umiestnenie, kúpené, hodnota, cena z, zisk, %,
+  ročne; klik na hlavičku každého stĺpca okrem fotky radí cez server
+  (`utils/tableColumns.ts`), v Sety spolu aj v Jednotlivých kusoch.
 - **Hromadná úprava:** „Vybrať na úpravu“, začiarkávatká na kartách,
   riadkoch aj v tabuľke, „Vybrať všetko“ = celý výsledok filtra. Akcie:
   umiestnenie, zoznam, stav, príznak pridať či odobrať, kategória zaradiť
@@ -912,6 +915,8 @@ Podrobnosti:
 - Kategórie v záložkách (minifigúrky a blind-box série), filter (aj
   „skoro kompletné“: chýbajú najviac 2), zoradenie podľa abecedy, roku
   a „najmenej chýba“, úplnosť každej série (`utils/seriesList.ts`).
+  Tabuľka radí aj podľa Mám, Chýba a Kompletnosť; tabuľka jednej série
+  podľa čísla, figúrky, stavu a Chcem.
 - **Séria** (`/figurky/:num`): mám a nemám. Chýbajúca figúrka je
   prerušovaná karta s „Chcem“ a „Mám ju“. „Mám všetky“ zadá celú sériu
   jednou sumou, rozpočítanou na centy. „Kusy série“ vedie do detailu série
@@ -932,7 +937,9 @@ a sety zvoleného roku.
 cieľová a trhová cena a vzdialenosť od cieľa
 (`distance_pct`). Radí a filtruje server (`GET /wishlist?sort=distance|
 market|target|name|theme|added&dir=&q=&reached=&retired=&no_price=`),
-predvolene najbližšie k cieľu navrch, prázdne hodnoty na konci. „Kúpil som“ presunie položku do zbierky, bez hľadania.
+predvolene najbližšie k cieľu navrch, prázdne hodnoty na konci. Hlavička
+tabuľky (Set, Séria, Trh teraz, Cieľ, Od cieľa) mení to isté zoradenie
+ako výber nad kartami. „Kúpil som“ presunie položku do zbierky, bez hľadania.
 Z Chcem ju vyradí server, rovnako ako každé iné pridanie kusu (Pridať set
 číslom aj skenom, Mám ju, Mám všetky, Ďalší kus, import, určenie figúrky
 z rozbaleného sáčku): porovnáva sa
@@ -1070,6 +1077,31 @@ Pravidlá API:
   Formuláre sú v nej užšie, širokú tabuľku má len náhľad importu.
 - **Mriežka kariet** sa riadi dostupnou šírkou (`CardGrid`), nie
   breakpointmi.
+- **Každá tabuľka radí klikom na hlavičku**, každý stĺpec okrem fotky
+  a akcií. Hlavička je všade `components/SortHeader.vue` (názov a šípka
+  pri zoradenom stĺpci, aj klávesnicou), klik ide cez
+  `utils/tableSort.ts::nextSort`: prvý klik dá predvolený smer stĺpca
+  (texty a stav od A, sumy a počty od najväčšieho, dátumy od najnovšieho),
+  druhý ho otočí; predvolený smer sa ukladá ako `null`. Prázdna hodnota
+  (bez ceny, bez roka, bez témy, nestiahnutá séria) je vždy na konci,
+  v oboch smeroch. Kde radí server, mení sa len kľúč a smer:
+  - Zbierka (`sort` a `dir` v adrese, register `services/sorting.py`);
+  - Chcem (to isté `view.sort` a `view.dir` ako výber nad kartami).
+
+  Inde radí klient cez `sortRows`, so stavom len v pamäti stránky:
+  - Figúrky, zoznam sérií: kľúč nesie smer (`nameAsc`, `ownedDesc`…), preto
+    ostáva v adrese ako doteraz (`utils/seriesList.ts::seriesSortFromHeader`);
+  - Figúrky, jedna séria: číslo prirodzene, figúrka, stav (vlastnené alebo
+    chýbajúce navrchu), Chcem (`sortMembers`), platí aj pre karty;
+  - Overiť cenu (`utils/priceChecks.ts`, v-data-table neradí sama, lebo by
+    prázdnu cenu dala navrch), Výkonnosť a Predaje na Prehľade (predvolene
+    ako server; skupina bez ceny a bez témy na konci), náhľad importu
+    (`utils/importRows.ts`, predvolene riadok súboru) a história volaní
+    v limitoch služieb (predvolene najnovšie).
+
+  Výber zoradenia nad kartami (Zbierka, Figúrky) má len hlavné kľúče;
+  kľúč z hlavičky sa doň pridá, len kým platí. Tabuľka v Zásadách
+  ochrany súkromia neradí, je to text zásad s pevným poradím.
 - **Vlastné komponenty treba importovať.** Chýbajúci import sa prejaví
   prázdnym miestom bez chyby.
 - **Svetlý aj tmavý režim.** Primárna farba je LEGO červená `#D01012`,

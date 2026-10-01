@@ -1,4 +1,14 @@
 <script setup lang="ts">
+  import type { CatalogDetail, ItemCondition, ItemPurpose, RemovedWish } from '@/api/types'
+  import { computed, onMounted, ref } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRoute, useRouter } from 'vue-router'
+  import { api, errorMessage } from '@/api/client'
+  import { CONDITIONS, FLAGS, PURPOSES } from '@/api/types'
+  import BarcodeScanner from '@/components/BarcodeScanner.vue'
+  import CategoryPicker from '@/components/CategoryPicker.vue'
+  import CurrencySelect from '@/components/CurrencySelect.vue'
+  import DateField from '@/components/DateField.vue'
   /**
    * Pridanie setu. Po zadaní čísla sa dotiahnu metadáta a keď je set už
    * v zbierke, ukáže sa nad náhľadom výrazný pás, nie poznámka v texte.
@@ -26,16 +36,6 @@
    * Pri automatickom uložení je to jedno oznámenie a jedno Späť: vráti kusy
    * aj Chcem, stav pred skenom.
    */
-  import type { CatalogDetail, ItemCondition, ItemPurpose, RemovedWish } from '@/api/types'
-  import { computed, onMounted, ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { useRoute, useRouter } from 'vue-router'
-  import { api, errorMessage } from '@/api/client'
-  import { CONDITIONS, FLAGS, PURPOSES } from '@/api/types'
-  import BarcodeScanner from '@/components/BarcodeScanner.vue'
-  import CategoryPicker from '@/components/CategoryPicker.vue'
-  import CurrencySelect from '@/components/CurrencySelect.vue'
-  import DateField from '@/components/DateField.vue'
   import KeyHint from '@/components/KeyHint.vue'
   import PlaceFields from '@/components/PlaceFields.vue'
   import SetImage from '@/components/SetImage.vue'
@@ -168,12 +168,26 @@
     foundCode.value = null
     memberCounts.value = {}
     sealedBag.value = false
+    inWishlist.value = false
     categories.reset()
   }
 
   /** Nájdený set (číslom aj kódom) sa ďalej spracuje rovnako. */
+  /** Nájdený set je v Chcem: namiesto Pridať dve tlačidlá, odstrániť alebo nechať v Chcem. */
+  const inWishlist = ref(false)
+
+  async function checkWishlist (num: string): Promise<void> {
+    const { data } = await api.GET('/wishlist', { params: { query: { q: num } as never } })
+    if (found.value?.catalog_num !== num) return
+    inWishlist.value = (data ?? []).some(wish => wish.catalog_num === num)
+  }
+
   async function applyFound (data: CatalogDetail): Promise<void> {
     found.value = data
+    inWishlist.value = false
+    checkWishlist(data.catalog_num).catch(() => {
+      // Bez odpovede sa uloží ako doteraz: set z Chcem vypadne, Späť ostáva.
+    })
     for (const member of data.members ?? []) {
       memberCounts.value[member.catalog_num] = 0
     }
@@ -345,7 +359,7 @@
    * ktoré server vyradil (na Späť). Kategórie, neznámy kód a pamäť formulára
    * sa zapíšu tu, pri tlačidle aj pri automatickom uložení po skene.
    */
-  async function saveCurrent (): Promise<Saved> {
+  async function saveCurrent (keepWishlist = false): Promise<Saved> {
     if (!found.value) return { ids: [], wishes: [] }
     const shared = {
       condition: condition.value,
@@ -377,6 +391,7 @@
             unidentified: sealedBag.value,
             price_variant: sealedBag.value ? 'sealed' : null,
             note: note.value.trim() || null,
+            keep_wishlist: keepWishlist,
           } as never,
         })
       if (result.error) throw new Error(errorMessage(result.error, t('notice.saveFailed')))
@@ -470,17 +485,20 @@
     collection.refreshAll()
   }
 
-  function submit (): Promise<void> {
+  function submit (keepWishlist = false): Promise<void> {
     return enqueue(async () => {
       if (!found.value) return
       const name = found.value.name
       const pieces = totalPieces.value
       // Figúrky zo sérií Zbierka neukazuje, po uložení sa ide za nimi do Figúrok.
       const next = afterSaveRoute(found.value, isSeries.value)
+      // Set z Chcem: rozhodlo tlačidlo (odstrániť alebo nechať v Chcem).
+      // Automatické uloženie po skene ide inou cestou a set vyradí, Späť ostáva.
+      const keep = keepWishlist && inWishlist.value
       saving.value = true
       error.value = null
       try {
-        const saved = await saveCurrent()
+        const saved = await saveCurrent(keep)
         // Uložené: set už nie je rozpracovaný, sken čakajúci vo fronte ho
         // nesmie uložiť druhý raz.
         resetFound()
@@ -951,13 +969,34 @@
       <v-spacer />
       <v-btn variant="text" @click="$router.back()">{{ t('add.cancel') }}</v-btn>
 
+      <!-- Set je v Chcem (nie výber figúrok zo série): vyberie sa, čo s ním. -->
+      <template v-if="inWishlist && !(isSeries && !sealedBag)">
+        <v-btn
+          :disabled="!canSubmit || saving"
+          prepend-icon="mdi-heart-outline"
+          size="large"
+          variant="tonal"
+          @click="submit(true)"
+        >{{ t('wishlist.addAndKeep') }}</v-btn>
+
+        <v-btn
+          color="primary"
+          :disabled="!canSubmit"
+          :loading="saving"
+          prepend-icon="mdi-plus"
+          size="large"
+          @click="submit(false)"
+        >{{ t('wishlist.addAndRemove') }}</v-btn>
+      </template>
+
       <v-btn
+        v-else
         color="primary"
         :disabled="!canSubmit"
         :loading="saving"
         prepend-icon="mdi-plus"
         size="large"
-        @click="submit"
+        @click="submit(false)"
       >{{ t('add.submit') }}</v-btn>
     </div>
 

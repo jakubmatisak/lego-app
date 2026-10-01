@@ -187,7 +187,7 @@ def record_version(db_path: Path, version: str) -> None:
             conn.commit()
     except sqlite3.Error as exc:
         log.warning(
-            "Verziu appky %s sa do databázy %s nepodarilo zapísať: %s. "
+            "Verziu %s sa do databázy %s nepodarilo zapísať: %s. "
             "Ďalší štart databázu zálohuje znova.",
             version,
             db_path,
@@ -399,7 +399,7 @@ def _reason(pending: Pending, heads: set[str], version: str) -> str:
             f"Prvý štart verzie {version} nad touto databázou, predchádzajúca verzia "
             "nie je zapísaná. Najprv záloha."
         )
-    return f"Nová verzia appky {version} (predtým {pending.version}), najprv záloha databázy."
+    return f"Nová verzia {version} (predtým {pending.version}), najprv záloha databázy."
 
 
 def backup_before_upgrade(
@@ -467,8 +467,8 @@ def upgrade_with_backup(
             leftovers = ", ".join(p.name for p in _with_sidecars(db_path)[1:])
             log.error(
                 "Migrácia databázy zlyhala (%s). Stav pred aktualizáciou je v zálohe %s. "
-                "Na návrat zastav appku a spusti %s (v Dockeri docker compose run --rm app "
-                "%s), potom spusti verziu appky z mena zálohy. Príkaz odloží databázu aj "
+                "Na návrat zastav server a spusti %s (v Dockeri docker compose run --rm app "
+                "%s), potom spusti verziu z mena zálohy. Príkaz odloží databázu aj "
                 "so súbormi %s do %s a zálohu skopíruje na jej miesto. Ručne: zmaž vedľa "
                 "databázy súbory %s, ak tam sú, a skopíruj zálohu na miesto databázy %s.",
                 exc,
@@ -554,7 +554,7 @@ def _check_backup(source: Path) -> tuple[str, str | None]:
     revisions = sorted(row[0] for row in rows if row[0])
     if not revisions:
         raise RestoreFailed(
-            f"Súbor {source} nie je databáza appky Moje kocky (chýba alembic_version)."
+            f"Súbor {source} nie je databáza Mojich kociek (chýba alembic_version)."
         )
     return "_".join(revisions), version
 
@@ -623,6 +623,6 @@ def restore_backup(db_path: Path, source: Path, *, now: datetime | None = None) 
         )
         raise RestoreFailed(
             f"Zálohu {source} sa nepodarilo vrátiť ({exc}). {where} "
-            "Beží ešte appka? Zastav ju a skús znova."
+            "Beží ešte server? Zastav ho a skús znova."
         ) from exc
     return Restored(source, db_path, aside, tuple(moved), revision, version)

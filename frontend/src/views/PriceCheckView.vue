@@ -7,6 +7,8 @@
    * bez volania. Overené sety sa pamätajú pri účte (Naposledy overené).
    */
   import type { CatalogDetail, PriceCheck as Check, PriceOverview } from '@/api/types'
+  import type { CheckSort } from '@/utils/priceChecks'
+  import type { SortState } from '@/utils/tableSort'
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useDisplay } from 'vuetify'
@@ -14,12 +16,15 @@
   import LoadFailed from '@/components/LoadFailed.vue'
   import PriceHistoryChart from '@/components/PriceHistoryChart.vue'
   import SetImage from '@/components/SetImage.vue'
+  import SortHeader from '@/components/SortHeader.vue'
   import { usePageLoad } from '@/composables/usePageLoad'
   import { useScanCodes } from '@/scanner/useScanCodes'
   import { useAuthStore } from '@/stores/auth'
   import { isBarcode } from '@/utils/barcode'
   import { count, dateTime, money } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
+  import { checkDefaultDir, sortChecks } from '@/utils/priceChecks'
+  import { headerDir, nextSort } from '@/utils/tableSort'
 
   /** Cena mladšia než toto sa neťahá znova, overenie potom nič nestojí. */
   const FRESH_HOURS = 24
@@ -50,16 +55,26 @@
   const needsSettings = ref(false)
   const isSeries = computed(() => (found.value?.members?.length ?? 0) > 0)
 
+  /**
+   * Radí stránka sama (`utils/priceChecks.ts`), nie v-data-table: tá by
+   * prázdnu cenu dala pri vzostupnom smere navrch. Hlavička ako v Zbierke.
+   */
+  const SORTABLE: CheckSort[] = ['num', 'name', 'theme', 'year', 'new', 'used', 'when']
   const headers = computed(() => [
-    { key: 'num', title: t('check.colNumber'), width: 96, value: (c: Check) => c.catalog.catalog_num },
-    { key: 'name', title: t('check.colName'), value: (c: Check) => c.catalog.name },
-    { key: 'theme', title: t('check.colSeries'), width: 160, value: (c: Check) => c.catalog.theme ?? '' },
-    { key: 'year', title: t('check.colYear'), width: 72, value: (c: Check) => c.catalog.year ?? 0 },
-    { key: 'new', title: t('check.colNew'), width: 110, align: 'end' as const, value: (c: Check) => Number(c.new_value ?? -1) },
-    { key: 'used', title: t('check.colUsed'), width: 110, align: 'end' as const, value: (c: Check) => Number(c.used_value ?? -1) },
-    { key: 'when', title: t('check.colWhen'), width: 150, value: (c: Check) => c.checked_at },
+    // Fotka v rovnako vysokom riadku ako tabuľky Zbierky a Chcem.
+    { key: 'image', title: '', width: 104, sortable: false },
+    { key: 'num', title: t('check.colNumber'), width: 96, sortable: false, value: (c: Check) => c.catalog.catalog_num },
+    { key: 'name', title: t('check.colName'), sortable: false, value: (c: Check) => c.catalog.name },
+    { key: 'theme', title: t('check.colSeries'), width: 160, sortable: false, value: (c: Check) => c.catalog.theme ?? '' },
+    { key: 'year', title: t('check.colYear'), width: 72, sortable: false },
+    { key: 'new', title: t('check.colNew'), width: 110, align: 'end' as const, sortable: false },
+    { key: 'used', title: t('check.colUsed'), width: 110, align: 'end' as const, sortable: false },
+    { key: 'when', title: t('check.colWhen'), width: 150, sortable: false },
     { key: 'actions', title: '', width: 56, sortable: false },
   ])
+  /** Predvolene najnovšie overené navrchu, ako prichádzajú zo servera. */
+  const order = ref<SortState<CheckSort>>({ sort: 'when', dir: null })
+  const sortedChecks = computed(() => sortChecks(checks.value, order.value))
 
   async function loadChecks (): Promise<boolean> {
     const { data, error } = await api.GET('/prices/checks', {})
@@ -363,18 +378,32 @@
         hide-default-footer
         hover
         item-value="catalog.catalog_num"
-        :items="checks"
+        :items="sortedChecks"
         :items-per-page="-1"
         :loading="page.initial"
         :no-data-text="t('check.recentEmpty')"
         @click:row="(_: unknown, row: { item: Check }) => showStored(row.item.catalog.catalog_num)"
       >
+        <template v-for="key in SORTABLE" :key="key" #[`header.${key}`]="{ column }">
+          <SortHeader
+            :dir="headerDir(key, order, checkDefaultDir)"
+            :title="column.title ?? ''"
+            @sort="order = nextSort(key, order, checkDefaultDir)"
+          />
+        </template>
+
         <template #loading>
           <v-skeleton-loader type="table-row-divider@6" />
         </template>
 
         <template v-if="page.error" #no-data>
           <LoadFailed :loading="page.loading" @retry="page.run()" />
+        </template>
+
+        <template #[`item.image`]="{ item }">
+          <div class="check-table__photo">
+            <SetImage :alt="item.catalog.name" rounded="sm" :size="64" :src="imageSrc(item.catalog.image_url) ?? undefined" />
+          </div>
         </template>
 
         <template #[`item.year`]="{ item }">{{ item.catalog.year ?? '—' }}</template>
@@ -451,5 +480,9 @@
 
   .check-table :deep(tbody tr) {
     cursor: pointer;
+  }
+
+  .check-table__photo {
+    padding: 6px 0;
   }
 </style>

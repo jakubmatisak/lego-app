@@ -6,12 +6,12 @@ bez cieľa) je na konci v oboch smeroch. Kúpený set z Chcem vyradí
 """
 
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lego_api.models import CollectionItem, ItemStatus, PriceCondition, PriceKind, WishlistItem
@@ -35,11 +35,30 @@ async def wishlist_prices(session: AsyncSession, user_id: int) -> list[WishlistO
     )
     items = list((await session.execute(stmt)).scalars().unique())
     index = await load_snapshots(session, {w.catalog_num for w in items})
+    owned = dict(
+        (
+            await session.execute(
+                select(CollectionItem.catalog_num, func.count())
+                .where(
+                    CollectionItem.user_id == user_id,
+                    CollectionItem.status == ItemStatus.OWNED,
+                    CollectionItem.catalog_num.in_({w.catalog_num for w in items}),
+                )
+                .group_by(CollectionItem.catalog_num)
+            )
+        ).all()
+    )
 
     rows: list[WishlistOut] = []
     for wish in items:
-        found = index.value_at_any(PriceTarget(wish.catalog_num, PriceKind.SET, PriceCondition.NEW))
+        target = PriceTarget(wish.catalog_num, PriceKind.SET, PriceCondition.NEW)
+        found = index.value_at_any(target)
         price = found[0] if found is not None else None
+        # Čas tej istej ceny: nová, alebo použitá, keď sa vzala tá (``value_at_any``).
+        price_at = None
+        if found is not None:
+            exact_or_other = target if found[1] else replace(target, condition=PriceCondition.USED)
+            price_at = index.latest_time(exact_or_other)
         reached = (
             wish.target_price_eur is not None
             and price is not None
@@ -54,11 +73,19 @@ async def wishlist_prices(session: AsyncSession, user_id: int) -> list[WishlistO
         rows.append(
             WishlistOut(
                 **WishlistOut.model_validate(wish).model_dump(
-                    exclude={"market_price", "target_reached", "distance_pct"}
+                    exclude={
+                        "market_price",
+                        "target_reached",
+                        "distance_pct",
+                        "owned_count",
+                        "price_at",
+                    }
                 ),
                 market_price=price,
                 target_reached=reached,
                 distance_pct=distance,
+                owned_count=owned.get(wish.catalog_num, 0),
+                price_at=price_at,
             )
         )
     return rows
@@ -174,9 +201,21 @@ class WishFilter:
     reached: bool = False
     retired: bool = False
     no_price: bool = False
+    #: Séria z katalógu; viac sérií sa sčíta, ``NONE`` = set bez série.
+    themes: tuple[str, ...] = ()
+
+
+#: Hodnota „bez série“ vo filtri, rovnako ako v Zbierke.
+NONE = "__none__"
+
+
+def _theme(row: WishlistOut) -> str:
+    return row.catalog.theme or NONE
 
 
 def _matches(row: WishlistOut, f: WishFilter) -> bool:
+    if f.themes and _theme(row) not in f.themes:
+        return False
     if f.reached and not row.target_reached:
         return False
     if f.retired and not row.catalog.is_retired:
@@ -189,6 +228,20 @@ def _matches(row: WishlistOut, f: WishFilter) -> bool:
         )
         return all(word in haystack for word in fold(f.q).split())
     return True
+
+
+def theme_options(rows: list[WishlistOut], f: WishFilter) -> list[tuple[str, int]]:
+    """Série v Chcem s počtom setov, podľa ostatných filtrov.
+
+    Výber série samotnej sa do počtu neráta, inak by po zaškrtnutí jednej
+    ostatné ukázali nulu. Najviac setov navrch, potom podľa abecedy.
+    """
+    others = replace(f, themes=())
+    counts: dict[str, int] = {}
+    for row in rows:
+        if _matches(row, others):
+            counts[_theme(row)] = counts.get(_theme(row), 0) + 1
+    return sorted(counts.items(), key=lambda pair: (-pair[1], fold(pair[0])))
 
 
 def arrange(

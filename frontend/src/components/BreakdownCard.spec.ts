@@ -7,10 +7,12 @@ import { createVuetify } from 'vuetify'
 import { VBtn } from 'vuetify/components/VBtn'
 import { VBtnToggle } from 'vuetify/components/VBtnToggle'
 import { VCard, VCardItem, VCardTitle } from 'vuetify/components/VCard'
+import { VIcon } from 'vuetify/components/VIcon'
 import { VTable } from 'vuetify/components/VTable'
 import i18n from '@/plugins/i18n'
 import { money } from '@/utils/format'
 import BreakdownCard from './BreakdownCard.vue'
+import SortHeader from './SortHeader.vue'
 
 const get = vi.fn()
 
@@ -63,7 +65,7 @@ async function mountCard () {
   const wrapper = mount(BreakdownCard, {
     global: {
       plugins: [
-        createVuetify({ components: { VBtn, VBtnToggle, VCard, VCardItem, VCardTitle, VTable } }),
+        createVuetify({ components: { VBtn, VBtnToggle, VCard, VCardItem, VCardTitle, VIcon, VTable } }),
         i18n,
       ],
     },
@@ -108,5 +110,51 @@ describe('Výkonnosť bez trhovej ceny', () => {
     const { value, profit } = cells(await mountCard(), 'Star Wars')
     expect(value).toBe(money('900.00'))
     expect(profit).toContain(money('300.00', { sign: true }))
+  })
+})
+
+describe('Výkonnosť: zoradenie klikom na hlavičku', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    get.mockReset()
+    get.mockResolvedValue({ data: ROWS })
+  })
+
+  const labels = (wrapper: Awaited<ReturnType<typeof mountCard>>) =>
+    wrapper.findAll('tbody tr').map(r => r.find('td').text())
+
+  it('každý stĺpec radí; predvolene podľa hodnoty, skupina bez ceny na konci', async () => {
+    const wrapper = await mountCard()
+    const headers = wrapper.findAllComponents(SortHeader)
+    expect(headers).toHaveLength(6)
+    expect(headers[0]!.props('title')).toBe(i18n.global.t('insights.byTheme'))
+    expect(headers.map(h => h.props('dir'))).toEqual([null, null, null, 'desc', null, null])
+    expect(labels(wrapper)).toEqual(['Star Wars', 'City', 'Icons'])
+
+    // Druhý klik otočí smer; skupina bez ceny ostane na konci.
+    headers[3]!.vm.$emit('sort')
+    await flushPromises()
+    expect(labels(wrapper)).toEqual(['City', 'Star Wars', 'Icons'])
+    expect(wrapper.findAllComponents(SortHeader)[3]!.props('dir')).toBe('asc')
+  })
+
+  it('zisk bez ceny časti kusov je prázdny, na konci v oboch smeroch', async () => {
+    const wrapper = await mountCard()
+    wrapper.findAllComponents(SortHeader)[4]!.vm.$emit('sort')
+    await flushPromises()
+    expect(labels(wrapper)[0]).toBe('Star Wars')
+    wrapper.findAllComponents(SortHeader)[4]!.vm.$emit('sort')
+    await flushPromises()
+    expect(labels(wrapper)[0]).toBe('Star Wars')
+  })
+
+  it('názov od A a kusy od najviac', async () => {
+    const wrapper = await mountCard()
+    wrapper.findAllComponents(SortHeader)[0]!.vm.$emit('sort')
+    await flushPromises()
+    expect(labels(wrapper)).toEqual(['City', 'Icons', 'Star Wars'])
+    wrapper.findAllComponents(SortHeader)[1]!.vm.$emit('sort')
+    await flushPromises()
+    expect(labels(wrapper)[0]).toBe('City')
   })
 })

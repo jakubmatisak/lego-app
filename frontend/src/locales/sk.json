@@ -87,6 +87,7 @@
     "donutSetsPlural": "set | sety | setov"
   },
   "collection": {
+    "priceAt": "cena z {date}",
     "title": "Zbierka",
     "search": "Hľadať podľa názvu, čísla alebo umiestnenia…",
     "sortBy": "Zoradiť",
@@ -100,11 +101,19 @@
       "year": "Rok vydania",
       "parts": "Dieliky",
       "name": "Názov",
-      "recent": "Naposledy pridané"
+      "recent": "Naposledy pridané",
+      "number": "Číslo setu",
+      "theme": "Séria",
+      "quantity": "Počet kusov",
+      "condition": "Stav",
+      "location": "Umiestnenie",
+      "price_at": "Dátum ceny"
     },
     "groupBy": {
-      "set": "Podľa setu",
-      "item": "Každý kus"
+      "set": "Sety spolu",
+      "item": "Jednotlivé kusy",
+      "setHint": "Jeden riadok na každý set, kusy spolu: počet, súčet cien, hodnoty a zisku",
+      "itemHint": "Jeden riadok na každý kus zvlášť, s vlastným stavom, cenou, dátumom a miestom"
     },
     "status": {
       "all": "Všetko",
@@ -138,6 +147,7 @@
     "sortAsc": "Vzostupne (klikni na otočenie)",
     "sortDesc": "Zostupne (klikni na otočenie)",
     "viewCards": "Karty",
+    "viewList": "Zoznam",
     "viewTable": "Tabuľka",
     "partsPlural": "{count} dielik | {count} dieliky | {count} dielikov"
   },
@@ -185,7 +195,7 @@
     "created": "Pridané do zbierky",
     "setNumberOrBarcode": "Číslo setu alebo čiarový kód",
     "hintAny": "Číslo z krabice (10294) alebo 13 číslic pod pruhmi. Ikonou vpravo naskenuješ kód kamerou.",
-    "noCatalogTitle": "Bez kľúča Rebrickable appka sety nedohľadá",
+    "noCatalogTitle": "Bez kľúča Rebrickable sa sety nedohľadajú",
     "noCatalogText": "Set ulož ručne číslom z krabice, názov je nepovinný. Fotku, sériu ani dieliky nedoplní. Kľúč Rebrickable je zadarmo, odporúčame ho pripojiť.",
     "noCatalogConnect": "Pripojiť v Nastaveniach"
   },
@@ -282,6 +292,15 @@
     "costsHint": "Odpočítajú sa zo zisku, aby bol čistý."
   },
   "wishlist": {
+    "colSet": "Set",
+    "themeClear": "Všetky série",
+    "addAndRemove": "Pridať a odstrániť z Chcem",
+    "addAndKeep": "Pridať a nechať v Chcem",
+    "owned": "V zbierke · {count}",
+    "filterTheme": "Séria",
+    "noTheme": "Bez série",
+    "alreadyOwned": "Tento set už máš v zbierke ({count}).",
+    "alreadyWished": "Tento set už je v Chcem.",
     "title": "Chcem",
     "add": "Pridať do zoznamu",
     "targetPrice": "Cieľová cena",
@@ -375,7 +394,7 @@
     "appTitle": "Nastavenia aplikácie",
     "appVersion": "Verzia {version}",
     "allowRegistration": "Povoliť registráciu nových účtov",
-    "registrationOpenHint": "Ktokoľvek s adresou appky si môže založiť účet. Keď si ho založia všetci, čo majú, registráciu zavri.",
+    "registrationOpenHint": "Ktokoľvek s adresou tejto inštancie si môže založiť účet. Keď si ho založia všetci, čo majú, registráciu zavri.",
     "registrationClosedHint": "Nové účty sa zakladať nedajú, na prihlasovacej stránke nie je „Nový účet“. Existujúce účty fungujú ďalej.",
     "registrationFirstHint": "Platí hneď, bez reštartu. Hodnota v .env je len východisko pre novú inštaláciu.",
     "shareKindCollection": "Zbierka",
@@ -512,7 +531,8 @@
     "colCosts": "Náklady",
     "colRealized": "Čistý zisk",
     "colRoi": "Výnos",
-    "inventoryLink": "Súpis pre poistku"
+    "inventoryLink": "Súpis pre poistku",
+    "colChannel": "Kanál"
   },
   "photos": {
     "title": "Fotky kusu",
@@ -540,7 +560,7 @@
     "subtitle": "Stav k {date}",
     "owner": "Vlastník",
     "print": "Tlačiť alebo uložiť ako PDF",
-    "back": "Späť do appky",
+    "back": "Späť do Mojich kociek",
     "colItem": "Set",
     "colCondition": "Stav",
     "colPlace": "Umiestnenie",
@@ -692,16 +712,32 @@
     },
     "yearLabel": "Rok vydania",
     "sort": {
-      "progress": "Rozbehnuté prvé",
       "leastMissing": "Najmenej chýba",
       "yearDesc": "Rok: najnovšie",
       "yearAsc": "Rok: najstaršie",
       "nameAsc": "Abecedne A–Z",
-      "nameDesc": "Abecedne Z–A"
+      "nameDesc": "Abecedne Z–A",
+      "ownedDesc": "Mám: najviac",
+      "ownedAsc": "Mám: najmenej",
+      "missingAsc": "Chýba: najmenej",
+      "missingDesc": "Chýba: najviac",
+      "progressDesc": "Kompletnosť: najvyššia",
+      "progressAsc": "Kompletnosť: najnižšia"
     },
     "categoryMinifigs": "Minifigúrky",
     "summaryOther": "Kúskov zo sérií: {figures} · zbierané série: {collecting} · kompletné: {complete}",
-    "syncSwitchedOff": "Sťahovanie všetkých sérií je vypnuté v Nastaveniach → Dáta. Ukážu sa série, ktoré appka už pozná."
+    "syncSwitchedOff": "Sťahovanie všetkých sérií je vypnuté v Nastaveniach → Dáta. Ukážu sa série, ktoré sú už stiahnuté.",
+    "colSeries": "Séria",
+    "colYear": "Rok",
+    "colOwned": "Mám",
+    "colMissing": "Chýba",
+    "colProgress": "Kompletnosť",
+    "colNumber": "Číslo",
+    "colFigure": "Figúrka",
+    "colState": "Stav",
+    "colWish": "Chcem",
+    "missing": "Chýba",
+    "openDetail": "Otvoriť detail"
   },
   "purchase": {
     "title": "Kúpil som",
@@ -710,7 +746,7 @@
     "save": "Pridať do zbierky",
     "failed": "Pridanie sa nepodarilo",
     "hint": "Ostatné (príznaky, poznámku, fotky) doplníš v detaile.",
-    "hintWishlist": "Po uložení zmizne z Chcem. Ostatné doplníš v detaile.",
+    "hintWishlist": "Dole vyberieš, či set z Chcem odstrániť, alebo tam nechať. Ostatné doplníš v detaile.",
     "haveAll": "Mám všetky",
     "haveAllAgain": "Pridať celú sériu znova",
     "wholeSeriesTitle": "Mám celú sériu",
@@ -750,6 +786,12 @@
     "closeDialogFirst": "Najprv zavri otvorené okno, potom skenuj"
   },
   "themes": {
+    "findKnownPlural": "{count} známym setom | {count} známymi setmi | {count} známymi setmi",
+    "findHint": "Hľadá len medzi {count} (tvoje sety, Chcem a stiahnuté série). Iné nenájde.",
+    "findHintPlain": "Hľadá len medzi známymi setmi (tvoje sety, Chcem a stiahnuté série). Iné nenájde.",
+    "findType": "Napíš aspoň dve písmená alebo číslo setu",
+    "findSet": "Nájsť set podľa názvu alebo čísla",
+    "findNone": "Medzi známymi setmi sa nič nenašlo. Skús iné slovo, alebo otvor sériu a rok, stiahnu sa z Brickset.",
     "title": "Série",
     "search": "Nájsť sériu (Speed Champions, Technic…)",
     "mine": "Moje série",
@@ -806,7 +848,8 @@
       "key_check": "Kontrola kľúča",
       "other": "Iné",
       "inflation": "Prepočet inflácie"
-    }
+    },
+    "colResult": "Výsledok"
   },
   "inflation": {
     "chip": "V dnešných peniazoch · {month}",
@@ -838,8 +881,8 @@
     "templateCsv": "CSV",
     "drop": "Pretiahni sem súbor alebo klikni a vyber ho",
     "dropHint": ".xlsx alebo .csv, najviac 5 MB",
-    "tipExport": "Funguje aj export zo Zbierky: uprav ho v Exceli a nahraj späť. Nezmenené riadky appka spozná a preskočí.",
-    "lookingUp": "Dohľadávam sety, ktoré appka ešte nepozná: {done} z {total}",
+    "tipExport": "Funguje aj export zo Zbierky: uprav ho v Exceli a nahraj späť. Nezmenené riadky sa spoznajú a preskočia.",
+    "lookingUp": "Dohľadávam sety, ktoré ešte nie sú v katalógu: {done} z {total}",
     "lookingUpHint": "Rebrickable znesie jeden dotaz za sekundu. Môžeš odísť, náhľad tu počká.",
     "ignored": "Tieto stĺpce import nepozná a preskočí: {columns}",
     "filterAll": "Všetky ({count})",
@@ -951,7 +994,7 @@
     },
     "brickeconomy": {
       "name": "BrickEconomy",
-      "about": "Trhové ceny. Platené členstvo Premium, 100 volaní denne (appka si dáva strop 90).",
+      "about": "Trhové ceny. Platené členstvo Premium, 100 volaní denne.",
       "keyUrl": "https://www.brickeconomy.com/profile",
       "unlocks": [
         "Trhová cena nového aj použitého kusu",
@@ -1004,7 +1047,7 @@
       "CHF": "Švajčiarsky frank (CHF)"
     },
     "rate": "{rate} · ECB, {day}",
-    "euroHint": "Appka ukladá všetko v eurách. Iná mena sa len prepočíta dnešným kurzom ECB.",
+    "euroHint": "Všetko sa ukladá v eurách. Iná mena sa len prepočíta dnešným kurzom ECB.",
     "loading": "Zisťujem kurz ECB…",
     "rateFailed": "Kurz ECB sa teraz nepodarilo zistiť, sumy ostávajú v eurách.",
     "note": "Sumy sú prepočítané dnešným kurzom ECB ({rate}, {day}). Uložené ostávajú v eurách.",
@@ -1198,6 +1241,7 @@
     }
   },
   "table": {
+    "priceAt": "Cena z",
     "image": "",
     "number": "Číslo",
     "name": "Názov",
@@ -1245,12 +1289,12 @@
     "warningTitle": "Každé overenie míňa volanie BrickEconomy",
     "warningText": "Po zadaní alebo naskenovaní sa cena hneď stiahne z BrickEconomy a ukrojí jedno volanie z dennej kvóty 100. Set overený za posledných {hours} hodín sa vezme z uložených cien a nič nestojí.",
     "disconnectedTitle": "BrickEconomy nie je pripojené",
-    "disconnectedText": "Bez neho appka neukáže aktuálnu cenu, len tú, ktorú už má uloženú. Pripoj kľúč BrickEconomy Premium v Nastaveniach → Dáta.",
+    "disconnectedText": "Bez neho sa neukáže aktuálna cena, len tá, ktorá je už uložená. Pripoj kľúč BrickEconomy Premium v Nastaveniach → Dáta.",
     "openSettings": "Otvoriť Nastavenia → Dáta",
     "inputLabel": "Číslo setu alebo čiarový kód",
     "inputHint": "Napíš číslo (napr. 75192) alebo naskenuj kód na krabici",
     "submit": "Overiť",
-    "notFound": "Set {num} nepozná ani appka, ani pripojené služby. Skontroluj číslo na krabici.",
+    "notFound": "Set {num} nie je v katalógu a nepoznajú ho ani pripojené služby. Skontroluj číslo na krabici.",
     "eanUnknown": "Kód {code} nepoznáme. Skús zadať číslo setu z krabice.",
     "noPriceFound": "BrickEconomy pre tento set cenu nemá",
     "priceFailed": "Cenu sa nepodarilo stiahnuť",
@@ -1278,11 +1322,11 @@
     "forget": "Odstrániť z histórie",
     "identifyRebrickable": "Neznámy set dohľadá Rebrickable (s fotkou).",
     "identifyBrickEconomy": "Rebrickable nie je pripojené: neznámy set spozná odpoveď BrickEconomy o cene (názov, séria, rok, bez fotky), v tom istom volaní.",
-    "identifyNothing": "Bez Rebrickable a BrickEconomy overí len sety, ktoré appka už pozná, a len s uloženou cenou.",
+    "identifyNothing": "Bez Rebrickable a BrickEconomy sa overia len sety, ktoré sú už v katalógu, a len s uloženou cenou.",
     "roleIdentify": "čo je to za set",
     "roleBarcode": "čiarový kód",
     "rolePrice": "cena",
-    "noSources": "Set {num} appka ešte nepozná a nemáš pripojenú službu, ktorá by ho dohľadala. Pripoj Rebrickable alebo BrickEconomy.",
+    "noSources": "Set {num} ešte nie je v katalógu a nemáš pripojenú službu, ktorá by ho dohľadala. Pripoj Rebrickable alebo BrickEconomy.",
     "priceDisconnected": "Aktuálnu cenu bez BrickEconomy nezistím, ukazujem uloženú",
     "quota": "Dnešných 100 volaní BrickEconomy je minutých, skús zajtra",
     "blocked": "Ručné sťahovanie cien je vypnuté v Nastaveniach → Dáta",
@@ -1294,7 +1338,7 @@
     "operator": "Prevádzkovateľ",
     "noOperator": "Správca tejto inštancie ešte nevyplnil svoje meno a kontakt (Nastavenia → Aplikácia).",
     "cookiesTitle": "Cookies a úložisko v prehliadači",
-    "cookiesIntro": "Appka používa len jedno nevyhnutné cookie na prihlásenie a v prehliadači si pamätá nastavenia, ktoré si sám zvolíš. Na to podľa § 109 ods. 8 zákona č. 452/2021 Z. z. súhlas netreba. Cookie prihlásenia zanikne so zatvorením prehliadača; na 30 dní ostane, len keď pri prihlásení sám zaškrtneš Zapamätať si prihlásenie. Analytiku, reklamu ani sledovanie nepoužíva.",
+    "cookiesIntro": "Moje kocky používajú len jedno nevyhnutné cookie na prihlásenie a v prehliadači si pamätajú nastavenia, ktoré si sám zvolíš. Na to podľa § 109 ods. 8 zákona č. 452/2021 Z. z. súhlas netreba. Cookie prihlásenia zanikne so zatvorením prehliadača; na 30 dní ostane, len keď pri prihlásení sám zaškrtneš Zapamätať si prihlásenie. Analytiku, reklamu ani sledovanie nepoužívajú.",
     "cookieNote": "Používame len nevyhnutné cookie na prihlásenie, bez analytiky a reklamy. Podrobnosti sú v zásadách ochrany súkromia.",
     "updated": "Zásady ochrany súkromia sa zmenili.",
     "understood": "Rozumiem",
@@ -1315,7 +1359,7 @@
   },
   "account": {
     "title": "Moje údaje",
-    "intro": "Všetko, čo o tebe appka má, si môžeš stiahnuť, a účet so všetkými údajmi a fotkami zmazať.",
+    "intro": "Všetky svoje údaje si môžeš stiahnuť a účet so všetkými údajmi a fotkami zmazať.",
     "export": "Stiahnuť moje údaje (ZIP)",
     "exportFailed": "Údaje sa nepodarilo stiahnuť",
     "delete": "Zmazať účet",
@@ -1364,7 +1408,7 @@
     "credit": "Stavby fanúšikov z Rebrickable. Návod je na stránke stavby, niektoré sú platené."
   },
   "unlock": {
-    "title": "Čo ešte appka vie",
+    "title": "Čo ešte Moje kocky vedia",
     "intro": "Tieto veci sa objavia, keď pripojíš kľúč k službe (alebo ju zapneš). Údaje zo služby vidíš len so svojím vlastným kľúčom.",
     "connect": "Pripojiť v Nastaveniach → Dáta",
     "hide": "Skryť"

@@ -49,7 +49,7 @@ COLUMNS: list[tuple[str, str, int]] = [
     (
         "kupna_cena_v_mene",
         "Len pri kúpe v inej mene: cena za kus v tej mene. Bez kúpnej ceny v eurách "
-        "ju appka prepočíta kurzom ECB zo dňa kúpy.",
+        "sa prepočíta kurzom ECB zo dňa kúpy.",
         16,
     ),
     ("datum_kupy", "Deň kúpy, 12.3.2019 alebo 2019-03-12.", 12),
@@ -191,7 +191,7 @@ def template_xlsx() -> bytes:
     for line in (
         "Každý riadok je jeden set. Vyplň aspoň číslo setu, ostatné stĺpce môžu ostať prázdne.",
         "Sivé riadky sú príklady. Prepíš ich alebo zmaž; ak ostanú, import ich preskočí.",
-        "Pred uložením ukáže appka náhľad: čo sa pridá, čo už v zbierke je a čo sa nedá prečítať.",
+        "Pred uložením sa ukáže náhľad: čo sa pridá, čo už v zbierke je a čo sa nedá prečítať.",
         "Import sa dá celý vrátiť v Nastaveniach → Import a export.",
         "Import nesťahuje ceny. Nové sety dostanú cenu tlačidlom obnovy cien v hornej lište.",
         "",

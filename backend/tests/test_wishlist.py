@@ -124,3 +124,35 @@ async def test_target_price_and_note_can_be_changed(wishes: AsyncClient) -> None
 
 async def test_foreign_or_missing_wish_is_404(wishes: AsyncClient) -> None:
     assert (await wishes.patch("/wishlist/9999", json={"note": "x"})).status_code == 404
+
+
+async def test_theme_filter_combines_with_search(wishes: AsyncClient) -> None:
+    """Séria z katalógu, nič sa nevypĺňa: viac sérií sa sčíta, s hľadaním sa kombinuje."""
+    assert sorted(await _nums(wishes, theme=["Icons"])) == ["10294-1", "10316-1"]
+    assert sorted(await _nums(wishes, theme=["Icons", "Ideas"])) == [
+        "10294-1",
+        "10316-1",
+        "21318-1",
+    ]
+    assert await _nums(wishes, theme=["Icons"], q="riven") == ["10316-1"]
+    assert await _nums(wishes, theme=["__none__"]) == []
+
+
+async def test_theme_options_count_with_the_other_filters(wishes: AsyncClient) -> None:
+    """Počty pri sériách rátajú s ostatnými filtrami, nie s výberom série samotnej."""
+    every = (await wishes.get("/wishlist/themes")).json()
+    assert every == [
+        {"value": "Icons", "count": 2},
+        {"value": "Ideas", "count": 1},
+        {"value": "Star Wars", "count": 1},
+    ]
+    params = {"retired": True, "theme": "Icons"}
+    retired = (await wishes.get("/wishlist/themes", params=params)).json()
+    assert retired == [{"value": "Ideas", "count": 1}, {"value": "Star Wars", "count": 1}]
+
+
+async def test_wish_carries_when_its_price_was_downloaded(wishes: AsyncClient) -> None:
+    rows = {r["catalog_num"]: r for r in (await wishes.get("/wishlist")).json()}
+
+    assert rows["10294-1"]["price_at"] is not None
+    assert rows["21318-1"]["price_at"] is None

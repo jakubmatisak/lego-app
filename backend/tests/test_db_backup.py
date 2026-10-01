@@ -427,7 +427,7 @@ def test_missing_settings_table_after_upgrade_only_warns(tmp_path, clock, caplog
         saved = db_backup.upgrade_with_backup(_url(db), _config(), lambda: None, version=NEW)
 
     assert saved is not None
-    assert "Verziu appky" in caplog.text
+    assert "nepodarilo zapísať" in caplog.text
 
 
 # --- ponechanie posledných piatich -------------------------------------------

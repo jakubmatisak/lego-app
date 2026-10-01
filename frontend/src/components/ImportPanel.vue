@@ -9,14 +9,19 @@
    * sa dá celý vrátiť z histórie.
    */
   import type { ImportDetail, ImportRow, ImportSummary } from '@/api/types'
+  import type { ImportSort } from '@/utils/importRows'
+  import type { SortState } from '@/utils/tableSort'
   import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { api, errorMessage } from '@/api/client'
+  import SortHeader from '@/components/SortHeader.vue'
   import { onPageReload } from '@/composables/usePageLoad'
   import { useCollectionStore } from '@/stores/collection'
   import { useNotifyStore } from '@/stores/notify'
   import { amount, dateTime, exactMoney, isCurrency, shortDate } from '@/utils/format'
   import { imageSrc } from '@/utils/imageSrc'
+  import { importDefaultDir, sortImportRows } from '@/utils/importRows'
+  import { headerDir, nextSort } from '@/utils/tableSort'
 
   type RowFilter = 'all' | 'ok' | 'duplicate' | 'error'
 
@@ -41,9 +46,22 @@
   const lookingUp = computed(() => current.value?.state === 'looking_up')
   const isDraft = computed(() => current.value?.state === 'ready' || lookingUp.value)
 
+  /** Zoradenie náhľadu klikom na hlavičku; predvolene v poradí súboru. */
+  const order = ref<SortState<ImportSort>>({ sort: 'line', dir: null })
+  const COLUMNS: Array<{ key: ImportSort, title: string, end?: boolean }> = [
+    { key: 'line', title: 'imports.colLine' },
+    { key: 'set', title: 'imports.colSet' },
+    { key: 'what', title: 'imports.colWhat' },
+    { key: 'quantity', title: 'imports.colQuantity', end: true },
+    { key: 'condition', title: 'imports.colCondition' },
+    { key: 'price', title: 'imports.colPrice', end: true },
+    { key: 'date', title: 'imports.colDate' },
+    { key: 'location', title: 'imports.colLocation' },
+  ]
+
   const shownRows = computed(() => {
     const rows = current.value?.rows ?? []
-    return filter.value === 'all' ? rows : rows.filter(r => r.state === filter.value)
+    return sortImportRows(filter.value === 'all' ? rows : rows.filter(r => r.state === filter.value), order.value)
   })
 
   /** Čo presne vznikne po potvrdení, vrátane zaškrtnutých duplicít. */
@@ -423,14 +441,14 @@
           <thead>
             <tr>
               <th />
-              <th>{{ t('imports.colLine') }}</th>
-              <th>{{ t('imports.colSet') }}</th>
-              <th>{{ t('imports.colWhat') }}</th>
-              <th class="text-end">{{ t('imports.colQuantity') }}</th>
-              <th>{{ t('imports.colCondition') }}</th>
-              <th class="text-end">{{ t('imports.colPrice') }}</th>
-              <th>{{ t('imports.colDate') }}</th>
-              <th>{{ t('imports.colLocation') }}</th>
+
+              <th v-for="column in COLUMNS" :key="column.key" :class="{ 'text-end': column.end }">
+                <SortHeader
+                  :dir="headerDir(column.key, order, importDefaultDir)"
+                  :title="t(column.title)"
+                  @sort="order = nextSort(column.key, order, importDefaultDir)"
+                />
+              </th>
             </tr>
           </thead>
 

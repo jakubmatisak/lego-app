@@ -576,7 +576,7 @@
 
             <v-btn
               :class="instructionsUrl ? '' : 'ms-auto'"
-              :href="`https://www.brickeconomy.com/search?q=${catalog.catalog_num}`"
+              :href="`https://www.brickeconomy.com/search?query=${encodeURIComponent(catalog.catalog_num)}`"
               size="small"
               target="_blank"
               variant="text"

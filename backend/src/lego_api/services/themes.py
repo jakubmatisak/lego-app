@@ -21,7 +21,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lego_api import visibility
@@ -32,7 +32,7 @@ from lego_api.providers.brickset import WAVE_CATEGORIES, BricksetProvider
 from lego_api.services import access
 from lego_api.services.catalog import store_brickset
 from lego_api.services.fetch_policy import CallBlocked
-from lego_api.services.filters import series_num
+from lego_api.services.filters import fold, series_num
 from lego_api.visibility import BRICKSET
 
 #: Zoznam tém sa mení raz za čas, v pamäti procesu stačí na deň.
@@ -127,6 +127,109 @@ async def _waves(session: AsyncSession) -> Waves:
             out.sets.setdefault((t, y), set()).add(num)
             if at is not None:
                 out.fetched[(t.lower(), y)] = _aware(at)
+    return out
+
+
+@dataclass(frozen=True)
+class FoundSet:
+    """Set nájdený v Sériách: kam patrí a či ho mám alebo chcem."""
+
+    catalog: CatalogItem
+    theme: str | None
+    year: int | None
+    owned: int
+    wanted: bool
+
+
+#: Najviac toľko výsledkov hľadania; ďalšie spresní ďalšie slovo.
+FIND_LIMIT = 30
+
+
+async def _known_sets(session: AsyncSession) -> list[CatalogItem]:
+    """Sety, ktoré appka pozná (katalóg), bez figúrok zo sérií, sáčkov a sérií."""
+    catalogs = (
+        (
+            await session.execute(
+                select(CatalogItem).where(
+                    CatalogItem.kind != CatalogKind.MINIFIG, CatalogItem.parent_num.is_(None)
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [c for c in catalogs if not c.is_series and series_num(c, False) is None]
+
+
+async def known_set_count(session: AsyncSession) -> int:
+    """Koľko setov môže hľadanie v Sériách nájsť (ten istý výber ako ``find_sets``)."""
+    return len(await _known_sets(session))
+
+
+async def find_sets(session: AsyncSession, user_id: int, q: str) -> list[FoundSet]:
+    """Sety podľa názvu, čísla či témy, len medzi tými, ktoré appka pozná.
+
+    Hľadá v katalógu a v stiahnutých vlnách Brickset, ktoré účet vidí; nič
+    nevolá von, takže set, ktorý appka ešte nevidela, nenájde. Figúrky zo
+    sérií a sáčky setmi nie sú. Téma a rok sú tie, pod ktorými set rátajú
+    Série (``assign``). Najprv presná zhoda čísla, potom moje sety, potom
+    podľa názvu.
+    """
+    words = fold(q).split()
+    if not words:
+        return []
+    hits = []
+    for catalog in await _known_sets(session):
+        haystack = fold(" ".join(filter(None, [catalog.name, catalog.catalog_num, catalog.theme])))
+        if all(word in haystack for word in words):
+            hits.append(catalog)
+    if not hits:
+        return []
+    nums = [c.catalog_num for c in hits]
+    owned = dict(
+        (
+            await session.execute(
+                select(CollectionItem.catalog_num, func.count())
+                .where(
+                    CollectionItem.user_id == user_id,
+                    CollectionItem.status == ItemStatus.OWNED,
+                    CollectionItem.catalog_num.in_(nums),
+                )
+                .group_by(CollectionItem.catalog_num)
+            )
+        ).all()
+    )
+    wanted = set(
+        (
+            await session.execute(
+                select(WishlistItem.catalog_num).where(
+                    WishlistItem.user_id == user_id, WishlistItem.catalog_num.in_(nums)
+                )
+            )
+        ).scalars()
+    )
+    placed = assign(hits, await _waves(session))
+    asked = fold(q).strip()
+
+    def rank(catalog: CatalogItem) -> tuple:
+        num = catalog.catalog_num.lower()
+        exact = num == asked or num == f"{asked}-1"
+        # „Set 40602-1“: appka o sete pozná len číslo (zo stiahnutej vlny), nie názov.
+        nameless = fold(catalog.name) == fold(f"Set {catalog.catalog_num}")
+        return (not exact, nameless, owned.get(catalog.catalog_num, 0) == 0, fold(catalog.name))
+
+    out = []
+    for catalog in sorted(hits, key=rank)[:FIND_LIMIT]:
+        place = placed.get(catalog.catalog_num)
+        out.append(
+            FoundSet(
+                catalog=catalog,
+                theme=place.theme if place else catalog.theme,
+                year=place.year if place else catalog.year,
+                owned=owned.get(catalog.catalog_num, 0),
+                wanted=catalog.catalog_num in wanted,
+            )
+        )
     return out
 
 
