@@ -43,12 +43,42 @@ WAVE_REFRESH = timedelta(days=30)
 SKIP_THEMES = {"collectable minifigures"}
 
 _themes_cache: tuple[datetime, list[dict]] | None = None
+#: Ročníky témy z getYears (do limitu sa nerátajú), pre „uložené / zostáva“ pri sérii.
+_years_cache: dict[str, tuple[datetime, set[int]]] = {}
 
 
 def reset_cache() -> None:
     """Pre testy."""
     global _themes_cache
     _themes_cache = None
+    _years_cache.clear()
+
+
+def _year_numbers(rows: list[dict]) -> set[int]:
+    out: set[int] = set()
+    for r in rows:
+        try:
+            out.add(int(r.get("year")))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+async def _year_set(provider: BricksetProvider, theme: str) -> set[int] | None:
+    """Ročníky témy; z pamäte, inak jedno getYears. Bez odpovede None."""
+    key = theme.lower()
+    cached = _years_cache.get(key)
+    if cached is not None and utcnow() - cached[0] < THEMES_TTL:
+        return cached[1]
+    try:
+        rows = await provider.get_years(theme)
+    except CallBlocked:
+        rows = None
+    if rows is None:
+        return cached[1] if cached else None
+    found = _year_numbers(rows)
+    _years_cache[key] = (utcnow(), found)
+    return found
 
 
 def _aware(value: datetime) -> datetime:
@@ -373,6 +403,15 @@ class ThemeRow:
     complete: bool = False
     #: Koľko rokov témy má stiahnutú vlnu, ktorú účet vidí (značka vo výbere série).
     downloaded_years: int = 0
+    #: Koľko ročníkov téma má (getYears); len pri téme s niečím uloženým, inak None.
+    year_total: int | None = None
+
+
+def _saved_count(saved: dict[str, set[int]], year_sets: dict[str, set[int]], key: str) -> int:
+    """Uložené ročníky; pri známych ročníkoch len tie z nich, aby nikdy nebolo viac než všetky."""
+    years = saved.get(key, set())
+    known = year_sets.get(key)
+    return len(years & known) if known is not None else len(years)
 
 
 def followed_of(preferences: dict | None) -> list[str]:
@@ -382,9 +421,17 @@ def followed_of(preferences: dict | None) -> list[str]:
 
 
 async def overview(
-    session: AsyncSession, user_id: int, themes: list[dict], followed: list[str] | None = None
+    session: AsyncSession,
+    user_id: int,
+    themes: list[dict],
+    followed: list[str] | None = None,
+    provider: BricksetProvider | None = None,
 ) -> tuple[list[ThemeRow], list[ThemeRow]]:
-    """(moje témy, všetky témy). Moja je téma, z ktorej mám set, alebo ktorú som si uložil."""
+    """(moje témy, všetky témy). Moja je téma, z ktorej mám set, alebo ktorú som si uložil.
+
+    Pri téme s uloženým rokom povie aj počet ročníkov (``year_total``). Pýta sa
+    getYears len na tie témy, raz za deň (``_year_set``); do limitu sa to neráta.
+    """
     mine = await _mine(session, user_id)
     by_name = {(t.get("theme") or "").lower(): t for t in themes}
 
@@ -394,10 +441,18 @@ async def overview(
         if t is not None:
             placed.setdefault(t["theme"], set()).add(num)
     in_waves: dict[str, set[str]] = {}
-    downloaded: Counter[str] = Counter()
-    for (theme, _year), nums in mine.waves.sets.items():
+    saved: dict[str, set[int]] = {}
+    for (theme, year), nums in mine.waves.sets.items():
         in_waves.setdefault(theme.lower(), set()).update(nums)
-        downloaded[theme.lower()] += 1
+        saved.setdefault(theme.lower(), set()).add(year)
+    year_sets: dict[str, set[int]] = {}
+    if provider is not None:
+        for t in themes:
+            name = t.get("theme") or ""
+            if name.lower() in saved:
+                found = await _year_set(provider, name)
+                if found:
+                    year_sets[name.lower()] = found
 
     def row(t: dict) -> ThemeRow:
         total = t.get("setCount") or 0
@@ -410,7 +465,10 @@ async def overview(
             # Viac, než Brickset v téme ráta, neukazovať; pruh sa oreže.
             owned=min(raw, total),
             complete=_complete(raw, total, in_waves.get(t["theme"].lower(), set()), mine.sets),
-            downloaded_years=downloaded[t["theme"].lower()],
+            downloaded_years=_saved_count(saved, year_sets, t["theme"].lower()),
+            year_total=len(year_sets[t["theme"].lower()])
+            if t["theme"].lower() in year_sets
+            else None,
         )
 
     follow = set(followed or [])
@@ -444,6 +502,8 @@ async def years(
         return None
     if rows is None:
         return None
+    # Ročníky si zapamätá aj prehľad sérií (``year_total``), nemusí sa pýtať znova.
+    _years_cache[theme.lower()] = (utcnow(), _year_numbers(rows))
     mine = await _mine(session, user_id)
     key = theme.lower()
     guess = Counter(

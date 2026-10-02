@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrangeThemes, themeSource } from './themeList'
+import { arrangeThemes, savedYears, themeSource } from './themeList'
 
 function theme (name: string, owned: number, sets: number, followed = false, complete = sets > 0 && owned >= sets) {
   return ({ theme: name, owned, set_count: sets, followed, complete, year_from: null, year_to: null }) as never
@@ -58,5 +58,23 @@ describe('témy: stiahnuté série', () => {
     expect(names(arrangeThemes(themeSource(mine, all, { downloaded: true }), 'name', { downloaded: true }))).toEqual([
       'Icons', 'Promotional',
     ])
+  })
+})
+
+describe('témy: uložené ročníky', () => {
+  it('bez uloženého ročníka nič', () => {
+    expect(savedYears({ downloaded_years: 0, year_total: null })).toBeNull()
+  })
+
+  it('uložené a koľko zostáva, keď je počet ročníkov známy', () => {
+    expect(savedYears({ downloaded_years: 2, year_total: 7 })).toEqual({ saved: 2, left: 5, all: false })
+  })
+
+  it('bez počtu ročníkov len uložené', () => {
+    expect(savedYears({ downloaded_years: 2, year_total: null })).toEqual({ saved: 2, left: null, all: false })
+  })
+
+  it('všetko uložené', () => {
+    expect(savedYears({ downloaded_years: 3, year_total: 3 })).toEqual({ saved: 3, left: 0, all: true })
   })
 })

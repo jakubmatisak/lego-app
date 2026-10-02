@@ -3848,6 +3848,8 @@ export interface components {
              * @default 0
              */
             downloaded_years: number;
+            /** Year Total */
+            year_total?: number | null;
         };
         /** ThemeSliceOut */
         ThemeSliceOut: {

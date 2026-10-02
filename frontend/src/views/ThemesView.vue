@@ -18,7 +18,7 @@
   import SeriesBar from '@/components/SeriesBar.vue'
   import ThemeSetSearch from '@/components/ThemeSetSearch.vue'
   import { usePageLoad } from '@/composables/usePageLoad'
-  import { arrangeThemes, themeSource } from '@/utils/themeList'
+  import { arrangeThemes, savedYears, themeSource } from '@/utils/themeList'
 
   const { t } = useI18n()
   const router = useRouter()
@@ -45,9 +45,23 @@
     all.value.map(row => ({
       value: row.theme,
       title: `${row.theme} (${row.set_count})`,
-      downloaded: row.downloaded_years,
+      row,
     })),
   )
+
+  /** „uložené: 2 ročníky“, alebo „uložené všetko“, keď nič nezostáva. */
+  function savedLabel (row: ThemeRow): string | null {
+    const saved = savedYears(row)
+    if (!saved) return null
+    if (saved.all) return t('themes.savedAll')
+    return t('themes.savedYearsPlural', saved.saved, { named: { count: saved.saved } })
+  }
+
+  /** „zostáva: 5“; bez známeho počtu ročníkov a pri všetkom uloženom nič. */
+  function leftLabel (row: ThemeRow): string | null {
+    const saved = savedYears(row)
+    return saved && saved.left !== null && !saved.all ? t('themes.savedLeft', { count: saved.left }) : null
+  }
 
   async function load (): Promise<boolean> {
     const { data, error: err } = await api.GET('/themes', {})
@@ -96,13 +110,14 @@
         style="max-width: 480px; flex: 1 1 320px"
         @update:model-value="open"
       >
-        <!-- Séria so stiahnutými rokmi má ikonku a počet, ako stiahnutý rok v sérii. -->
+        <!-- Séria s uloženými ročníkmi: koľko je uložených a pod tým koľko zostáva. -->
         <template #item="{ props: itemProps, item }">
           <v-list-item v-bind="itemProps">
-            <template v-if="item.downloaded" #append>
-              <span class="text-body-small text-medium-emphasis me-1">
-                {{ t('themes.downloadedYearsPlural', item.downloaded, { named: { count: item.downloaded } }) }}
-              </span>
+            <template v-if="savedLabel(item.row)" #append>
+              <div class="text-body-small text-medium-emphasis text-end me-2">
+                <div>{{ savedLabel(item.row) }}</div>
+                <div v-if="leftLabel(item.row)">{{ leftLabel(item.row) }}</div>
+              </div>
 
               <v-icon icon="mdi-cloud-check-outline" size="16" />
             </template>
@@ -194,6 +209,13 @@
             :owned="row.owned"
             :total="row.set_count"
           />
+
+          <!-- Uložené ročníky, ako vo výbere série. -->
+          <div v-if="savedLabel(row)" class="d-flex align-center ga-1 text-body-small text-medium-emphasis">
+            <v-icon icon="mdi-cloud-check-outline" size="14" />
+            <span>{{ savedLabel(row) }}</span>
+            <span v-if="leftLabel(row)">· {{ leftLabel(row) }}</span>
+          </div>
         </v-card>
       </CardGrid>
     </template>

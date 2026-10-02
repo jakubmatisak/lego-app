@@ -762,3 +762,44 @@ async def test_downloaded_years_are_marked_in_years_and_themes(session) -> None:
     _mine, everything = await themes.overview(session, 1, await provider.get_themes())
     counts = {r.theme: r.downloaded_years for r in everything}
     assert (counts["Speed Champions"], counts["Technic"]) == (1, 0)
+
+
+async def test_theme_says_how_many_years_are_saved_and_how_many_are_left(session) -> None:
+    """Počet ročníkov dáva getYears (bez limitu), len pri sérii s niečím uloženým."""
+    themes.reset_cache()
+    await _collection(session)
+    provider = FakeBrickset()
+    calls: list[str] = []
+    original = provider.get_years
+
+    async def counted(theme: str) -> list[dict]:
+        calls.append(theme)
+        return await original(theme)
+
+    provider.get_years = counted  # type: ignore[method-assign]
+
+    _mine, everything = await themes.overview(
+        session, 1, await provider.get_themes(), provider=provider
+    )
+    rows = {r.theme: r for r in everything}
+    # Nič uložené: rok sa nepýta, počet ročníkov nie je známy.
+    assert calls == []
+    assert rows["Speed Champions"].year_total is None
+
+    await themes.wave(session, provider, 1, "Speed Champions", 2025)
+    _mine, everything = await themes.overview(
+        session, 1, await provider.get_themes(), provider=provider
+    )
+    rows = {r.theme: r for r in everything}
+    assert (rows["Speed Champions"].downloaded_years, rows["Speed Champions"].year_total) == (1, 2)
+    assert rows["Technic"].year_total is None
+    assert calls == ["Speed Champions"]
+
+    await themes.wave(session, provider, 1, "Speed Champions", 2024)
+    _mine, everything = await themes.overview(
+        session, 1, await provider.get_themes(), provider=provider
+    )
+    rows = {r.theme: r for r in everything}
+    assert (rows["Speed Champions"].downloaded_years, rows["Speed Champions"].year_total) == (2, 2)
+    # Ročníky témy sú v pamäti, druhý prehľad Brickset nepýta.
+    assert calls == ["Speed Champions"]

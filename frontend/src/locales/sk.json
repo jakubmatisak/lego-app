@@ -785,14 +785,16 @@
     "closeDialogFirst": "Najprv zavri otvorené okno, potom skenuj"
   },
   "themes": {
-    "downloadedYear": "Sety roka sú stiahnuté z Brickset",
-    "downloadedYearsPlural": "stiahnutý {count} rok | stiahnuté {count} roky | stiahnutých {count} rokov",
-    "findKnownPlural": "{count} známym setom | {count} známymi setmi | {count} známymi setmi",
-    "findHint": "Hľadá len medzi {count} (tvoje sety, Chcem a stiahnuté série). Iné nenájde.",
-    "findHintPlain": "Hľadá len medzi známymi setmi (tvoje sety, Chcem a stiahnuté série). Iné nenájde.",
+    "savedYear": "Ročník je uložený, otvorí sa bez Brickset",
+    "savedYearsPlural": "uložené: {count} ročník | uložené: {count} ročníky | uložené: {count} ročníkov",
+    "savedLeft": "zostáva: {count}",
+    "savedAll": "uložené všetko",
+    "findKnownPlural": "{count} uloženým setom | {count} uloženými setmi | {count} uloženými setmi",
+    "findHint": "Hľadá len medzi {count} (tvoje sety, Chcem a uložené série). Iné nenájde.",
+    "findHintPlain": "Hľadá len medzi uloženými setmi (tvoje sety, Chcem a uložené série). Iné nenájde.",
     "findType": "Napíš aspoň dve písmená alebo číslo setu",
     "findSet": "Nájsť set podľa názvu alebo čísla",
-    "findNone": "Medzi známymi setmi sa nič nenašlo. Skús iné slovo, alebo otvor sériu a rok, stiahnu sa z Brickset.",
+    "findNone": "Medzi uloženými setmi sa nič nenašlo. Skús iné slovo, alebo otvor sériu a rok, stiahnu sa z Brickset.",
     "title": "Série",
     "search": "Nájsť sériu (Speed Champions, Technic…)",
     "mine": "Moje série",
@@ -813,7 +815,7 @@
       "followed": "Sledované",
       "withSets": "S mojimi setmi",
       "incomplete": "Nekompletné",
-      "downloaded": "Stiahnuté série"
+      "downloaded": "Uložené série"
     },
     "sort": {
       "mine": "Najviac mojich setov",

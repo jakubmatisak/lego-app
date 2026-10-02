@@ -785,14 +785,16 @@
     "closeDialogFirst": "Close the open window first, then scan"
   },
   "themes": {
-    "downloadedYear": "The year’s sets are downloaded from Brickset",
-    "downloadedYearsPlural": "{count} year downloaded | {count} years downloaded",
-    "findKnownPlural": "{count} known set | {count} known sets | {count} known sets",
-    "findHint": "Searches only among {count} (your sets, the wishlist and downloaded themes). It won’t find others.",
-    "findHintPlain": "Searches only among known sets (your sets, the wishlist and downloaded themes). It won’t find others.",
+    "savedYear": "Year saved, it opens without Brickset",
+    "savedYearsPlural": "saved: {count} year | saved: {count} years",
+    "savedLeft": "left: {count}",
+    "savedAll": "all saved",
+    "findKnownPlural": "{count} saved set | {count} saved sets | {count} saved sets",
+    "findHint": "Searches only among {count} (your sets, the wishlist and saved themes). It won’t find others.",
+    "findHintPlain": "Searches only among saved sets (your sets, the wishlist and saved themes). It won’t find others.",
     "findType": "Type at least two letters or a set number",
     "findSet": "Find a set by name or number",
-    "findNone": "Nothing found among the known sets. Try another word, or open the theme and year so they are downloaded from Brickset.",
+    "findNone": "Nothing found among the saved sets. Try another word, or open the theme and year so they are downloaded from Brickset.",
     "title": "Series",
     "search": "Find a series (Speed Champions, Technic…)",
     "mine": "My series",
@@ -813,7 +815,7 @@
       "followed": "Followed",
       "withSets": "With my sets",
       "incomplete": "Incomplete",
-      "downloaded": "Downloaded themes"
+      "downloaded": "Saved themes"
     },
     "sort": {
       "mine": "Most of my sets",

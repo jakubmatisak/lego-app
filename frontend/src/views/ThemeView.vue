@@ -103,7 +103,10 @@
     wave.value = data
     // Po stiahnutí vlny je počet pri roku presný, kým v nej nechýba môj set
     // (stará vlna, ktorú sa nepodarilo stiahnuť znova): vtedy ostane odhad.
-    years.value = years.value.map(y => (y.year === data.year ? { ...y, owned: data.owned, set_count: data.total, exact: data.exact } : y))
+    // Rok je odteraz uložený, značka sa ukáže hneď, nie až po ďalšom načítaní.
+    years.value = years.value.map(y => (y.year === data.year
+      ? { ...y, owned: data.owned, set_count: data.total, exact: data.exact, downloaded: true }
+      : y))
     return true
   }
 
@@ -194,7 +197,7 @@
             class="year-card__mark"
             icon="mdi-cloud-check-outline"
             size="14"
-            :title="t('themes.downloadedYear')"
+            :title="t('themes.savedYear')"
           />
 
           <div class="text-body-large font-weight-medium">{{ row.year }}</div>

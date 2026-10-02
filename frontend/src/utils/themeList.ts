@@ -36,6 +36,24 @@ export function completeness (row: Row): number | null {
   return row.set_count > 0 ? Math.min(1, row.owned / row.set_count) : null
 }
 
+export interface SavedYears {
+  saved: number
+  /** Koľko ročníkov ešte nie je uložených; bez známeho počtu ročníkov null. */
+  left: number | null
+  all: boolean
+}
+
+/** „Uložené: 2 ročníky, zostáva: 5“ pri sérii; bez uloženého ročníka nič. */
+export function savedYears (row: Pick<ThemeRow, 'downloaded_years' | 'year_total'>): SavedYears | null {
+  const saved = row.downloaded_years ?? 0
+  if (saved <= 0) {
+    return null
+  }
+  const total = row.year_total ?? null
+  const left = total === null ? null : Math.max(0, total - saved)
+  return { saved, left, all: left === 0 }
+}
+
 export function arrangeThemes<T extends Row> (rows: T[], sort: ThemeSort, filter: ThemeFilter): T[] {
   const byName = (a: T, b: T): number => a.theme.localeCompare(b.theme, 'sk')
   return rows

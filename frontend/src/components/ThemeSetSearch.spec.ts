@@ -39,12 +39,12 @@ function mountSearch () {
 }
 
 describe('Série: hľadanie setu', () => {
-  it('riadok pod poľom povie, že hľadá len medzi známymi setmi, aj koľko ich je', async () => {
+  it('riadok pod poľom povie, že hľadá len medzi uloženými setmi, aj koľko ich je', async () => {
     const wrapper = mountSearch()
     await flushPromises()
 
     expect(wrapper.find('v-autocomplete').attributes('hint')).toBe(
-      'Hľadá len medzi 3 412 známymi setmi (tvoje sety, Chcem a stiahnuté série). Iné nenájde.',
+      'Hľadá len medzi 3 412 uloženými setmi (tvoje sety, Chcem a uložené série). Iné nenájde.',
     )
   })
 

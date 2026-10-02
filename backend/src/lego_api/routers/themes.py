@@ -39,7 +39,7 @@ async def list_themes(
     if rows is None:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Brickset teraz neodpovedá")
     mine, everything = await themes.overview(
-        session, user.id, rows, themes.followed_of(user.preferences)
+        session, user.id, rows, themes.followed_of(user.preferences), provider=provider
     )
     return ThemesOut(
         mine=[ThemeOut(**vars(r)) for r in mine],

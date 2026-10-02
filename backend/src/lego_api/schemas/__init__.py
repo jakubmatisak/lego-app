@@ -1122,6 +1122,8 @@ class ThemeOut(BaseModel):
     complete: bool = False
     #: Koľko rokov témy má stiahnutú vlnu (značka vo výbere série).
     downloaded_years: int = 0
+    #: Koľko ročníkov téma má; len pri téme s niečím uloženým, inak None.
+    year_total: int | None = None
 
 
 class ThemesOut(BaseModel):

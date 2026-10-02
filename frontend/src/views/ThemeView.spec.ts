@@ -21,7 +21,7 @@ vi.mock('@/api/client', async original => ({
     GET: async (path: string) => {
       if (path === '/themes/years') {
         // Roky: vlna 2026 je stiahnutá, ale chýba v nej môj nový set.
-        return { data: [{ year: 2026, set_count: 2, owned: 2, exact: false }] }
+        return { data: [{ year: 2026, set_count: 2, owned: 2, exact: false, downloaded: false }] }
       }
       if (path === '/themes/wave') {
         return { data: wave }
@@ -94,5 +94,13 @@ describe('Séria: počet pri roku po otvorení vlny', () => {
 
     expect(yearCount(wrapper)).toBe('2 z 2')
     expect(wrapper.text()).not.toContain('≈')
+  })
+
+  it('rok, ktorého vlna sa práve stiahla, dostane hneď značku uloženého', async () => {
+    wave = waveWith(true)
+    const wrapper = await mountTheme()
+
+    // Zoznam rokov prišiel bez uloženej vlny; otvorenie roka ju stiahlo.
+    expect(wrapper.find('.year-card__mark').exists()).toBe(true)
   })
 })
