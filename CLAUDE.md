@@ -563,7 +563,10 @@ je vlna novšia a znova nie). Set bez údajov Brickset sa podľa roka
 z Rebrickable nezahadzuje, v stiahnutej vlne je len odhad.
 Rátajú sa len sety (`counts_as_set`: nie figúrky zo sérií podľa
 `filters.series_num`, sáčok pod číslom série ani holá figúrka), aj vo vlne
-a v počte Sérií v ponuke (`theme_names`). Ten ráta len témy zo zoznamu
+a v počte Sérií v ponuke (`theme_names`). Výnimka: figúrku zo série, ktorú Brickset
+sám vedie ako set stiahnutej vlny (Mighty Machines 42233-1 až -8 v Technic
+2026, krabica je 42233-0), Série rátajú ako set (`counts_as_set(…, in_waves)`,
+`Waves.all_sets`); sáčok pod holým číslom ostáva mimo. Ten ráta len témy zo zoznamu
 Brickset ako `overview` (`known_themes`, zoznam v pamäti procesu); kým
 zoznam nie je načítaný, len témy od Brickset, nie mená z Rebrickable
 (podtéma Modular Buildings v Brickset nie je). „V zbierke“ je najviac počet
@@ -841,7 +844,7 @@ takže pri pridaní komponentu do šablóny skontroluj import.
 
 ## Testy
 
-Backend má 737 testov, frontend 369. Jadro logiky je pokryté v `test_portfolio.py`,
+Backend má 738 testov, frontend 369. Jadro logiky je pokryté v `test_portfolio.py`,
 `test_pricing.py`, `test_refresh.py`, `test_insights.py`, `test_inflation.py` a `test_import.py`, poskytovatelia v `test_providers.py`
 bežia proti uloženým JSON odpovediam cez `respx`, teda bez siete. Fixtúry
 majú tvar reálnych odpovedí, vrátane setu, ktorý je ešte v predaji a nemá

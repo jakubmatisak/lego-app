@@ -333,13 +333,16 @@ async def test_series_figures_and_bags_are_not_sets_of_a_theme(session) -> None:
     # Mighty Machines: figúrka sa cení ako set, ale je zo série.
     session.add(_item("42233", "Technic", 2026, series_size=8))
     session.add(_item("42233-1", "Technic", 2026, parent="42233"))
+    session.add(_item("42233-0", "Technic", 2026))
     session.add(_item("42210-1", "Technic", 2026))
     session.add(_item("fig-014012", "Shrek", 2026, kind=CatalogKind.MINIFIG))
-    # Brickset má pod 42233-1 krabicu; moja figúrka s tým istým číslom setom nie je.
-    _wave(session, "Technic", 2026, "42233-1", "42210-1")
+    # Brickset vedie krabicu pod 42233-0 a figúrky Mighty Machines ako samostatné
+    # sety 42233-1 až -8 v Technic. Tie sa preto rátajú ako sety (nižšie test).
+    _wave(session, "Technic", 2026, "42233-0", "42210-1")
     await session.flush()
     await _own(session, *[f"71053-{i}" for i in range(1, 13)], "42233-1", "fig-014012")
     await _own(session, "71053", unidentified=True)
+    await _own(session, "42233", unidentified=True)
 
     rows = [_theme("Shrek", 3, 2026, 2027), _theme("Technic", 500, 1977, 2026)]
     mine, everything = await themes.overview(session, 1, rows)
@@ -363,8 +366,39 @@ async def test_series_figures_and_bags_are_not_sets_of_a_theme(session) -> None:
     assert wave is not None
     assert [(m.catalog.catalog_num, m.owned) for m in wave.members] == [
         ("42210-1", 0),
-        ("42233-1", 0),
+        ("42233-0", 0),
     ]
+
+
+async def test_series_figure_that_brickset_lists_as_a_set_counts_in_its_wave(session) -> None:
+    """Mighty Machines: Brickset má figúrky 42233-1 až -8 ako sety vlny Technic 2026.
+
+    Mám ich vo Figúrkach, Série ich preto ukážu ako moje a rátajú ich do roka aj
+    témy. Zatvorený sáčok pod holým číslom série ostáva mimo.
+    """
+    session.add(User(id=1, email="a@x.sk", password_hash="x"))
+    session.add(_item("42233", "Technic", 2026, series_size=8))
+    for i in range(1, 9):
+        session.add(_item(f"42233-{i}", "Technic", 2026, parent="42233"))
+    session.add(_item("42233-0", "Technic", 2026))
+    session.add(_item("42210-1", "Technic", 2026))
+    _wave(session, "Technic", 2026, "42233-0", *[f"42233-{i}" for i in range(1, 9)], "42210-1")
+    await session.flush()
+    await _own(session, "42233-1", "42233-3")
+    await _own(session, "42233", unidentified=True)
+
+    provider = FakeBrickset()
+    provider.enabled = False
+    wave = await themes.wave(session, provider, 1, "Technic", 2026)
+    assert wave is not None
+    owned = {m.catalog.catalog_num: m.owned for m in wave.members}
+    assert (owned["42233-1"], owned["42233-2"], owned["42233-3"], owned["42233-0"]) == (1, 0, 1, 0)
+
+    years = await themes.years(session, 1, YearsBrickset({2026: 30}), "Technic")
+    assert years is not None
+    assert [(y.year, y.set_count, y.owned) for y in years] == [(2026, 10, 2)]
+    _mine, everything = await themes.overview(session, 1, [_theme("Technic", 500, 1977, 2026)])
+    assert [(r.theme, r.owned) for r in everything] == [("Technic", 2)]
 
 
 async def _botanicals(session) -> None:

@@ -18,6 +18,7 @@ neskôr. „V zbierke“ nikdy neprekročí počet setov témy ani roka.
 
 from collections import Counter
 from collections.abc import Iterable
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -101,31 +102,37 @@ async def all_themes(provider: BricksetProvider) -> list[dict] | None:
     return themes
 
 
-def counts_as_set(item: CollectionItem) -> bool:
+def counts_as_set(item: CollectionItem, in_waves: AbstractSet[str] = frozenset()) -> bool:
     """Do Sérií patria len sety.
 
     Figúrka zo série (minifigúrka aj blind-box, ``filters.series_num``),
     zatvorený sáčok pod číslom série ani holá figúrka setom nie sú, aj keď
-    ich Rebrickable vedie pod témou (figúrky série Shrek pod Shrek).
+    ich Rebrickable vedie pod témou (figúrky série Shrek pod Shrek). Výnimkou
+    je figúrka, ktorú Brickset sám vedie ako set stiahnutej vlny (``in_waves``):
+    Mighty Machines 42233-1 až -8 sú v Technic 2026, krabica je 42233-0.
     """
     catalog = item.catalog
-    return (
-        series_num(catalog, item.unidentified) is None
-        and not catalog.is_series
-        and catalog.kind != CatalogKind.MINIFIG
-    )
+    if catalog.is_series or catalog.kind == CatalogKind.MINIFIG:
+        return False
+    if series_num(catalog, item.unidentified) is None:
+        return True
+    return not item.unidentified and item.catalog_num in in_waves
 
 
 async def _owned_sets(
-    session: AsyncSession, user_id: int, nums: Iterable[str] | None = None
+    session: AsyncSession,
+    user_id: int,
+    nums: Iterable[str] | None = None,
+    in_waves: AbstractSet[str] = frozenset(),
 ) -> list[CollectionItem]:
-    """Vlastnené kusy, ktoré sú setmi (``counts_as_set``)."""
+    """Vlastnené kusy, ktoré sú setmi (``counts_as_set``, vlny na figúrky ako sety)."""
     stmt = select(CollectionItem).where(
         CollectionItem.user_id == user_id, CollectionItem.status == ItemStatus.OWNED
     )
     if nums is not None:
         stmt = stmt.where(CollectionItem.catalog_num.in_(list(nums)))
-    return [i for i in (await session.execute(stmt)).scalars().unique() if counts_as_set(i)]
+    items = (await session.execute(stmt)).scalars().unique()
+    return [i for i in items if counts_as_set(i, in_waves)]
 
 
 def wave_subject(theme: str, year: int) -> str:
@@ -141,6 +148,10 @@ class Waves:
     sets: dict[tuple[str, int], set[str]]
     #: (téma malými písmenami, rok) → kedy sa vlna naposledy stiahla.
     fetched: dict[tuple[str, int], datetime]
+
+    def all_sets(self) -> set[str]:
+        """Všetky sety viditeľných vĺn; figúrka zo série medzi nimi je pre Brickset set."""
+        return set().union(*self.sets.values()) if self.sets else set()
 
 
 async def _waves(session: AsyncSession) -> Waves:
@@ -344,8 +355,9 @@ class _Mine:
 
 
 async def _mine(session: AsyncSession, user_id: int) -> _Mine:
-    catalogs = {i.catalog_num: i.catalog for i in await _owned_sets(session, user_id)}
     waves = await _waves(session)
+    owned = await _owned_sets(session, user_id, in_waves=waves.all_sets())
+    catalogs = {i.catalog_num: i.catalog for i in owned}
     return _Mine(set(catalogs), assign(catalogs.values(), waves), waves)
 
 
@@ -368,8 +380,10 @@ async def theme_names(session: AsyncSession, items: Iterable[CollectionItem]) ->
     („Modular Buildings“). Kým zoznam tém v pamäti nie je, rátajú sa preto
     len témy od Brickset (vlna, údaj setu).
     """
-    catalogs = {i.catalog_num: i.catalog for i in items if counts_as_set(i)}
-    placed = assign(catalogs.values(), await _waves(session)).values()
+    waves = await _waves(session)
+    in_waves = waves.all_sets()
+    catalogs = {i.catalog_num: i.catalog for i in items if counts_as_set(i, in_waves)}
+    placed = assign(catalogs.values(), waves).values()
     known = known_themes()
     if known is None:
         names = {p.theme.lower() for p in placed if p.source != FROM_REBRICKABLE}
@@ -654,8 +668,10 @@ async def wave(
             await session.execute(select(CatalogItem).where(CatalogItem.catalog_num.in_(nums)))
         ).scalars()
     )
-    # Len sety: figúrka zo série s rovnakým číslom ako krabica z Brickset sa neráta.
-    counts = Counter(i.catalog_num for i in await _owned_sets(session, user_id, nums))
+    # Len sety; figúrka zo série sa ráta, keď ju Brickset vedie v tejto vlne ako set.
+    counts = Counter(
+        i.catalog_num for i in await _owned_sets(session, user_id, nums, in_waves=set(in_wave))
+    )
     wanted = set(
         (
             await session.execute(
